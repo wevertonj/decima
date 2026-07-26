@@ -117,8 +117,26 @@ class CalculatorViewModel extends ChangeNotifier {
 
   String? get currentOperator => _pendingOperator;
 
-  /// Number of unmatched opening parentheses in the committed expression.
+  /// Number of unmatched opening parentheses in the current expression.
+  ///
+  /// While editing mid-expression, [_editText] is the source of truth — the
+  /// committed token list is stale in that mode, so counting it would report
+  /// a balance that does not match what the user sees.
   int get openParenCount {
+    final text = _editText;
+    if (text != null) {
+      var n = 0;
+      for (var i = 0; i < text.length; i++) {
+        if (text[i] == '(') {
+          n++;
+        } else if (text[i] == ')') {
+          n--;
+        }
+      }
+
+      return n;
+    }
+
     var n = 0;
     for (final t in _committed) {
       if (t == '(') {
@@ -378,13 +396,7 @@ class CalculatorViewModel extends ChangeNotifier {
   void inputParenthesis() {
     _runAction(() {
       if (_editText != null) {
-        // When inside a number block, snap to its end so the parenthesis
-        // is placed at a natural boundary instead of splitting digits.
-        _snapCursorToBlockEnd();
-        final before = _cursorPos > 0 ? _editText![_cursorPos - 1] : ' ';
-        final shouldClose =
-            before == ')' || before == '%' || _digitRegExp.hasMatch(before);
-        _editInsertLiteral(shouldClose ? ')' : '(');
+        _editInsertParenthesis();
         notifyListeners();
 
         return;
@@ -452,10 +464,15 @@ class CalculatorViewModel extends ChangeNotifier {
   void equals() {
     _runAction(() {
       if (_editText != null) {
-        final raw = _normalizeForEvaluator(_editText!);
+        var raw = _normalizeForEvaluator(_editText!);
         if (raw.trim().isEmpty) return;
         // Need at least one operator anywhere to be evaluable.
         if (!RegExp(r'[+\u2212\u00d7\u00f7]').hasMatch(raw)) return;
+        // Auto-close any unbalanced parentheses, same as the committed path.
+        final open = openParenCount;
+        if (open > 0) {
+          raw = '$raw${' )' * open}';
+        }
         final result = _evaluator.evaluate(raw);
         if (result == null) return;
 
@@ -952,15 +969,39 @@ class CalculatorViewModel extends ChangeNotifier {
     return true;
   }
 
-  /// Snaps the cursor to the end of the number block surrounding it (no-op
-  /// when the cursor is not inside a block).
-  void _snapCursorToBlockEnd() {
+  /// Inserts `(` or `)` at the cursor while editing mid-expression.
+  ///
+  /// Closes only when there is an unmatched `(` in the text **and** the token
+  /// to the left of the closing point is a complete operand (digit, `%` or
+  /// `)`); the `)` lands at the end of the number block under the cursor so a
+  /// number is never split. Otherwise it opens a `(` immediately **before**
+  /// that block, grouping the number the cursor is touching — inserting at the
+  /// end of the block instead would produce an unmatched `)` and break the
+  /// expression.
+  ///
+  /// When opening, the cursor keeps its position relative to the surrounding
+  /// text (it does not jump), since the insertion happens to its left.
+  void _editInsertParenthesis() {
     final text = _editText!;
     final block = _findNumberBlock(text, _cursorPos);
-    if (block.end > _cursorPos) {
-      _cursorPos = block.end;
-      _atEnd = _cursorPos >= text.length;
+    final hasBlock = block.end > block.start;
+
+    if (openParenCount > 0) {
+      final closeAt = hasBlock ? block.end : _cursorPos;
+      final before = closeAt > 0 ? text[closeAt - 1] : ' ';
+      if (before == ')' || before == '%' || _digitRegExp.hasMatch(before)) {
+        _cursorPos = closeAt;
+        _editInsertLiteral(' )');
+
+        return;
+      }
     }
+
+    final insertAt = hasBlock ? block.start : _cursorPos;
+    final cursorBefore = _cursorPos;
+    _editText = '${text.substring(0, insertAt)}( ${text.substring(insertAt)}';
+    _cursorPos = cursorBefore + 2;
+    _atEnd = _cursorPos >= _editText!.length;
   }
 
   /// Appends a literal `%` to the end of the number block surrounding the
@@ -1348,14 +1389,29 @@ class CalculatorViewModel extends ChangeNotifier {
   /// Reads text from the clipboard, parses and applies it to the calculator
   /// state. Returns `true` on success, `false` when the clipboard is empty
   /// or its contents cannot be interpreted as a number/expression.
+  ///
+  /// Lines already resolved (`<expressão> = <resultado>`) become timeline
+  /// entries; a trailing line without `=` becomes the current input. The
+  /// pasted results are **recalculated** from their expressions, so a stale
+  /// or wrong value in the clipboard never reaches the history.
   Future<bool> pasteFromClipboard() async {
     final raw = await _clipboardService.readText();
     if (raw == null) return false;
 
-    final tokens = PasteInputParser.parse(raw);
-    if (tokens == null) return false;
+    final content = PasteInputParser.parseContent(raw);
+    if (content == null) return false;
 
-    _runAction(() => _applyPastedTokens(tokens));
+    // Avalia todas as linhas antes de tocar no estado, para que uma linha
+    // inavaliável (ex.: divisão por zero) não deixe a calculadora pela metade.
+    final lines = <HistoryLine>[];
+    for (final tokens in content.resolvedLines) {
+      final expression = tokens.join(' ');
+      final result = _evaluator.evaluate(expression);
+      if (result == null) return false;
+      lines.add(HistoryLine(expression: expression, result: result));
+    }
+
+    _runAction(() => _applyPastedContent(lines, content.input));
 
     return true;
   }
@@ -1368,7 +1424,14 @@ class CalculatorViewModel extends ChangeNotifier {
     return raw != null && raw.isNotEmpty;
   }
 
-  void _applyPastedTokens(List<String> tokens) {
+  /// Replaces the whole calculator state with the pasted content: [lines]
+  /// become timeline entries (and pending session lines, persisted on the
+  /// next `=`/`clear()`), and [inputTokens] becomes the in-progress input.
+  ///
+  /// When [inputTokens] is null the display shows the last line's result in
+  /// the same state a `=` press leaves behind — the next digit starts a new
+  /// number instead of appending to it.
+  void _applyPastedContent(List<HistoryLine> lines, List<String>? inputTokens) {
     // Replace existing in-progress state. Persist any pending session first
     // so the user does not silently lose committed work.
     _saveOrUpdateSession();
@@ -1385,6 +1448,31 @@ class CalculatorViewModel extends ChangeNotifier {
     _currentSessionId = null;
     _persistedLineCount = 0;
 
+    for (final line in lines) {
+      _timelineEntries.add(
+        Calculation(
+          expression: _formatExpression(line.expression),
+          result: _formatValue(line.result),
+          timestamp: DateTime.now(),
+        ),
+      );
+      _sessionLines.add(line);
+    }
+
+    if (inputTokens != null) {
+      _restoreInputTokens(inputTokens);
+    } else if (lines.isNotEmpty) {
+      _add2Engine.setValue(_parseToInt(lines.last.result));
+      _shouldResetOnInput = true;
+    }
+
+    notifyListeners();
+  }
+
+  /// Distributes pasted expression tokens across the committed list, the
+  /// pending operator and the Add2 engine, mirroring how the same expression
+  /// would look had the user typed it.
+  void _restoreInputTokens(List<String> tokens) {
     final last = tokens.last;
     if (_isOperator(last)) {
       _committed.addAll(tokens.sublist(0, tokens.length - 1));
@@ -1404,7 +1492,5 @@ class CalculatorViewModel extends ChangeNotifier {
       _committed.addAll(rest);
       _restoreEngineFromToken(last);
     }
-
-    notifyListeners();
   }
 }

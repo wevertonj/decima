@@ -1,5 +1,7 @@
 # Calculadora
 
+> Tela principal do WevaCalc: entrada Add2, timeline de cálculos, keypad, cursor editável, copiar/colar e operação por teclado físico.
+
 ## Visão Geral
 
 A calculadora é a tela principal do WevaCalc. Utiliza o conceito **Add2** — entrada automática de 2 casas decimais sem necessidade de pressionar ponto — com suporte a todas as operações básicas.
@@ -110,6 +112,30 @@ A entrada colada passa por um parser que aceita:
 
 Conteúdo inválido exibe um snackbar com mensagem localizada (`pasteInvalid`). Operações bem-sucedidas exibem o snackbar `copied`.
 
+### Colar linhas já resolvidas
+
+Texto no formato `<expressão> = <resultado>` — exatamente o que **Copiar histórico** produz — é restaurado como sessão, fechando o ciclo copiar → colar:
+
+| Entrada colada | Timeline | Display |
+|----------------|----------|---------|
+| `10 + 5 = 15` | `10.00 + 5.00 = 15.00` | `15.00` |
+| `10 + 5 = 15`<br>`20 × 2 = 40` | duas linhas | `40.00` |
+| `10 + 5 = 15`<br>`7 + 3` | uma linha | `7.00 + 3.00` (prévia `10.00`) |
+
+Regras:
+
+| Regra | Comportamento |
+|-------|---------------|
+| Resultado à direita do `=` | Apenas **validado** como número isolado; a expressão é sempre recalculada, para nunca gravar no histórico um resultado que não corresponde à expressão (`10 + 5 = 99` produz `15.00`) |
+| Última linha sem `=` | Vira a entrada em aberto, com prévia ativa |
+| Todas as linhas com `=` | O display recebe o resultado da última, no mesmo estado que um `=` deixa (o próximo dígito começa um número novo) |
+| Linha em aberto antes de uma resolvida | Rejeitado — evita ambiguidade de ordem |
+| Expressão sem operador à esquerda do `=` | Rejeitado, igual à regra do `=` na calculadora (`10 = 5` não é um cálculo) |
+| Linha inavaliável | Aborta o paste inteiro; todas as linhas são avaliadas **antes** de qualquer mutação de estado |
+| Persistência | As linhas coladas entram na sessão pendente e são gravadas no próximo `=` ou `C` |
+
+`PasteInputParser.parseContent` retorna um `PastedContent` (`resolvedLines` + `input`); `PasteInputParser.parse` continua servindo o caso de expressão única. Fixtures de teste manual em `plano/fixtures-colar.md`.
+
 ### Implementação
 
 - `ClipboardService` (interface em `lib/data/services/`) abstrai o `Clipboard` do Flutter, permitindo mock nos testes
@@ -135,9 +161,9 @@ No modo de edição o display permanece **consciente do bloco numérico** sob o 
 - **Dígitos** (`0`–`9`, `00`, `000`) são inseridos na posição do cursor dentro do bloco numérico atual; o bloco inteiro é reformatado via Add2 (`23.71` em vez de `2,371` quando se digita `1` após `2,37`)
 - **Operadores** (`+`, `−`, `×`, `÷`) **partem o bloco em duas metades** quando há dígitos em ambos os lados do cursor (`12.50` cursor entre `2` e `.` + `+` → `0.12 + 0.50`); nas bordas (cursor sem dígitos antes ou sem dígitos depois) o operador é inserido literalmente como ` op `
 - **`%`** é anexado ao final do bloco numérico atual (no-op quando o bloco já termina em `%`)
-- **`( )`** salta para o fim do bloco numérico e então decide entre `(` e `)` com base no caractere imediatamente à esquerda do cursor
+- **`( )`** fecha (`)` no fim do bloco numérico) somente quando há um `(` sem par no texto **e** o caractere à esquerda do ponto de fechamento é um operando completo (dígito, `%` ou `)`); caso contrário abre um `(` imediatamente **antes** do bloco, agrupando o número que o cursor está tocando. Ao abrir, o cursor mantém a posição relativa (a inserção acontece à sua esquerda); ao fechar, vai para depois do `)`
 - **⌫** dentro de um bloco numérico remove um dígito e reformata o bloco via Add2; quando o caractere imediatamente antes do cursor é parte de um operador-com-espaços (` op ` entre dois blocos), o operador é removido inteiro e os blocos vizinhos são **mesclados** via Add2 (raws normalizados via `int.parse` para descartar zeros de padding); fora dos blocos remove o caractere literal
-- **`=`** avalia o texto editado, normalizando separadores de milhar e o separador decimal configurado, e grava o resultado na timeline
+- **`=`** avalia o texto editado, normalizando separadores de milhar e o separador decimal configurado, auto-fechando parênteses abertos (igual ao modo normal), e grava o resultado na timeline
 - **C** sai do modo de edição e limpa toda a sessão
 
 A prévia de resultado (`previewResult`) é recalculada em tempo real a partir do texto editado. O `ExpressionEvaluator` retorna `null` para expressões malformadas (operador pendurado, parêntese vazio etc.), mantendo a UI segura contra exceções durante a edição.
@@ -151,8 +177,85 @@ Em modo **multiline** (quando a expressão estoura a largura e o display usa `Wr
 ### Implementação
 
 - `CalculatorViewModel` mantém `cursorPosition` (int), `_editText` (String?) e `_atEnd` (bool)
+- `openParenCount` conta os parênteses do `_editText` quando o modo de edição está ativo — a lista de tokens commitados fica obsoleta nesse modo, e contá-la reportaria um balanço diferente do que o usuário vê
 - O bloco numérico sob o cursor é detectado pela faixa máxima de caracteres `[0-9.,%]` contígua (`_findNumberBlock`); inserções e remoções operam sobre os dígitos brutos do bloco e o resultado é re-formatado via `NumberFormatter.format` aplicando Add2
 - **Ancoragem do cursor por dígitos-à-direita**: após cada reformatação Add2, o cursor é restaurado de modo a preservar exatamente o mesmo número de dígitos à sua direita dentro do bloco. Como Add2 padroniza com zero à esquerda (raw `20` → `0.20`), o lado direito é a referência estável; ancorar pela esquerda faria o cursor pular a cada padding/depadding
 - `_normalizeForEvaluator` converte o texto formatado para a forma canônica esperada pelo `ExpressionEvaluator`
 - `AnimatedInputDisplay` recebe `cursorPosition`, `cursorColor` e `onCharTap` e renderiza o cursor entre os widgets de caractere
 - `TimelineDisplay` envolve o display em `GestureDetector.onHorizontalDragEnd` para o swipe
+
+## Atalhos de Teclado
+
+A calculadora é totalmente operável por teclado físico. Cada tecla chama o **mesmo método** do `CalculatorViewModel` usado pelo keypad virtual — não existe caminho paralelo de despacho, então a fila de toques (ver *Fila de Toques*) continua garantindo ordem e ausência de perda.
+
+| Tecla | Ação | Método do `CalculatorViewModel` |
+|-------|------|---------------------------------|
+| `0`–`9`, `Numpad 0`–`9` | Dígito | `inputDigit` |
+| `.`, `,`, `Numpad .` | Atalho `00` | `inputDoubleZero` |
+| `+`, `Numpad +` | Soma | `setOperator('+')` |
+| `-`, `Numpad -` | Subtração | `setOperator('−')` |
+| `*`, `x`, `X`, `Numpad *` | Multiplicação | `setOperator('×')` |
+| `/`, `Numpad /` | Divisão | `setOperator('÷')` |
+| `Enter`, `=`, `Numpad Enter`, `Numpad =` | Avaliar | `equals` |
+| `Backspace` | Apagar último dígito/token | `backspace` |
+| `Esc`, `Delete` | Limpar tudo | `clear` |
+| `%` | Porcentagem literal | `applyPercentage` |
+| `(`, `)` | Parêntese inteligente (toggle) | `inputParenthesis` |
+| `←`, `→` | Mover cursor | `moveCursorLeft` / `moveCursorRight` |
+| `Ctrl+C` / `Cmd+C` | Copiar resultado | `copyResult` |
+| `Ctrl+V` / `Cmd+V` | Colar | `pasteFromClipboard` |
+
+### Decisões de mapeamento
+
+| Decisão | Motivo |
+|---------|--------|
+| `.` e `,` → `00` | Add2 não tem ponto literal (o separador decimal é implícito). Completar os centavos é o uso natural dessas teclas (`1` + `.` → `1.00`) |
+| `000` sem tecla dedicada | Não há tecla física convencional para o atalho; use `00` seguido de `0` |
+| `x` e `X` → `×` | Convenção de calculadoras; `Ctrl+X` continua sendo ignorado (não é interpretado como multiplicação) |
+| `Ctrl/Cmd+C` copia o **resultado** | A expressão completa e o histórico da sessão continuam disponíveis no menu de contexto (toque longo) |
+| `Backspace` fica sem glow | O botão `⌫` está na barra de ícones, não no keypad — não existe `CalculatorButton` correspondente para acender |
+
+### Resolução das teclas
+
+`KeyboardShortcuts.resolve` (em `lib/ui/calculator/keyboard_shortcuts.dart`) é uma função pura que traduz `(logicalKey, character, modificadores)` em um `CalculatorKeyCommand`, em três camadas:
+
+| Ordem | Camada | Cobre |
+|-------|--------|-------|
+| 1 | Combinações com `Ctrl`/`Cmd` | `Ctrl/Cmd+C` e `Ctrl/Cmd+V`. Qualquer outra combinação retorna `null`, para não roubar atalhos do sistema |
+| 2 | `LogicalKeyboardKey` nomeada | `Enter`, `Backspace`, `Esc`, `Delete`, setas e todo o bloco numérico — teclas que não produzem caractere confiável |
+| 3 | Caractere impresso | `event.character`, com fallback para `LogicalKeyboardKey.keyLabel` |
+
+O caractere é a fonte **primária** da camada 3 porque teclas como `%`, `*`, `(` e `)` dependem de modificadores e do layout: o `logicalKey` reportado varia entre plataformas (Shift+5 pode chegar como `digit5` ou como `percent`), o caractere não.
+
+### Feedback visual e foco
+
+- `KeyFlashController` (`ValueNotifier<KeyFlash?>`) notifica o rótulo acionado; cada `CalculatorButton` cujo `label` coincide reproduz **a mesma** animação do toque (glow LED + flash de fundo), com fade out imediato — não existe "soltar o dedo"
+- O campo `sequence` do `KeyFlash` muda a cada acionamento para que a mesma tecla repetida reinicie a animação em vez de ser descartada por igualdade de valor
+- `KeyboardShortcutsHandler` envolve a `CalculatorPage` em `Focus(autofocus: true)`, então o app recebe teclas sem clique prévio
+- Eventos `KeyRepeatEvent` são aceitos: segurar `Backspace` apaga repetidamente
+
+## Segurança e Cibersegurança
+
+| Vetor | Risco no contexto | Regra aplicada |
+|-------|-------------------|----------------|
+| Entrada não confiável (OWASP A03 — Injection) | Texto arbitrário colado da área de transferência chega ao avaliador de expressões | `PasteInputParser` faz allowlist de tokens (dígitos, `+ − × ÷ % ( ) =`); qualquer outro caractere invalida a entrada inteira sem alterar estado |
+| Dado inconsistente no histórico | Um resultado colado divergente da expressão seria persistido | O lado direito do `=` é apenas validado; a expressão é sempre recalculada antes de virar linha da timeline |
+| Falha parcial de estado | Uma linha inválida no meio de um paste multi-linha deixaria a calculadora híbrida | Todas as linhas são avaliadas antes de qualquer mutação; qualquer falha aborta o paste inteiro |
+| Entrada não confiável via teclado | Teclas arbitrárias acionando ações não previstas | `KeyboardShortcuts.resolve` também é allowlist — teclas fora do mapa retornam `null` e o evento é devolvido ao framework (`KeyEventResult.ignored`) |
+| Exposição de dados em log | Expressões e resultados podem ser dados financeiros do usuário | Nenhum `print`/log de expressão, resultado ou conteúdo do clipboard |
+| Vazamento por clipboard | Copiar histórico expõe a sessão inteira a qualquer app | Cópia sempre explícita (menu de contexto ou `Ctrl/Cmd+C`); nunca automática |
+| Menor privilégio | — | A calculadora não faz I/O de rede; persistência restrita ao SQLite local e ao `SharedPreferences` do app |
+
+## Desenvolvimento & Gotchas
+
+| Gotcha | Impacto | Ação |
+|--------|---------|------|
+| `logicalKey` de teclas com modificador varia por plataforma | `%`, `*`, `(`, `)` podem não ser reconhecidos se resolvidos só pelo `logicalKey` | Resolver pelo `character` primeiro; `keyLabel` só como fallback |
+| `KeyEventSimulator` não simula `LogicalKeyboardKey.percent`/`parenthesisLeft` sem `physicalKey` explícito | Widget test lança assert no mapa de teclas da plataforma | Nos testes, enviar a tecla base com `character` (`sendKeyEvent(LogicalKeyboardKey.digit5, character: '%')`) |
+| `TextField` no mesmo subtree do handler | Digitar no campo dispararia a calculadora também (eventos sobem a cadeia de foco) | `_isTextEditingFocused()` procura `EditableTextState` acima do foco primário e devolve `KeyEventResult.ignored` |
+| `FocusNode` do `TextField` está no `Focus` interno do `EditableText` | Comparar `primaryFocus.context.widget is EditableText` nunca dá match | Usar `findAncestorStateOfType<EditableTextState>()` |
+| `Focus(autofocus: true)` do handler concorre com outros `autofocus` no mesmo escopo | Em testes com `TextField(autofocus: true)` o handler ganha o foco | Dar foco ao campo explicitamente (tap/`requestFocus`) no teste; no app não há `TextField` na árvore da calculadora |
+| `AnimationController.value = 0` + `forward()` no glow por teclado | Sem `tapUp`, o LED ficaria aceso para sempre se só ligássemos o valor | `_onKeyFlash` acende e inicia o fade out no mesmo frame |
+| Rótulos dos botões duplicados entre keypad e handler | Divergência silenciosa quebra o feedback visual | Rótulos não numéricos são constantes em `CalculatorKeypad` (`clearLabel`, `percentLabel`, `parenthesisLabel`, `equalsLabel`, `doubleZeroLabel`, `tripleZeroLabel`) |
+| `_committed` fica obsoleto quando o modo de edição é ativado | Estado derivado calculado sobre ele divergia do texto exibido (`openParenCount` reportava 0 com `(` na tela) | Todo estado derivado de parênteses lê `_editText` quando ele existe |
+| Inserir `)` no fim do bloco numérico sem `(` pendente | Gerava `)` órfão (`12.50)`), tornando a expressão inavaliável e a prévia `null` | `_editInsertParenthesis` só fecha com `openParenCount > 0`; caso contrário abre antes do bloco |

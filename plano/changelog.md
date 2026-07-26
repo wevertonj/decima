@@ -887,3 +887,130 @@ Replicado o mecanismo do projeto irmão `verbum`: em vez de recolorir a splash j
 - **Total novos: 10 testes — Total geral: 523 testes — 100% verde**
 - `flutter analyze` — zero issues
 - `flutter build apk --debug` — sucesso (valida compilação do Kotlin novo)
+
+---
+
+## [Concluída] Etapa 13 — Suporte a teclado físico
+
+### Mapeamento de teclas
+
+- `lib/ui/calculator/keyboard_shortcuts.dart` — novo módulo com a tradução pura de eventos de teclado em ações da calculadora:
+  - `CalculatorKeyAction` (enum) — `digit`, `doubleZero`, `operator`, `equals`, `backspace`, `clearAll`, `percent`, `parenthesis`, `cursorLeft`, `cursorRight`, `copy`, `paste`
+  - `CalculatorKeyCommand` — ação + payload opcional (dígito ou símbolo do operador), com value equality
+  - `KeyboardShortcuts.resolve({logicalKey, character, isControlPressed, isMetaPressed})` — função pura, testável sem widgets
+- Resolução em 3 camadas, nesta ordem:
+  1. Combinações com `Ctrl`/`Cmd` — apenas `+C` (copiar resultado) e `+V` (colar); qualquer outra retorna `null` para não roubar atalhos do sistema (ex.: `Ctrl+X` não vira multiplicação)
+  2. `LogicalKeyboardKey` nomeada — `Enter`, `Backspace`, `Esc`, `Delete`, `←`/`→` e todo o bloco numérico (teclas sem caractere confiável)
+  3. Caractere impresso (`event.character`), com fallback para `LogicalKeyboardKey.keyLabel`
+- O caractere é a fonte primária da camada 3 porque `%`, `*`, `(` e `)` dependem de modificadores e de layout — o `logicalKey` reportado varia entre plataformas, o caractere não
+- Cobertura: `0`–`9` e numpad, `+ - * x X /` e operadores do numpad, `Enter`/`=`/numpad, `Backspace`, `Esc`/`Delete`, `%`, `(` `)`, `←` `→`, `Ctrl/Cmd+C`, `Ctrl/Cmd+V`
+
+### Decisões documentadas
+
+- `.` e `,` (e `Numpad .`) → atalho `00`: Add2 não tem ponto literal, e completar os centavos é o uso natural dessas teclas (`1` + `.` → `1.00`)
+- `000` não tem tecla dedicada (não há tecla física convencional) — usar `00` seguido de `0`
+- `Ctrl/Cmd+C` copia o **resultado**; expressão e histórico da sessão seguem no menu de contexto
+- `Backspace` não acende glow — o botão `⌫` está na barra de ícones, não no keypad
+
+### Handler
+
+- `lib/ui/calculator/widgets/keyboard_shortcuts_handler.dart` — envolve a `CalculatorPage` em `Focus(autofocus: true)` com `onKeyEvent`
+- Cada ação chama o **mesmo método** do `CalculatorViewModel` usado pelo keypad virtual — nenhum caminho paralelo de despacho, então a fila de toques da Etapa 7 continua garantindo ordem e ausência de perda
+- Aceita `KeyDownEvent` e `KeyRepeatEvent` (segurar `Backspace` apaga repetidamente); ignora `KeyUpEvent`
+- Teclas não mapeadas retornam `KeyEventResult.ignored`, devolvendo o evento ao framework
+- `_isTextEditingFocused()` — quando o foco primário está dentro de um `EditableText`, os atalhos são ignorados para não duplicar a digitação (rename do histórico, busca futura). A checagem sobe a árvore procurando `EditableTextState`, porque o `FocusNode` do `TextField` está ancorado no `Focus` interno do `EditableText`
+- Copiar/colar reportam via callbacks `onCopied` / `onPasteFailed`; a `CalculatorPage` exibe o snackbar reaproveitando as strings existentes `copied` e `pasteInvalid` (nenhuma entrada ARB nova)
+
+### Feedback visual
+
+- `lib/ui/calculator/widgets/key_flash_controller.dart` — `KeyFlash` (record `{label, sequence}`) + `KeyFlashController extends ValueNotifier<KeyFlash?>`
+- `CalculatorButton` recebe `keyFlash` e, quando o rótulo notificado é o seu, reproduz **a mesma** animação do toque (glow LED + flash de fundo) com fade out imediato — não existe "soltar o dedo"
+- `sequence` muda a cada acionamento para que a mesma tecla repetida reinicie a animação em vez de ser descartada por igualdade de valor
+- `CalculatorKeypad` ganhou constantes de rótulo (`clearLabel`, `percentLabel`, `parenthesisLabel`, `equalsLabel`, `doubleZeroLabel`, `tripleZeroLabel`) compartilhadas com o handler, evitando divergência silenciosa entre botão e atalho
+
+### Documentação
+
+- `docs/features/calculadora.md` — nova seção **Atalhos de Teclado** (tabela tecla → ação → método, decisões de mapeamento, camadas de resolução, feedback visual e foco), além das seções **Segurança e Cibersegurança** e **Desenvolvimento & Gotchas**
+
+### Testes
+
+- `test/unit/ui/calculator/keyboard_shortcuts_test.dart` — 34 testes (dígitos e numpad, operadores e variantes, equals, backspace/esc/delete, `%`, parênteses, separadores decimais, setas, `Ctrl/Cmd+C/V`, combinações modificadas ignoradas, teclas não mapeadas, value equality)
+- `test/widget/calculator/keyboard_shortcuts_handler_test.dart` — 26 testes (digitação, rajada sem perda, cada operador, `Enter` e `=`, backspace com e sem conteúdo, `Esc`/`Delete`, `%` literal, expressão com parênteses, `.`/`,` → `00`, navegação e edição com o cursor, `Ctrl+C` com snackbar, `Ctrl+V` válido e inválido, glow no botão correspondente, atalhos ignorados com `TextField` focado)
+- **Total novos: 60 testes — Total geral: 583 testes — 100% verde**
+- `flutter analyze` — zero issues
+
+### Pendência
+
+- Teste manual de operação completa apenas por teclado físico — requer device/desktop com teclado real (as plataformas desktop só são habilitadas nas Etapas 14–16)
+
+## [Correção] Etapa 13 — Parênteses no modo de edição
+
+### Problema
+
+Com o cursor no meio de um valor, o botão `( )` inseria um `)` **órfão** no fim do bloco numérico: `12.50` com cursor entre `2` e `.` virava `12.50)`. A expressão ficava inavaliável (`previewResult` = `null`) e o cursor saltava para o fim sem motivo.
+
+Duas causas:
+
+1. `_snapCursorToBlockEnd()` movia o cursor para o fim do bloco antes de decidir; com o caractere à esquerda passando a ser um dígito, a heurística sempre escolhia fechar
+2. A decisão não consultava o balanço de parênteses — `openParenCount` contava apenas `_committed`, que fica **obsoleto** quando o modo de edição é ativado (o `_editText` passa a ser a fonte de verdade). Em edição o contador reportava `0` mesmo com `(` visível na tela
+
+### Solução
+
+- `openParenCount` passa a contar os parênteses do `_editText` quando o modo de edição está ativo, refletindo o que o usuário vê
+- `_snapCursorToBlockEnd()` substituído por `_editInsertParenthesis()`, com a regra:
+  - **fecha** (`)` no fim do bloco numérico) somente quando `openParenCount > 0` **e** o caractere à esquerda do ponto de fechamento é um operando completo (dígito, `%` ou `)`)
+  - **abre** (`(` imediatamente **antes** do bloco numérico) em qualquer outro caso, agrupando o número que o cursor está tocando
+- Ao abrir, o cursor mantém a posição relativa ao conteúdo (a inserção acontece à sua esquerda, então ele não salta); ao fechar, vai para depois do `)`
+- Parênteses são inseridos com espaço (`( ` / ` )`), alinhando com o formato do modo normal
+- `equals()` em modo de edição passa a **auto-fechar** parênteses abertos antes de avaliar, igual ao caminho commitado — sem isso, abrir um parêntese em edição deixava o `=` silenciosamente inerte
+
+### Comportamento
+
+| Antes | Depois |
+|-------|--------|
+| `12.50` cursor no meio + `( )` → `12.50)` (inválido) | → `( 12.50` |
+| `10.00 + 5.00` cursor no meio do `5.00` + `( )` → `10.00 + 5.00)` | → `10.00 + ( 5.00` |
+| `( 12.50` cursor no meio + `( )` → `( 12.50)` | → `( 12.50 )` |
+| `( 12.50 + 3.00` cursor no 1º número + `( )` → `...)` no fim | → `( 12.50 ) + 3.00` |
+| `( 12.50 + 3.00` + `=` → nada acontece | → auto-fecha e avalia (`15.50`) |
+
+### Testes
+
+- `test/unit/ui/calculator/calculator_view_model_test.dart` — novo grupo `parentheses in edit mode` com 9 testes (abre antes do bloco, nunca insere `)` órfão, cursor ancorado ao digitar, abre no meio de expressão, fecha no fim do bloco, fecha antes da parte final da expressão, `openParenCount` reflete o texto editado, expressão continua avaliável, `=` auto-fecha)
+
+---
+
+## [Melhoria] Etapa 13 — Colar linhas já resolvidas (`<expressão> = <resultado>`)
+
+### Motivação
+
+Colar `10 + 5 = 15` falhava (o `=` não era caractere aceito). Como `copyHistory()` produz exatamente esse formato (`<expressão> = <resultado>`, uma linha por cálculo), o ciclo **copiar histórico → colar de volta** estava quebrado.
+
+### Solução
+
+- `PastedContent` (em `lib/utils/paste_input_parser.dart`) — `resolvedLines` (tokens das expressões à esquerda de cada `=`) + `input` (tokens da linha final sem `=`, ou `null`)
+- `PasteInputParser.parseContent(String)` — quebra o texto em linhas, ignora linhas vazias e valida cada uma. `PasteInputParser.parse` permanece intacto, servindo o caso de expressão única
+- `CalculatorViewModel.pasteFromClipboard` passa a usar `parseContent`; `_applyPastedTokens` foi decomposto em `_applyPastedContent` (reset + linhas + input) e `_restoreInputTokens` (distribuição dos tokens da entrada)
+
+### Regras
+
+| Regra | Comportamento |
+|-------|---------------|
+| Resultado à direita do `=` | Apenas **validado** como número isolado; a expressão é sempre recalculada — `10 + 5 = 99` produz `15.00`, para nunca gravar no histórico um resultado que não corresponde à expressão |
+| Última linha sem `=` | Vira a entrada em aberto, com prévia ativa |
+| Todas as linhas com `=` | O display recebe o resultado da última, no mesmo estado que um `=` deixa (`_shouldResetOnInput`) |
+| Linha em aberto antes de uma resolvida | Rejeitado — evita ambiguidade de ordem entre timeline e input |
+| Expressão sem operador à esquerda do `=` | Rejeitado, igual à regra do `=` na calculadora (`10 = 5` não é um cálculo; sem essa regra viraria a linha sem sentido `10.00 = 10.00`) |
+| Mais de um `=` na linha, ou `=` sem resultado | Rejeitado |
+| Linha inavaliável (ex.: `10 ÷ 0 = Error`) | Aborta o paste inteiro — todas as linhas são avaliadas **antes** de qualquer mutação de estado, para não deixar a calculadora pela metade |
+| Persistência | As linhas coladas entram em `_sessionLines` e são gravadas no próximo `=` ou `C` |
+
+### Testes
+
+- `test/unit/ui/calculator/calculator_view_model_test.dart` — novo grupo `pasteFromClipboard — resolved lines` com 17 testes (linha resolvida vai para a timeline, resultado vira o input, próximo dígito começa número novo, recálculo em vez de confiar no colado, múltiplas linhas, linhas + input em aberto, **round-trip real do `copyHistory`**, separador de milhar, persistência no `=` seguinte, e as rejeições: `=` sem resultado, linha em aberto antes de resolvida, `=` duplicado, expressão inválida, expressão como resultado, expressão sem operador, divisão por zero, linhas vazias ignoradas)
+- **Total novos (correção + melhoria): 26 testes — Total geral: 609 testes — 100% verde**
+- `flutter analyze` — zero issues
+
+### Fixtures de teste manual
+
+- `plano/fixtures-colar.md` — lista verificada de strings para testar o colar: números simples, expressões, linhas resolvidas, casos de fronteira (heurística de separador) e inválidas, com o resultado esperado de cada uma

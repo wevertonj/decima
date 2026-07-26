@@ -478,34 +478,34 @@ Checklist detalhado de cada etapa. Marque `[x]` conforme concluir.
 
 ---
 
-## Etapa 13 — Suporte a teclado físico
+## Etapa 13 — Suporte a teclado físico ✅
 
 ### Testes PRIMEIRO (TDD Red)
 
-- [ ] Criar `test/unit/ui/calculator/keyboard_shortcuts_test.dart`
+- [x] Criar `test/unit/ui/calculator/keyboard_shortcuts_test.dart`
   - Cenários: cada `LogicalKeyboardKey` mapeia para o método correto do ViewModel
-- [ ] Criar `test/widget/calculator/keyboard_shortcuts_handler_test.dart`
+- [x] Criar `test/widget/calculator/keyboard_shortcuts_handler_test.dart`
   - Cenários: dígitos, operadores, Enter, Backspace, Esc/Delete, %, parênteses, Ctrl/Cmd+C/V
   - Cenário: feedback visual (glow) é disparado pela tecla física
   - Cenário: Backspace em estado vazio não quebra o app
 
 ### Implementação (TDD Green)
 
-- [ ] Criar `lib/ui/calculator/widgets/keyboard_shortcuts_handler.dart`
-  - Mapeamento via `Shortcuts` + `Actions` (preferencial) ou `RawKeyboardListener`
-  - Cada `Intent` chama método do `CalculatorViewModel`, passando pela fila de toques
-- [ ] Envolver `CalculatorPage` com `Focus(autofocus: true)` + handler
-- [ ] Expor `triggerFeedback()` em `CalculatorButton` (ou `ValueNotifier` por tecla) para reuso visual
-- [ ] Garantir que campos de texto (rename do histórico) não interceptam atalhos globais
-- [ ] Documentar atalhos em `docs/features/calculadora.md`
-- [ ] Adicionar entradas ARB se necessário (ex: tooltip "Atalho: …")
+- [x] Criar `lib/ui/calculator/widgets/keyboard_shortcuts_handler.dart`
+  - Mapeamento em `lib/ui/calculator/keyboard_shortcuts.dart` (função pura `KeyboardShortcuts.resolve`) + `Focus.onKeyEvent` no handler
+  - Cada ação chama método do `CalculatorViewModel`, passando pela fila de toques
+- [x] Envolver `CalculatorPage` com `Focus(autofocus: true)` + handler
+- [x] Expor feedback visual reutilizável em `CalculatorButton` via `KeyFlashController` (`ValueNotifier<KeyFlash?>`)
+- [x] Garantir que campos de texto (rename do histórico) não interceptam atalhos globais
+- [x] Documentar atalhos em `docs/features/calculadora.md`
+- [x] Entradas ARB — não necessárias (reaproveitadas `copied` e `pasteInvalid` para o feedback de `Ctrl/Cmd+C/V`)
 
 ### Validação
 
-- [ ] `flutter test` — 100% verde
-- [ ] `flutter analyze` — zero warnings
-- [ ] Regressão: toques no teclado virtual continuam funcionando
-- [ ] Teste manual: operação completa apenas via teclado físico
+- [x] `flutter test` — 100% verde (583 testes)
+- [x] `flutter analyze` — zero warnings
+- [x] Regressão: toques no teclado virtual continuam funcionando
+- [ ] Teste manual: operação completa apenas via teclado físico (pendente — requer device/desktop com teclado real)
 
 ---
 

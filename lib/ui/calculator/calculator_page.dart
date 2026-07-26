@@ -6,7 +6,10 @@ import 'package:wevacalc/domain/entities/history_selection.dart';
 import 'package:wevacalc/ui/calculator/calculator_view_model.dart';
 import 'package:wevacalc/ui/calculator/widgets/calculator_context_menu.dart';
 import 'package:wevacalc/ui/calculator/widgets/calculator_keypad.dart';
+import 'package:wevacalc/ui/calculator/widgets/key_flash_controller.dart';
+import 'package:wevacalc/ui/calculator/widgets/keyboard_shortcuts_handler.dart';
 import 'package:wevacalc/ui/calculator/widgets/timeline_display.dart';
+import 'package:wevacalc/utils/extensions/l10n_extension.dart';
 
 class CalculatorPage extends StatefulWidget {
   final CalculatorViewModel viewModel;
@@ -19,6 +22,10 @@ class CalculatorPage extends StatefulWidget {
 
 class _CalculatorPageState extends State<CalculatorPage> {
   late final TextEditingController _displayController;
+
+  /// Ponte entre o teclado físico e o feedback visual do keypad — cada tecla
+  /// reconhecida acende o botão equivalente.
+  final KeyFlashController _keyFlash = KeyFlashController();
 
   @override
   void initState() {
@@ -43,6 +50,7 @@ class _CalculatorPageState extends State<CalculatorPage> {
   void dispose() {
     widget.viewModel.removeListener(_onViewModelChanged);
     _displayController.dispose();
+    _keyFlash.dispose();
     super.dispose();
   }
 
@@ -67,6 +75,29 @@ class _CalculatorPageState extends State<CalculatorPage> {
     final colors = Theme.of(context).colorScheme;
     final vm = widget.viewModel;
 
+    return KeyboardShortcutsHandler(
+      viewModel: vm,
+      flashController: _keyFlash,
+      onCopied: () => _showSnack(context.l10n.copied),
+      onPasteFailed: () => _showSnack(context.l10n.pasteInvalid),
+      child: _buildScaffold(colors, vm),
+    );
+  }
+
+  void _showSnack(String message) {
+    final messenger = ScaffoldMessenger.maybeOf(context);
+    if (messenger == null) return;
+    messenger.hideCurrentSnackBar();
+    messenger.showSnackBar(
+      SnackBar(
+        content: Text(message),
+        duration: const Duration(milliseconds: 1500),
+        behavior: SnackBarBehavior.floating,
+      ),
+    );
+  }
+
+  Widget _buildScaffold(ColorScheme colors, CalculatorViewModel vm) {
     return Scaffold(
       body: SafeArea(
         bottom: false,
@@ -108,6 +139,7 @@ class _CalculatorPageState extends State<CalculatorPage> {
                     MediaQuery.paddingOf(context).bottom,
               ),
               child: CalculatorKeypad(
+                keyFlash: _keyFlash,
                 onDigit: vm.inputDigit,
                 onOperator: vm.setOperator,
                 onEquals: vm.equals,

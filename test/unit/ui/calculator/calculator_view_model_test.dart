@@ -1553,6 +1553,130 @@ void main() {
       });
     });
 
+    group('parentheses in edit mode', () {
+      /// Types `1250` (→ `12.50`) and drops the cursor mid-number.
+      void typeAndEditMidNumber(int cursorPosition) {
+        viewModel.inputDigit('1');
+        viewModel.inputDigit('2');
+        viewModel.inputDigit('5');
+        viewModel.inputDigit('0');
+        viewModel.setCursorPosition(cursorPosition);
+      }
+
+      test('should open a parenthesis before the number under the cursor', () {
+        typeAndEditMidNumber(2);
+        viewModel.inputParenthesis();
+
+        expect(viewModel.fullDisplayText, '( 12.50');
+      });
+
+      test('should never insert an unmatched closing parenthesis', () {
+        typeAndEditMidNumber(2);
+        viewModel.inputParenthesis();
+
+        expect(viewModel.fullDisplayText, isNot(contains(')')));
+      });
+
+      test('should keep the cursor anchored to the same digit when opening', () {
+        typeAndEditMidNumber(2);
+        viewModel.inputParenthesis();
+
+        // Cursor was between `2` and `.` in `12.50`; after `( ` is prepended
+        // it stays between `2` and `.` in `( 12.50`.
+        expect(viewModel.cursorPosition, 4);
+      });
+
+      test('should open the parenthesis before the block, not at the end', () {
+        viewModel.inputDigit('1');
+        viewModel.inputDigit('0');
+        viewModel.inputDigit('0');
+        viewModel.inputDigit('0');
+        viewModel.setOperator('+');
+        viewModel.inputDigit('5');
+        viewModel.inputDigit('0');
+        viewModel.inputDigit('0');
+        // `10.00 + 5.00`, cursor between `5` and `.`.
+        viewModel.setCursorPosition(10);
+        viewModel.inputParenthesis();
+
+        expect(viewModel.fullDisplayText, '10.00 + ( 5.00');
+      });
+
+      test('should close at the end of the block when one paren is open', () {
+        viewModel.inputParenthesis();
+        viewModel.inputDigit('1');
+        viewModel.inputDigit('2');
+        viewModel.inputDigit('5');
+        viewModel.inputDigit('0');
+        // `( 12.50`, cursor between `2` and `.`.
+        viewModel.setCursorPosition(4);
+        viewModel.inputParenthesis();
+
+        expect(viewModel.fullDisplayText, '( 12.50 )');
+        expect(viewModel.openParenCount, 0);
+      });
+
+      test('should close before the trailing part of the expression', () {
+        viewModel.inputParenthesis();
+        viewModel.inputDigit('1');
+        viewModel.inputDigit('2');
+        viewModel.inputDigit('5');
+        viewModel.inputDigit('0');
+        viewModel.setOperator('+');
+        viewModel.inputDigit('3');
+        viewModel.inputDigit('0');
+        viewModel.inputDigit('0');
+        // `( 12.50 + 3.00`, cursor between `2` and `.` of the first number.
+        viewModel.setCursorPosition(4);
+        viewModel.inputParenthesis();
+
+        expect(viewModel.fullDisplayText, '( 12.50 ) + 3.00');
+      });
+
+      test('openParenCount should reflect the text being edited', () {
+        typeAndEditMidNumber(2);
+
+        expect(viewModel.openParenCount, 0);
+
+        viewModel.inputParenthesis();
+
+        expect(viewModel.openParenCount, 1);
+      });
+
+      test('should keep the expression evaluable after opening', () {
+        viewModel.inputDigit('1');
+        viewModel.inputDigit('0');
+        viewModel.inputDigit('0');
+        viewModel.inputDigit('0');
+        viewModel.setOperator('+');
+        viewModel.inputDigit('5');
+        viewModel.inputDigit('0');
+        viewModel.inputDigit('0');
+        viewModel.setCursorPosition(10);
+        viewModel.inputParenthesis();
+        viewModel.moveCursorToEnd();
+        viewModel.inputParenthesis();
+
+        expect(viewModel.fullDisplayText, '10.00 + ( 5.00 )');
+        expect(viewModel.previewResult, '15.00');
+      });
+
+      test('equals should auto-close open parentheses in edit mode', () {
+        typeAndEditMidNumber(2);
+        viewModel.inputParenthesis();
+        viewModel.moveCursorToEnd();
+        viewModel.setOperator('+');
+        viewModel.inputDigit('3');
+        viewModel.inputDigit('0');
+        viewModel.inputDigit('0');
+        viewModel.equals();
+
+        expect(viewModel.timelineEntries, hasLength(1));
+        expect(viewModel.timelineEntries.first.result, '15.50');
+        expect(viewModel.currentDisplayValue, '15.50');
+      });
+    });
+
     group('clipboard — derived state', () {
       test('hasExpression should be false on initial state', () {
         expect(viewModel.hasExpression, isFalse);
@@ -1789,6 +1913,208 @@ void main() {
 
         expect(ok, isTrue);
         expect(viewModel.currentDisplayValue, '1,250.00');
+      });
+    });
+
+    group('pasteFromClipboard — resolved lines', () {
+      void clipboard(String text) {
+        when(
+          () => mockClipboardService.readText(),
+        ).thenAnswer((_) async => text);
+      }
+
+      test('should move a resolved line into the timeline', () async {
+        clipboard('10 + 5 = 15');
+
+        final ok = await viewModel.pasteFromClipboard();
+
+        expect(ok, isTrue);
+        expect(viewModel.timelineEntries, hasLength(1));
+        expect(viewModel.timelineEntries.first.expression, '10.00 + 5.00');
+        expect(viewModel.timelineEntries.first.result, '15.00');
+      });
+
+      test('should leave the result as the current input', () async {
+        clipboard('10 + 5 = 15');
+
+        await viewModel.pasteFromClipboard();
+
+        expect(viewModel.fullDisplayText, '15.00');
+        expect(viewModel.currentDisplayValue, '15.00');
+      });
+
+      test('should start a fresh number when typing after a resolved line', () async {
+        clipboard('10 + 5 = 15');
+
+        await viewModel.pasteFromClipboard();
+        viewModel.inputDigit('7');
+
+        expect(viewModel.currentDisplayValue, '0.07');
+      });
+
+      test('should recalculate instead of trusting the pasted result', () async {
+        clipboard('10 + 5 = 99');
+
+        final ok = await viewModel.pasteFromClipboard();
+
+        expect(ok, isTrue);
+        expect(viewModel.timelineEntries.first.result, '15.00');
+        expect(viewModel.currentDisplayValue, '15.00');
+      });
+
+      test('should accept several resolved lines', () async {
+        clipboard('10 + 5 = 15\n20 × 2 = 40');
+
+        final ok = await viewModel.pasteFromClipboard();
+
+        expect(ok, isTrue);
+        expect(viewModel.timelineEntries, hasLength(2));
+        expect(viewModel.timelineEntries[0].result, '15.00');
+        expect(viewModel.timelineEntries[1].result, '40.00');
+        expect(viewModel.currentDisplayValue, '40.00');
+      });
+
+      test('should accept resolved lines followed by an open input', () async {
+        clipboard('10 + 5 = 15\n7 + 3');
+
+        final ok = await viewModel.pasteFromClipboard();
+
+        expect(ok, isTrue);
+        expect(viewModel.timelineEntries, hasLength(1));
+        expect(viewModel.fullDisplayText, '7.00 + 3.00');
+        expect(viewModel.previewResult, '10.00');
+      });
+
+      test('should round-trip the text produced by copyHistory', () async {
+        viewModel.inputDigit('1');
+        viewModel.inputDigit('0');
+        viewModel.inputDigit('0');
+        viewModel.inputDigit('0');
+        viewModel.setOperator('+');
+        viewModel.inputDigit('5');
+        viewModel.inputDigit('0');
+        viewModel.inputDigit('0');
+        viewModel.equals();
+        viewModel.setOperator('×');
+        viewModel.inputDigit('2');
+        viewModel.inputDigit('0');
+        viewModel.inputDigit('0');
+        viewModel.equals();
+
+        await viewModel.copyHistory();
+        final copied = verify(
+          () => mockClipboardService.copyText(captureAny()),
+        ).captured.last as String;
+
+        viewModel.clear();
+        clipboard(copied);
+        final ok = await viewModel.pasteFromClipboard();
+
+        expect(ok, isTrue);
+        expect(viewModel.timelineEntries, hasLength(2));
+        expect(viewModel.timelineEntries[0].result, '15.00');
+        expect(viewModel.timelineEntries[1].result, '30.00');
+        expect(viewModel.currentDisplayValue, '30.00');
+      });
+
+      test('should handle thousands separators in a resolved line', () async {
+        clipboard('1,000.00 + 250.50 = 1,250.50');
+
+        final ok = await viewModel.pasteFromClipboard();
+
+        expect(ok, isTrue);
+        expect(viewModel.timelineEntries.first.expression, '1,000.00 + 250.50');
+        expect(viewModel.timelineEntries.first.result, '1,250.50');
+      });
+
+      test('should persist pasted lines on the next equals', () async {
+        clipboard('10 + 5 = 15');
+        await viewModel.pasteFromClipboard();
+
+        viewModel.setOperator('+');
+        viewModel.inputDigit('5');
+        viewModel.inputDigit('0');
+        viewModel.inputDigit('0');
+        viewModel.equals();
+
+        final captured =
+            verify(
+                  () => mockHistoryRepository.add(captureAny()),
+                ).captured.last
+                as HistoryEntry;
+
+        expect(captured.lines, hasLength(2));
+        expect(captured.lines[0].result, '15.00');
+        expect(captured.lines[1].result, '20.00');
+      });
+
+      test('should reject an equals sign with no result', () async {
+        clipboard('10 + 5 =');
+
+        final ok = await viewModel.pasteFromClipboard();
+
+        expect(ok, isFalse);
+        expect(viewModel.timelineEntries, isEmpty);
+        expect(viewModel.currentDisplayValue, '0.00');
+      });
+
+      test('should reject an open line before a resolved one', () async {
+        clipboard('7 + 3\n10 + 5 = 15');
+
+        final ok = await viewModel.pasteFromClipboard();
+
+        expect(ok, isFalse);
+        expect(viewModel.timelineEntries, isEmpty);
+      });
+
+      test('should reject more than one equals sign in a line', () async {
+        clipboard('10 + 5 = 15 = 15');
+
+        final ok = await viewModel.pasteFromClipboard();
+
+        expect(ok, isFalse);
+      });
+
+      test('should reject an invalid expression before the equals', () async {
+        clipboard('10 ++ 5 = 15');
+
+        final ok = await viewModel.pasteFromClipboard();
+
+        expect(ok, isFalse);
+      });
+
+      test('should reject an expression as the result', () async {
+        clipboard('10 + 5 = 3 × 5');
+
+        final ok = await viewModel.pasteFromClipboard();
+
+        expect(ok, isFalse);
+      });
+
+      test('should reject a resolved line without an operator', () async {
+        clipboard('10 = 5');
+
+        final ok = await viewModel.pasteFromClipboard();
+
+        expect(ok, isFalse);
+        expect(viewModel.timelineEntries, isEmpty);
+      });
+
+      test('should reject a division by zero line', () async {
+        clipboard('10 ÷ 0 = Error');
+
+        final ok = await viewModel.pasteFromClipboard();
+
+        expect(ok, isFalse);
+      });
+
+      test('should ignore blank lines between resolved lines', () async {
+        clipboard('10 + 5 = 15\n\n20 × 2 = 40\n');
+
+        final ok = await viewModel.pasteFromClipboard();
+
+        expect(ok, isTrue);
+        expect(viewModel.timelineEntries, hasLength(2));
       });
     });
 

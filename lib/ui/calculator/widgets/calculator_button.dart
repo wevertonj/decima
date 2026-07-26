@@ -1,6 +1,8 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
 import 'package:wevacalc/config/theme/app_layout.dart';
+import 'package:wevacalc/ui/calculator/widgets/key_flash_controller.dart';
 
 /// Variantes visuais do botão da calculadora.
 /// - [numeric]: dígitos 0-9, 00, 000 — cor onSurface, LED glow branco ao digitar
@@ -18,6 +20,10 @@ class CalculatorButton extends StatefulWidget {
   /// animated for a soft visual cue (used by the contextual `C` button).
   final bool isDimmed;
 
+  /// Sinal de acionamento por teclado físico. Quando o rótulo notificado é
+  /// igual a [label], o botão reproduz a mesma animação de feedback do toque.
+  final ValueListenable<KeyFlash?>? keyFlash;
+
   const CalculatorButton({
     super.key,
     required this.label,
@@ -25,6 +31,7 @@ class CalculatorButton extends StatefulWidget {
     required this.onPressed,
     this.variant = ButtonVariant.numeric,
     this.isDimmed = false,
+    this.keyFlash,
   });
 
   @override
@@ -67,13 +74,37 @@ class _CalculatorButtonState extends State<CalculatorButton>
       curve: Curves.easeOut,
       reverseCurve: Curves.easeOut,
     );
+
+    widget.keyFlash?.addListener(_onKeyFlash);
+  }
+
+  @override
+  void didUpdateWidget(covariant CalculatorButton oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.keyFlash != widget.keyFlash) {
+      oldWidget.keyFlash?.removeListener(_onKeyFlash);
+      widget.keyFlash?.addListener(_onKeyFlash);
+    }
   }
 
   @override
   void dispose() {
+    widget.keyFlash?.removeListener(_onKeyFlash);
     _glowController.dispose();
     _bgController.dispose();
     super.dispose();
+  }
+
+  /// Reproduz o feedback de um acionamento vindo do teclado físico. Como não
+  /// existe "soltar o dedo", o fade out começa imediatamente.
+  void _onKeyFlash() {
+    if (widget.keyFlash?.value?.label != widget.label) return;
+
+    _glowController.value = 0.0;
+    _glowController.forward();
+    _bgController.forward().then((_) {
+      if (mounted) _bgController.reverse();
+    });
   }
 
   void _handleTapDown(TapDownDetails _) {

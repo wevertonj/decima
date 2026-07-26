@@ -1,3 +1,21 @@
+/// Texto colado decomposto em linhas já resolvidas e uma entrada em aberto.
+///
+/// Reproduz o formato produzido por `CalculatorViewModel.copyHistory()`
+/// (`<expressão> = <resultado>`, uma por linha), o que fecha o ciclo
+/// copiar histórico → colar de volta.
+class PastedContent {
+  /// Tokens das expressões que vinham à esquerda de um `=`, na ordem original.
+  /// Cada item vira uma linha da timeline.
+  final List<List<String>> resolvedLines;
+
+  /// Tokens da entrada em aberto (linha final sem `=`). `null` quando o texto
+  /// termina em uma linha resolvida — nesse caso o display recebe o resultado
+  /// da última linha, como acontece após pressionar `=`.
+  final List<String>? input;
+
+  const PastedContent({required this.resolvedLines, this.input});
+}
+
 /// Parses raw text from the clipboard into a list of normalized calculator
 /// tokens. Returns null when the input is empty or syntactically invalid.
 ///
@@ -9,6 +27,66 @@
 /// places (`1250` → `1250.00`); decimals preserve their fractional digits
 /// (`12.5` → `12.50`); the Add2 cents conversion does not apply here.
 class PasteInputParser {
+  /// Decompõe o texto colado em linhas resolvidas (`<expressão> = <resultado>`)
+  /// e, opcionalmente, uma entrada em aberto na última linha.
+  ///
+  /// Retorna `null` quando qualquer linha é inválida, quando uma linha em
+  /// aberto aparece antes de uma resolvida, quando falta o resultado depois
+  /// do `=` ou quando o resultado não é um número isolado.
+  ///
+  /// O lado direito do `=` é apenas **validado**: quem consome recalcula a
+  /// expressão, para nunca gravar no histórico um resultado que não
+  /// corresponde à expressão.
+  static PastedContent? parseContent(String input) {
+    final lines = input
+        .split(RegExp(r'\r?\n'))
+        .map((line) => line.trim())
+        .where((line) => line.isNotEmpty)
+        .toList();
+    if (lines.isEmpty) return null;
+
+    final resolvedLines = <List<String>>[];
+    List<String>? pendingInput;
+
+    for (var i = 0; i < lines.length; i++) {
+      final line = lines[i];
+      final separator = line.indexOf('=');
+
+      if (separator < 0) {
+        // Uma linha sem `=` é a entrada em aberto — só pode ser a última.
+        if (i != lines.length - 1) return null;
+        final tokens = parse(line);
+        if (tokens == null) return null;
+        pendingInput = tokens;
+
+        continue;
+      }
+
+      final left = line.substring(0, separator);
+      final right = line.substring(separator + 1);
+      if (right.contains('=')) return null;
+
+      final leftTokens = parse(left);
+      if (leftTokens == null) return null;
+      // Uma linha resolvida é um cálculo: exige operador, igual à regra do
+      // `=` na calculadora. Sem isso, `10 = 5` viraria a linha sem sentido
+      // `10.00 = 10.00` (o resultado colado é sempre recalculado).
+      if (!leftTokens.any(_isOperator)) return null;
+
+      // O lado direito precisa ser um número isolado (o resultado).
+      final rightTokens = parse(right);
+      if (rightTokens == null || rightTokens.length != 1) return null;
+      final result = rightTokens.first;
+      if (_isOperator(result) || result == '(' || result == ')') return null;
+
+      resolvedLines.add(leftTokens);
+    }
+
+    if (resolvedLines.isEmpty && pendingInput == null) return null;
+
+    return PastedContent(resolvedLines: resolvedLines, input: pendingInput);
+  }
+
   static List<String>? parse(String input) {
     final trimmed = input.trim();
     if (trimmed.isEmpty) return null;
