@@ -468,8 +468,8 @@ Checklist detalhado de cada etapa. Marque `[x]` conforme concluir.
 
 - [x] Criar `test/widget/core/widgets/app_logo_test.dart`
   - Cenários: widget renderiza, asset correto, tamanho aplicado, tamanho padrão
-- [ ] Verificação manual: ícone do app aparece em cada plataforma
-- [ ] Verificação manual: splash aparece com a arte correta
+- [x] Verificação manual: ícone do app aparece em cada plataforma
+- [x] Verificação manual: splash aparece com a arte correta
 
 ### Validação
 

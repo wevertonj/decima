@@ -12,10 +12,12 @@ import 'package:wevacalc/ui/settings/widgets/language_selector.dart';
 import 'package:wevacalc/ui/settings/widgets/theme_mode_selector.dart';
 
 import '../../helpers/pump_app.dart';
+import '../../mocks/mock_night_mode_service.dart';
 import '../../mocks/mock_settings_repository.dart';
 
 void main() {
   late MockSettingsRepository mockSettingsRepository;
+  late MockNightModeService mockNightModeService;
   late SettingsViewModel viewModel;
 
   setUpAll(() {
@@ -25,6 +27,10 @@ void main() {
 
   setUp(() {
     mockSettingsRepository = MockSettingsRepository();
+    mockNightModeService = MockNightModeService();
+    when(
+      () => mockNightModeService.syncThemeMode(any()),
+    ).thenAnswer((_) async {});
 
     when(() => mockSettingsRepository.getThemeMode())
         .thenAnswer((_) async => ThemeModeOption.dark);
@@ -44,7 +50,10 @@ void main() {
     when(() => mockSettingsRepository.setLocale(any()))
         .thenAnswer((_) async {});
 
-    viewModel = SettingsViewModel(settingsRepository: mockSettingsRepository);
+    viewModel = SettingsViewModel(
+      settingsRepository: mockSettingsRepository,
+      nightModeService: mockNightModeService,
+    );
   });
 
   group('SettingsPage', () {
@@ -141,6 +150,7 @@ void main() {
             .thenAnswer((_) async => 'en');
         viewModel = SettingsViewModel(
           settingsRepository: mockSettingsRepository,
+          nightModeService: mockNightModeService,
         );
 
         await pumpSettingsPage(tester);

@@ -29,7 +29,7 @@ class WevaCalcApp extends StatefulWidget {
   State<WevaCalcApp> createState() => _WevaCalcAppState();
 }
 
-class _WevaCalcAppState extends State<WevaCalcApp> {
+class _WevaCalcAppState extends State<WevaCalcApp> with WidgetsBindingObserver {
   late final SettingsViewModel _settingsVM;
 
   @override
@@ -37,16 +37,23 @@ class _WevaCalcAppState extends State<WevaCalcApp> {
     super.initState();
     _settingsVM = getIt<SettingsViewModel>();
     _settingsVM.addListener(_onSettingsChanged);
+    WidgetsBinding.instance.addObserver(this);
   }
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _settingsVM.removeListener(_onSettingsChanged);
     super.dispose();
   }
 
   void _onSettingsChanged() {
     setState(() {});
+  }
+
+  @override
+  void didChangePlatformBrightness() {
+    _settingsVM.syncNativeNightMode();
   }
 
   ThemeMode _resolveThemeMode() {

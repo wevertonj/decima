@@ -173,6 +173,13 @@ Cada etapa foi dimensionada para caber confortavelmente na janela de contexto de
 - Decidir explicitamente o mapeamento de `,` e `.` (Add2 não usa ponto literal — sugestão: ambos viram `00`)
 - Feedback visual (glow LED) ao acionar via teclado deve ser idêntico ao toque
 
+### Splash screen theme-aware (Android 12+)
+
+- Mecanismo replicado do projeto `verbum`: a preferência de tema é espelhada via `UiModeManager.setApplicationNightMode` (canal `com.wevasoft.wevacalc/night_mode`), fazendo o **próprio Android** persistir qual variante de recurso (`values`/`values-night`) usar antes mesmo do processo do app começar
+- Não há correção "ao vivo" da splash já visível — o sync de cada boot/troca de tema só corrige a **próxima** abertura
+- Só tem efeito a partir da API 31 (Android 12); abaixo disso a splash sempre segue o dark mode do sistema, sem exceção
+- Quando o iOS for implementado (Etapa 17), não há API pública equivalente — aceitar que a splash do iOS sempre siga o sistema
+
 ### Suporte multi-plataforma (Etapas 14–17)
 
 - Tamanho fixo da janela em desktop é decisão de UX (proporção mobile-like). Documentar bem.

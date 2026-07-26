@@ -854,3 +854,36 @@ Quando a expressão crescia além da largura da tela, o display entrava em modo 
 - `test/widget/core/widgets/app_logo_test.dart` — 4 testes (widget renderiza, asset correto, tamanho aplicado, tamanho padrão)
 - **Total novos: 4 testes — Total geral: 513 testes — 100% verde**
 - `flutter analyze` — zero issues
+
+## [Melhoria] Etapa 12 — Splash screen theme-aware (Android 12+)
+
+### Problema
+
+A splash nativa (gerada estaticamente pelo `flutter_native_splash`) só seguia o **dark mode do sistema** — se o usuário escolhesse um tema diferente do sistema dentro do app (ex: sempre escuro com o celular no modo claro), a próxima abertura mostrava um "flash" da cor errada até o primeiro frame do Flutter assumir o tema correto.
+
+### Solução
+
+Replicado o mecanismo do projeto irmão `verbum`: em vez de recolorir a splash já visível, a preferência de tema é espelhada no **próprio sistema operacional** (`UiModeManager.setApplicationNightMode`, Android 12+/API 31), que já decide a cor da splash **antes** do processo do app iniciar na próxima abertura.
+
+- `NightModeService` (`lib/data/services/night_mode_service.dart`) — interface com `syncThemeMode(ThemeModeOption)`
+- `NightModeServiceImpl` (`night_mode_service_impl.dart`) — resolve `ThemeModeOption.system` contra `WidgetsBinding.instance.platformDispatcher.platformBrightness` e invoca o `MethodChannel('com.wevasoft.wevacalc/night_mode')`; no-op fora do Android; engole `PlatformException`/`MissingPluginException` (sync é best-effort)
+- `MainActivity.kt` — `configureFlutterEngine` registra o handler do canal; chama `UiModeManager.setApplicationNightMode` apenas em `SDK_INT >= S` (31); no-op silencioso abaixo disso (splash continua seguindo o sistema)
+- `SettingsViewModel`:
+  - `loadSettings()` e `setThemeMode()` sincronizam nativamente (sem `await` — não bloqueia o boot nem a troca de tema)
+  - Novo `syncNativeNightMode()` — re-resolve `ThemeModeOption.system` contra o brightness atual
+- `main.dart` — `_WevaCalcAppState` ganha `WidgetsBindingObserver`; `didChangePlatformBrightness()` chama `syncNativeNightMode()` para re-sincronizar se o sistema mudar de tema com o app aberto e o modo for `system`
+- Registrado no GetIt como lazy singleton
+
+### Limitações aceitas
+
+- Sem efeito no Android < 12 (splash sempre segue o sistema nessas versões — a API `setApplicationNightMode` não existe)
+- iOS ainda não implementado no projeto (Etapa 17); quando implementado, não há API pública equivalente — a splash do iOS sempre seguirá o sistema
+
+### Testes
+
+- `test/unit/data/services/night_mode_service_test.dart` — 7 testes (dark/light diretos, resolução de `system` via `platformBrightnessTestValue`, no-op fora do Android via `debugDefaultTargetPlatformOverride`, engolir `PlatformException`/`MissingPluginException`)
+- `test/unit/ui/settings/settings_view_model_test.dart` — novo grupo `native night mode sync` com 3 testes (`loadSettings` sincroniza, `setThemeMode` sincroniza, `syncNativeNightMode` re-sincroniza)
+- `test/widget/settings/settings_page_test.dart` — atualizado com `MockNightModeService`
+- **Total novos: 10 testes — Total geral: 523 testes — 100% verde**
+- `flutter analyze` — zero issues
+- `flutter build apk --debug` — sucesso (valida compilação do Kotlin novo)

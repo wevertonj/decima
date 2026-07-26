@@ -5,20 +5,33 @@ import 'package:wevacalc/domain/enums/decimal_separator.dart';
 import 'package:wevacalc/domain/enums/theme_mode_option.dart';
 import 'package:wevacalc/ui/settings/settings_view_model.dart';
 
+import '../../../mocks/mock_night_mode_service.dart';
 import '../../../mocks/mock_settings_repository.dart';
 
 void main() {
   late SettingsViewModel viewModel;
   late MockSettingsRepository mockRepository;
+  late MockNightModeService mockNightModeService;
+
+  setUpAll(() {
+    registerFallbackValue(ThemeModeOption.system);
+  });
 
   setUp(() {
     mockRepository = MockSettingsRepository();
+    mockNightModeService = MockNightModeService();
+    when(
+      () => mockNightModeService.syncThemeMode(any()),
+    ).thenAnswer((_) async {});
   });
 
   group('SettingsViewModel', () {
     group('initial state', () {
       test('should have default values before loading', () {
-        viewModel = SettingsViewModel(settingsRepository: mockRepository);
+        viewModel = SettingsViewModel(
+          settingsRepository: mockRepository,
+          nightModeService: mockNightModeService,
+        );
 
         expect(viewModel.themeMode, ThemeModeOption.system);
         expect(viewModel.seedColorIndex, 0);
@@ -40,7 +53,10 @@ void main() {
         ).thenAnswer((_) async => DecimalSeparator.comma);
         when(() => mockRepository.getLocale()).thenAnswer((_) async => 'pt_BR');
 
-        viewModel = SettingsViewModel(settingsRepository: mockRepository);
+        viewModel = SettingsViewModel(
+          settingsRepository: mockRepository,
+          nightModeService: mockNightModeService,
+        );
         await viewModel.loadSettings();
 
         expect(viewModel.themeMode, ThemeModeOption.dark);
@@ -61,7 +77,10 @@ void main() {
         ).thenAnswer((_) async => DecimalSeparator.dot);
         when(() => mockRepository.getLocale()).thenAnswer((_) async => null);
 
-        viewModel = SettingsViewModel(settingsRepository: mockRepository);
+        viewModel = SettingsViewModel(
+          settingsRepository: mockRepository,
+          nightModeService: mockNightModeService,
+        );
 
         var notified = false;
         viewModel.addListener(() => notified = true);
@@ -85,7 +104,10 @@ void main() {
         ).thenAnswer((_) async => DecimalSeparator.dot);
         when(() => mockRepository.getLocale()).thenAnswer((_) async => null);
 
-        viewModel = SettingsViewModel(settingsRepository: mockRepository);
+        viewModel = SettingsViewModel(
+          settingsRepository: mockRepository,
+          nightModeService: mockNightModeService,
+        );
       });
 
       test('should update theme mode and persist', () async {
@@ -128,7 +150,10 @@ void main() {
         ).thenAnswer((_) async => DecimalSeparator.dot);
         when(() => mockRepository.getLocale()).thenAnswer((_) async => null);
 
-        viewModel = SettingsViewModel(settingsRepository: mockRepository);
+        viewModel = SettingsViewModel(
+          settingsRepository: mockRepository,
+          nightModeService: mockNightModeService,
+        );
       });
 
       test('should update seed color index and persist', () async {
@@ -169,7 +194,10 @@ void main() {
         ).thenAnswer((_) async => DecimalSeparator.dot);
         when(() => mockRepository.getLocale()).thenAnswer((_) async => null);
 
-        viewModel = SettingsViewModel(settingsRepository: mockRepository);
+        viewModel = SettingsViewModel(
+          settingsRepository: mockRepository,
+          nightModeService: mockNightModeService,
+        );
       });
 
       test('should update decimal separator and persist', () async {
@@ -212,7 +240,10 @@ void main() {
         ).thenAnswer((_) async => DecimalSeparator.dot);
         when(() => mockRepository.getLocale()).thenAnswer((_) async => null);
 
-        viewModel = SettingsViewModel(settingsRepository: mockRepository);
+        viewModel = SettingsViewModel(
+          settingsRepository: mockRepository,
+          nightModeService: mockNightModeService,
+        );
       });
 
       test('should update locale and persist', () async {
@@ -243,6 +274,59 @@ void main() {
         expect(viewModel.locale, isNull);
         verify(() => mockRepository.setLocale(null)).called(1);
       });
+    });
+
+    group('native night mode sync', () {
+      setUp(() {
+        when(
+          () => mockRepository.getThemeMode(),
+        ).thenAnswer((_) async => ThemeModeOption.dark);
+        when(
+          () => mockRepository.getSeedColorIndex(),
+        ).thenAnswer((_) async => 0);
+        when(
+          () => mockRepository.getDecimalSeparator(),
+        ).thenAnswer((_) async => DecimalSeparator.dot);
+        when(() => mockRepository.getLocale()).thenAnswer((_) async => null);
+        when(
+          () => mockRepository.setThemeMode(any()),
+        ).thenAnswer((_) async {});
+
+        viewModel = SettingsViewModel(
+          settingsRepository: mockRepository,
+          nightModeService: mockNightModeService,
+        );
+      });
+
+      test('loadSettings syncs the loaded theme mode natively', () async {
+        await viewModel.loadSettings();
+
+        verify(
+          () => mockNightModeService.syncThemeMode(ThemeModeOption.dark),
+        ).called(1);
+      });
+
+      test('setThemeMode syncs the new theme mode natively', () async {
+        await viewModel.setThemeMode(ThemeModeOption.light);
+
+        verify(
+          () => mockNightModeService.syncThemeMode(ThemeModeOption.light),
+        ).called(1);
+      });
+
+      test(
+        'syncNativeNightMode re-syncs the current theme mode',
+        () async {
+          await viewModel.loadSettings();
+          clearInteractions(mockNightModeService);
+
+          viewModel.syncNativeNightMode();
+
+          verify(
+            () => mockNightModeService.syncThemeMode(ThemeModeOption.dark),
+          ).called(1);
+        },
+      );
     });
   });
 }

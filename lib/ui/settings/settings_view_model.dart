@@ -1,14 +1,21 @@
+import 'dart:async';
+
 import 'package:flutter/foundation.dart';
 
 import 'package:wevacalc/data/repositories/settings_repository.dart';
+import 'package:wevacalc/data/services/night_mode_service.dart';
 import 'package:wevacalc/domain/enums/decimal_separator.dart';
 import 'package:wevacalc/domain/enums/theme_mode_option.dart';
 
 class SettingsViewModel extends ChangeNotifier {
-  SettingsViewModel({required SettingsRepository settingsRepository})
-    : _settingsRepository = settingsRepository;
+  SettingsViewModel({
+    required SettingsRepository settingsRepository,
+    required NightModeService nightModeService,
+  }) : _settingsRepository = settingsRepository,
+       _nightModeService = nightModeService;
 
   final SettingsRepository _settingsRepository;
+  final NightModeService _nightModeService;
 
   ThemeModeOption _themeMode = ThemeModeOption.system;
   int _seedColorIndex = 0;
@@ -28,13 +35,23 @@ class SettingsViewModel extends ChangeNotifier {
     _seedColorIndex = await _settingsRepository.getSeedColorIndex();
     _decimalSeparator = await _settingsRepository.getDecimalSeparator();
     _locale = await _settingsRepository.getLocale();
+    unawaited(_nightModeService.syncThemeMode(_themeMode));
     notifyListeners();
   }
 
   Future<void> setThemeMode(ThemeModeOption mode) async {
     _themeMode = mode;
     await _settingsRepository.setThemeMode(mode);
+    unawaited(_nightModeService.syncThemeMode(mode));
     notifyListeners();
+  }
+
+  /// Re-resolves [ThemeModeOption.system] against the current platform
+  /// brightness and re-syncs it natively. Call when the OS brightness
+  /// changes while the app is open (e.g. `didChangePlatformBrightness`) —
+  /// with an explicit light/dark preference this is a harmless no-op.
+  void syncNativeNightMode() {
+    unawaited(_nightModeService.syncThemeMode(_themeMode));
   }
 
   Future<void> setSeedColorIndex(int index) async {
