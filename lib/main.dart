@@ -7,15 +7,21 @@ import 'package:wevacalc/data/database/app_database.dart';
 import 'package:wevacalc/config/theme/app_colors.dart';
 import 'package:wevacalc/config/theme/app_theme.dart';
 import 'package:wevacalc/domain/enums/theme_mode_option.dart';
+import 'package:wevacalc/ui/core/desktop/desktop_window_initializer.dart';
+import 'package:wevacalc/ui/core/widgets/desktop_shell.dart';
 import 'package:wevacalc/ui/settings/settings_view_model.dart';
 import 'package:wevacalc/utils/l10n/app_localizations.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  await SystemChrome.setPreferredOrientations([
-    DeviceOrientation.portraitUp,
-    DeviceOrientation.portraitDown,
-  ]);
+  if (DesktopShell.isDesktop) {
+    await initDesktopWindow();
+  } else {
+    await SystemChrome.setPreferredOrientations([
+      DeviceOrientation.portraitUp,
+      DeviceOrientation.portraitDown,
+    ]);
+  }
   setupDependencies();
   await getIt<AppDatabase>().initialize();
   await getIt<SettingsViewModel>().loadSettings();
@@ -89,6 +95,9 @@ class _WevaCalcAppState extends State<WevaCalcApp> with WidgetsBindingObserver {
       supportedLocales: AppLocalizations.supportedLocales,
       routes: AppRoutes.routes,
       initialRoute: AppRoutes.calculator,
+      builder: (context, child) {
+        return DesktopShell(child: child ?? const SizedBox.shrink());
+      },
     );
   }
 }

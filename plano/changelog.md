@@ -942,6 +942,7 @@ Replicado o mecanismo do projeto irmão `verbum`: em vez de recolorir a splash j
 ### Pendência
 
 - Teste manual de operação completa apenas por teclado físico — requer device/desktop com teclado real (as plataformas desktop só são habilitadas nas Etapas 14–16)
+- **Resolvida na Etapa 14**: validado pelo usuário no Windows desktop, incluindo copiar/colar via `Ctrl+C`/`Ctrl+V` com os dados de `plano/fixtures-colar.md`
 
 ## [Correção] Etapa 13 — Parênteses no modo de edição
 
@@ -1014,3 +1015,153 @@ Colar `10 + 5 = 15` falhava (o `=` não era caractere aceito). Como `copyHistory
 ### Fixtures de teste manual
 
 - `plano/fixtures-colar.md` — lista verificada de strings para testar o colar: números simples, expressões, linhas resolvidas, casos de fronteira (heurística de separador) e inválidas, com o resultado esperado de cada uma
+
+---
+
+## [Concluída] Etapa 14 — Suporte a Windows (com infra de desktop e title bar customizada)
+
+### Habilitação da plataforma
+
+- O runner nativo (`windows/`) já existia desde a criação do projeto — `flutter create --platforms=windows .` não foi necessário
+- Adicionado `window_manager: ^0.5.1` em `dependencies`; `flutter pub get` regenerou os plugin registrants de Windows, Linux e macOS (`window_manager` + `screen_retriever_windows`)
+
+### DesktopWindowConfig (`lib/ui/core/desktop/desktop_window_config.dart`)
+
+- `windowSize` — `Size(360, 720)`, proporção mobile-like (usado como size, min e max)
+- `appTitle` — `'WevaCalc'` (título nativo da janela, usado antes do l10n estar disponível)
+- `titleBarHeight` — `40.0` (altura da `AppTitleBar`)
+
+### DesktopWindowInitializer (`lib/ui/core/desktop/desktop_window_initializer.dart`)
+
+- `initDesktopWindow()` — chamado antes de `runApp` apenas em desktop:
+  - `windowManager.ensureInitialized()`
+  - `WindowOptions` com size/minimumSize/maximumSize iguais, `center: true`, `titleBarStyle: TitleBarStyle.hidden`
+  - `waitUntilReadyToShow` → `setResizable(false)`, `setMaximizable(false)`, `show()`, `focus()`
+
+### AppTitleBar (`lib/ui/core/widgets/app_title_bar.dart`)
+
+- Barra de 40px: logo (20px) + nome do app (via `context.l10n.appTitle`) à esquerda, botões minimizar/fechar à direita — sem maximizar (janela fixa)
+- Área esquerda envolta em `DragToMoveArea` (janela arrastável)
+- Fundo em `colorScheme.surface` — integra-se ao tema claro/escuro e à seed color atual
+- `_TitleBarButton` — botão com hover/press animados:
+  - Fundo via `AnimatedContainer` (150ms, `Curves.easeOutCubic`): transparente → `onSurface` 8% (hover) → 12% (press); fechar usa `colorScheme.error` no hover e error 80% no press
+  - Ícone via `TweenAnimationBuilder<Color?>`: `onSurface` 70% em repouso → `onSurface` (minimizar) / `onError` (fechar) no hover
+- Callbacks `onMinimize`/`onClose` opcionais — default chama `windowManager.minimize()`/`close()`; injetáveis nos testes
+
+### DesktopShell (`lib/ui/core/widgets/desktop_shell.dart`)
+
+- Wrapper que adiciona a `AppTitleBar` acima do conteúdo apenas em desktop; em mobile/web retorna o `child` intacto
+- `isDesktop` (static) — usa `defaultTargetPlatform` (não `Platform`) para permitir override nos testes via `debugDefaultTargetPlatformOverride`; guarda `kIsWeb` primeiro (na web `defaultTargetPlatform` reporta o SO do navegador)
+
+### Integração — main.dart
+
+- Em desktop: `initDesktopWindow()` antes de `runApp`; o lock de orientação portrait (`SystemChrome.setPreferredOrientations`) passou a ser aplicado apenas em mobile
+- `MaterialApp` ganhou `builder` que envolve o conteúdo com `DesktopShell` — a title bar fica acima do `Navigator`, persistindo em todas as rotas (calculadora, histórico, configurações), com acesso a `Theme` e `Localizations`
+
+### Runner nativo do Windows
+
+- `Runner.rc` — metadados do `.exe`: `ProductName`/`FileDescription` "WevaCalc", `CompanyName` "Wevasoft" (versão já vinha do pubspec via `FLUTTER_VERSION_*`)
+- `main.cpp` — janela inicial 360×720 e título "WevaCalc", alinhados ao `DesktopWindowConfig` para evitar flash de redimensionamento antes do `window_manager` aplicar as `WindowOptions`
+- Ícone `.ico` gerado na Etapa 12 já referenciado (`IDI_APP_ICON`)
+
+### Decisões e limitações
+
+- Tamanho fixo não-redimensionável é decisão de UX (proporção mobile-like); snap/maximizar do Windows ficam desabilitados por consequência
+- Reset de `debugDefaultTargetPlatformOverride` nos testes de `DesktopShell` acontece **dentro do corpo do teste** (não em `tearDown`) — o binding do `flutter_test` verifica as debug vars antes dos tearDowns
+
+### Testes
+
+- `test/widget/core/widgets/app_title_bar_test.dart` — 8 testes (logo/nome/botões, altura configurada, `DragToMoveArea`, callbacks de fechar e minimizar, hover anima fundo do fechar e do minimizar, hover out volta ao idle)
+- `test/widget/core/widgets/desktop_shell_test.dart` — 7 testes (`isDesktop` true em Windows/Linux/macOS e false em Android/iOS, title bar presente em cada desktop, ausente em Android/iOS)
+- **Total novos: 15 testes — Total geral: 624 testes — 100% verde**
+- `flutter analyze` — zero issues
+
+### Build validado via bridge WSL → Windows
+
+O WSL2 não compila para Windows, mas o interop com o host permitiu validar o build daqui (mesmo mecanismo dos wrappers `adb`/`emulator` já existentes em `~/Android/Sdk`, que repassam aos `.exe` do host):
+
+- FVM 4.1.2 ativado no Dart do Windows (`dart pub global activate fvm`) — sem tocar o Flutter global do host (3.38.5, antigo demais para o projeto)
+- `fvm install 3.44.2 --setup` — mesma versão pinada do WSL
+- Projeto copiado via `rsync` para uma cópia de build no filesystem do Windows (excluindo `.git`, `build`, `.dart_tool`, ephemerals) — build direto em `\\wsl.localhost\...` quebraria nos plugin symlinks e contaminaria o `.dart_tool` do WSL. Paths e comandos da máquina em `plano/local/ambiente.md` (não versionado)
+- `fvm use 3.44.2 --force` + `fvm flutter build windows --release` — **sucesso** (`wevacalc.exe` em ~68s, Visual Studio 2022 Community 17.7.3)
+- App lançado no desktop do Windows (janela "WevaCalc") para verificação manual: janela fixa 360×720, sem barra do sistema, drag pela title bar, minimizar/fechar, ícone no `.exe`
+
+## [Fix] Etapa 14 — Tela branca no Windows: sqflite via FFI + path do banco
+
+### Problema
+
+O primeiro build do Windows abria uma janela **totalmente branca e sem drag**: o `window_manager` aplicava as `WindowOptions` (por isso a barra do sistema sumia), mas o `main()` do Dart morria antes do `runApp` — sem UI, sem `AppTitleBar`, sem como mover a janela.
+
+### Causa 1 — `sqflite` não tem implementação Windows/Linux
+
+`AppDatabase()` caía no `databaseFactorySqflitePlugin` (method channel), que só existe em Android/iOS/macOS → `MissingPluginException` no `initialize()` dentro do `main()`.
+
+- `lib/data/database/database_factory_resolver.dart` — `resolveDatabaseFactory({bool? isDesktop})`: em desktop chama `sqfliteFfiInit()` e retorna `databaseFactoryFfi` (SQLite embutido, o mesmo dos testes); em mobile retorna o plugin nativo
+- `lib/utils/platform_info.dart` — `PlatformInfo.isDesktop` extraído do `DesktopShell` (camada de dados não deve importar widget); `DesktopShell.isDesktop` agora delega
+- `sqflite_common_ffi` movido de `dev_dependencies` para `dependencies`
+- `dependencies.dart` — `AppDatabase(databaseFactory: resolveDatabaseFactory(), directoryResolver: resolveDatabaseDirectoryResolver())`
+
+### Causa 2 — `sqlite3.dll` ausente no bundle Release (CMake stale)
+
+Mesmo com o FFI, a tela seguia branca: o `sqlite3` 3.x embarca a lib nativa via **native assets/build hooks** (o hook rodou — `build/native_assets/windows/sqlite3.dll` existia e o build Debug a embarcava), mas o diretório CMake do **Release** fora configurado pelo build anterior, quando o sqlite não estava no grafo do app — as regras de install ficaram stale e a DLL não era copiada.
+
+- Correção: `fvm flutter clean` na cópia de build + rebuild — `sqlite3.dll` passou a ser embarcada no Release
+- **Gotcha geral**: sempre que o grafo de dependências ganhar/perder native assets ou plugins, rodar `flutter clean` antes do build desktop
+- `sqlite3_flutter_libs` **não** é necessário (0.6.0+eol é stub vazio; o mecanismo atual são os build hooks do `sqlite3` 3.x)
+
+### Causa 3 (descoberta na validação) — banco no CWD do processo
+
+Com o app funcional, o `wevacalc.db` foi parar em `C:\.dart_tool\sqflite_common_ffi\databases\` — o FFI resolve path relativo contra o **CWD do processo**, que varia conforme o atalho/terminal que lançou o app (banco "trocaria" de lugar entre lançamentos; raiz do `C:\` pode nem ser gravável).
+
+- Adicionado `path_provider: ^2.1.6`
+- `resolveDatabaseDirectoryResolver({bool? isDesktop})` — em desktop retorna resolver para `getApplicationSupportDirectory()`; em mobile retorna `null` (sqflite usa o diretório de databases do app)
+- `AppDatabase` ganhou `directoryResolver` opcional — quando presente, `initialize()` monta o path absoluto (`p.join(dir, 'wevacalc.db')`); `inMemory` ignora o resolver
+- Resultado no Windows: `%APPDATA%\Wevasoft\WevaCalc\wevacalc.db` (o `path_provider_windows` usa CompanyName/ProductName do `Runner.rc` ajustado nesta etapa)
+- Efeito colateral aceito: `path_provider_android` moderno usa JNI → `dartjni.dll` embarcada no bundle Windows (inofensiva); libs FFI do sqlite passam a ser embarcadas também no Android (não usadas em runtime — sqflite mobile segue no plugin nativo)
+
+### Validação no host
+
+- Bundle Release contém `sqlite3.dll`; app renderiza a calculadora completa (screenshot conferido: title bar com logo/nome/botões, display `0.00`, keypad, tema escuro) em janela fixa 360×720
+- Banco criado em `%APPDATA%\Wevasoft\WevaCalc\wevacalc.db`; lixo em `C:\.dart_tool` removido
+
+### Testes
+
+- `database_factory_resolver_test.dart` — 8 testes (factory FFI vs plugin por flag e por plataforma default, FFI abre banco em memória, resolver de diretório presente em desktop/nulo em mobile/por plataforma default)
+- `app_database_test.dart` — 4 testes (StateError antes do initialize, inMemory ignora resolver, banco criado dentro do diretório resolvido, sem resolver mantém path relativo)
+- **Total novos: 12 testes — Total geral: 636 testes — 100% verde**
+- `flutter analyze` — zero issues
+
+## [Fix] Etapa 14 — Dígitos deslocados verticalmente no display (Windows)
+
+### Problema (reportado em teste manual)
+
+Com 4+ dígitos digitados (ex: `10.00`), um ou mais números ficavam **deslocados ~3px verticalmente** em relação aos vizinhos. Análise de pixels do screenshot confirmou: quatro glifos com topo em y=137 e um em y=134.
+
+### Causa raiz
+
+No `AnimatedInputDisplay`, os wrappers de animação (`_RollingChar`/`_PopInChar`) **permaneciam na árvore para sempre** após a animação terminar. O `_RollingChar` usava uma caixa de altura fixa `fontSize * 1.2` — calibrada implicitamente para o Roboto (line-height ≈ 1.17, erro < 1px, invisível no Android). No Windows o app renderiza com **Segoe UI** (line-height ≈ 1.33): a diferença `(1.33 − 1.2) × 48 / 2 ≈ 3.2px` deslocava o glifo dos chars que passaram por roll em relação aos estáticos.
+
+### Correção (dupla, em `animated_input_display.dart`)
+
+1. **Decay para texto puro** — `_markSettled(key)`: quando a animação de um slot termina (`TweenAnimationBuilder.onEnd`), o slot decai para `_AnimType.none` e o char volta a ser um `RichText` plano. Estado de repouso 100% texto puro → desalinhamento estrutural impossível, em qualquer fonte/plataforma
+2. **Geometria normalizada durante a animação**:
+   - `_RollingChar` — caixa definida por um **fantasma invisível** do char novo (`Opacity 0`) em vez de `fontSize * 1.2`; old/new animam por cima via `Positioned.fill` + `Center` — o slot ocupa exatamente o mesmo box de um char estático
+   - `_PopInChar` — `Align` ganhou `heightFactor: 1.0` (sem ele, expande até o limite vertical disponível em contexto de altura limitada)
+
+### Validação
+
+- Widget tests medem o **centro vertical real de cada glifo visível** (dy global via RenderBox) após sequências de digitação Add2 com rolls/popIns — todos alinhados
+- Teste estrutural: após `pumpAndSettle`, nenhum `ClipRect` de wrapper abaixo da Row de caracteres e cada char aparece exatamente uma vez
+- **No host Windows** (Segoe UI real): digitado `1000` via cliques nos botões, análise de pixels do screenshot — antes: tops `137/137/137/134`; depois: **todos os dígitos em top=134/bottom=167, desvio zero**
+
+### Testes
+
+- `animated_input_display_alignment_test.dart` — 4 testes (alinhamento após roll coalescido, digitação Add2 passo a passo, expressão com operador, decay para texto puro)
+- **Total novos: 4 testes — Total geral: 640 testes — 100% verde**
+- `flutter analyze` — zero issues
+
+### Validação manual final (usuário)
+
+- Janela fixa 360×720, title bar customizada (drag, minimizar, fechar), ícone no `.exe`, tema escuro — tudo funcional no Windows
+- Teclado físico completo (fecha a pendência da Etapa 13) e colar validado com os dados de `plano/fixtures-colar.md`
+- **Etapa 14 concluída**

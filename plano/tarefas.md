@@ -505,51 +505,51 @@ Checklist detalhado de cada etapa. Marque `[x]` conforme concluir.
 - [x] `flutter test` — 100% verde (583 testes)
 - [x] `flutter analyze` — zero warnings
 - [x] Regressão: toques no teclado virtual continuam funcionando
-- [ ] Teste manual: operação completa apenas via teclado físico (pendente — requer device/desktop com teclado real)
+- [x] Teste manual: operação completa apenas via teclado físico — validado no Windows desktop (Etapa 14), incluindo colar com os dados de `plano/fixtures-colar.md`
 
 ---
 
-## Etapa 14 — Suporte a Windows (com infra de desktop e title bar customizada)
+## Etapa 14 — Suporte a Windows (com infra de desktop e title bar customizada) ✅
 
 ### Habilitação da plataforma
 
-- [ ] Rodar `flutter create --platforms=windows .`
-- [ ] Adicionar `window_manager` em `dependencies`
-- [ ] Conferir que `flutter build windows` compila
+- [x] Rodar `flutter create --platforms=windows .` — runner já existia desde a criação do projeto; `flutter pub get` regenerou os plugin registrants com `window_manager`
+- [x] Adicionar `window_manager` em `dependencies`
+- [x] Conferir que `flutter build windows` compila — via bridge WSL→Windows: Flutter 3.44.2 do host (FVM no Windows) sobre cópia de build no filesystem do Windows (detalhes da máquina em `plano/local/ambiente.md`, não versionado)
 
 ### Infra de desktop compartilhada
 
-- [ ] Criar `lib/ui/core/desktop/desktop_window_config.dart`
-  - Constantes de tamanho fixo (ex: 360 × 720) e título do app
-- [ ] Criar `lib/ui/core/desktop/desktop_window_initializer.dart`
-  - `Future<void> initDesktopWindow()` com `windowManager.ensureInitialized`, `WindowOptions` (size, min/max iguais, center, `TitleBarStyle.hidden`), `setResizable(false)`
-- [ ] Criar `lib/ui/core/widgets/app_title_bar.dart`
+- [x] Criar `lib/ui/core/desktop/desktop_window_config.dart`
+  - Constantes de tamanho fixo (360 × 720), título do app e altura da title bar
+- [x] Criar `lib/ui/core/desktop/desktop_window_initializer.dart`
+  - `Future<void> initDesktopWindow()` com `windowManager.ensureInitialized`, `WindowOptions` (size, min/max iguais, center, `TitleBarStyle.hidden`), `setResizable(false)`, `setMaximizable(false)`
+- [x] Criar `lib/ui/core/widgets/app_title_bar.dart`
   - `DragToMoveArea`, logo + nome à esquerda, botões minimizar/fechar à direita
   - Cores integradas ao `ColorScheme` atual
   - Animações suaves no hover/press dos botões
-- [ ] Criar `lib/ui/core/widgets/desktop_shell.dart`
-  - Wrapper que adiciona `AppTitleBar` apenas em desktop (`Platform.isWindows || isLinux || isMacOS`)
-- [ ] Atualizar `main.dart` para chamar `initDesktopWindow()` em desktop e envolver com `DesktopShell`
+- [x] Criar `lib/ui/core/widgets/desktop_shell.dart`
+  - Wrapper que adiciona `AppTitleBar` apenas em desktop (via `defaultTargetPlatform` para testabilidade)
+- [x] Atualizar `main.dart` para chamar `initDesktopWindow()` em desktop e envolver com `DesktopShell` (via `MaterialApp.builder`)
 
 ### Específico do Windows
 
-- [ ] Validar build `flutter build windows --release`
-- [ ] Conferir ícone do app integrado ao `.exe` (gerado na Etapa 12)
-- [ ] Ajustar `windows/runner/Runner.rc` (nome, versão, descrição) se necessário
+- [x] Validar build `flutter build windows --release` — sucesso (`wevacalc.exe` gerado em ~68s no host)
+- [x] Conferir ícone do app integrado ao `.exe` — confirmado visualmente no Windows
+- [x] Ajustar `windows/runner/Runner.rc` (ProductName/FileDescription "WevaCalc", CompanyName "Wevasoft") e `main.cpp` (janela inicial 360×720, título "WevaCalc")
 
 ### Testes
 
-- [ ] Criar `test/widget/core/widgets/app_title_bar_test.dart`
-  - Cenários: renderiza logo, nome e botões; botão fechar dispara callback; hover anima
-- [ ] Criar `test/widget/core/widgets/desktop_shell_test.dart`
-  - Cenários: em desktop envolve com title bar; em mobile não adiciona title bar (mock de `Platform`)
-- [ ] Verificação manual: app abre em janela fixa, sem barra do sistema, draggable pela title bar
+- [x] Criar `test/widget/core/widgets/app_title_bar_test.dart`
+  - Cenários: renderiza logo, nome e botões; altura configurada; drag area; callbacks de fechar/minimizar; hover anima (close e minimize); hover out volta ao idle
+- [x] Criar `test/widget/core/widgets/desktop_shell_test.dart`
+  - Cenários: `isDesktop` por plataforma; em desktop (Windows/Linux/macOS) envolve com title bar; em mobile (Android/iOS) não adiciona title bar (`debugDefaultTargetPlatformOverride`)
+- [x] Verificação manual: app abre em janela fixa 360×720, sem barra do sistema, draggable pela title bar, minimizar/fechar funcionais — **validado pelo usuário**, incluindo teclado físico e colar (`plano/fixtures-colar.md`). Primeira tentativa revelou tela branca e dígitos desalinhados → corrigidos, ver `[Fix] Etapa 14` no changelog
 
 ### Validação
 
-- [ ] `flutter test` — 100% verde
-- [ ] `flutter analyze` — zero warnings
-- [ ] `flutter build windows` — sucesso
+- [x] `flutter test` — 100% verde (636 testes)
+- [x] `flutter analyze` — zero warnings
+- [x] `flutter build windows` — sucesso (release, via Flutter do host Windows)
 
 ---
 

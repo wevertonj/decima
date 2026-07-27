@@ -1,3 +1,7 @@
+# Notas locais de ambiente (específicas da máquina — nunca versionar)
+plano/local/
+CLAUDE.local.md
+
 # Miscellaneous
 *.class
 *.log

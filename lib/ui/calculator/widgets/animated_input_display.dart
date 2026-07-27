@@ -132,6 +132,22 @@ class _AnimatedInputDisplayState extends State<AnimatedInputDisplay> {
     return slots;
   }
 
+  /// Decai um slot animado para texto puro quando sua animação termina.
+  ///
+  /// Estado de repouso 100% [RichText] plano: wrappers de animação têm
+  /// geometria própria (caixa do roll, ClipRect, Transform) que, em fontes
+  /// com métricas diferentes das assumidas (ex: Segoe UI no Windows),
+  /// deslocavam o glifo verticalmente em relação aos chars estáticos.
+  void _markSettled(UniqueKey key) {
+    if (!mounted) return;
+    final index = _slots.indexWhere((slot) => slot.key == key);
+    if (index < 0 || _slots[index].type == _AnimType.none) return;
+
+    setState(() {
+      _slots[index] = _CharSlot(char: _slots[index].char, type: _AnimType.none);
+    });
+  }
+
   void _scrollToEnd() {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (_scrollController.hasClients) {
@@ -247,13 +263,19 @@ class _AnimatedInputDisplayState extends State<AnimatedInputDisplay> {
 
     switch (slot.type) {
       case _AnimType.popIn:
-        return _PopInChar(key: slot.key, char: slot.char, style: style);
+        return _PopInChar(
+          key: slot.key,
+          char: slot.char,
+          style: style,
+          onSettled: () => _markSettled(slot.key),
+        );
       case _AnimType.roll:
         return _RollingChar(
           key: slot.key,
           newChar: slot.char,
           oldChar: slot.oldChar!,
           style: style,
+          onSettled: () => _markSettled(slot.key),
         );
       case _AnimType.none:
         return _charText(slot.char, style);
@@ -360,8 +382,14 @@ double _measureCharWidth(String char, TextStyle style) {
 class _PopInChar extends StatelessWidget {
   final String char;
   final TextStyle style;
+  final VoidCallback? onSettled;
 
-  const _PopInChar({super.key, required this.char, required this.style});
+  const _PopInChar({
+    super.key,
+    required this.char,
+    required this.style,
+    this.onSettled,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -371,6 +399,7 @@ class _PopInChar extends StatelessWidget {
       tween: Tween(begin: 0.0, end: 1.0),
       duration: const Duration(milliseconds: 250),
       curve: Curves.easeOutBack,
+      onEnd: onSettled,
       builder: (context, value, child) {
         return SizedBox(
           width: targetWidth * value,
@@ -378,6 +407,9 @@ class _PopInChar extends StatelessWidget {
             child: Align(
               alignment: Alignment.centerRight,
               widthFactor: 1.0,
+              // heightFactor 1.0: sem ele, Align expande até o limite
+              // vertical disponível e o glifo sai do centro da Row.
+              heightFactor: 1.0,
               child: Opacity(
                 opacity: value.clamp(0.0, 1.0),
                 child: Transform.scale(
@@ -398,49 +430,55 @@ class _RollingChar extends StatelessWidget {
   final String newChar;
   final String oldChar;
   final TextStyle style;
+  final VoidCallback? onSettled;
 
   const _RollingChar({
     super.key,
     required this.newChar,
     required this.oldChar,
     required this.style,
+    this.onSettled,
   });
 
   @override
   Widget build(BuildContext context) {
-    final charWidth = _measureCharWidth(newChar, style);
-    final charHeight = style.fontSize ?? 48;
+    final rollDistance = (style.fontSize ?? 48) * 0.5;
 
     return TweenAnimationBuilder<double>(
       tween: Tween(begin: 0.0, end: 1.0),
       duration: const Duration(milliseconds: 200),
       curve: Curves.easeOutCubic,
+      onEnd: onSettled,
       builder: (context, value, _) {
-        return SizedBox(
-          width: charWidth,
-          height: charHeight * 1.2,
-          child: ClipRect(
-            child: Stack(
-              alignment: Alignment.center,
-              children: [
-                // Old char slides up and fades out
-                Transform.translate(
-                  offset: Offset(0, -value * charHeight * 0.5),
+        return ClipRect(
+          child: Stack(
+            alignment: Alignment.center,
+            children: [
+              // Fantasma invisível: dá ao slot exatamente o mesmo box de
+              // um char estático (qualquer fonte/métrica), eliminando
+              // deslocamento vertical em relação aos vizinhos.
+              Opacity(opacity: 0.0, child: _charText(newChar, style)),
+              // Old char slides up and fades out
+              Positioned.fill(
+                child: Transform.translate(
+                  offset: Offset(0, -value * rollDistance),
                   child: Opacity(
                     opacity: 1.0 - value,
-                    child: _charText(oldChar, style),
+                    child: Center(child: _charText(oldChar, style)),
                   ),
                 ),
-                // New char slides up from below
-                Transform.translate(
-                  offset: Offset(0, (1.0 - value) * charHeight * 0.5),
+              ),
+              // New char slides up from below
+              Positioned.fill(
+                child: Transform.translate(
+                  offset: Offset(0, (1.0 - value) * rollDistance),
                   child: Opacity(
                     opacity: value,
-                    child: _charText(newChar, style),
+                    child: Center(child: _charText(newChar, style)),
                   ),
                 ),
-              ],
-            ),
+              ),
+            ],
           ),
         );
       },

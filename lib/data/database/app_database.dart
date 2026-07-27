@@ -1,3 +1,4 @@
+import 'package:path/path.dart' as p;
 import 'package:sqflite/sqflite.dart';
 
 class AppDatabase {
@@ -5,10 +6,19 @@ class AppDatabase {
   static const int _databaseVersion = 1;
 
   final DatabaseFactory _databaseFactory;
+
+  /// Quando fornecido, o banco é criado dentro do diretório resolvido
+  /// (caminho absoluto). Quando null, o path relativo fica a cargo da
+  /// factory (no sqflite mobile, o diretório de databases do app).
+  final Future<String> Function()? _directoryResolver;
+
   Database? _database;
 
-  AppDatabase({DatabaseFactory? databaseFactory})
-    : _databaseFactory = databaseFactory ?? databaseFactorySqflitePlugin;
+  AppDatabase({
+    DatabaseFactory? databaseFactory,
+    Future<String> Function()? directoryResolver,
+  }) : _databaseFactory = databaseFactory ?? databaseFactorySqflitePlugin,
+       _directoryResolver = directoryResolver;
 
   Database get database {
     if (_database == null) {
@@ -19,7 +29,14 @@ class AppDatabase {
   }
 
   Future<void> initialize({bool inMemory = false}) async {
-    final path = inMemory ? inMemoryDatabasePath : _databaseName;
+    String path;
+    if (inMemory) {
+      path = inMemoryDatabasePath;
+    } else if (_directoryResolver != null) {
+      path = p.join(await _directoryResolver(), _databaseName);
+    } else {
+      path = _databaseName;
+    }
     _database = await _databaseFactory.openDatabase(
       path,
       options: OpenDatabaseOptions(
