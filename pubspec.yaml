@@ -40,6 +40,11 @@ dependencies:
   sqflite_common_ffi: ^2.4.0+2
   window_manager: ^0.5.1
   path_provider: ^2.1.6
+  # A partir da 2.3.0 a implementação Android do path_provider passou a usar
+  # package:jni, que ainda aplica o Kotlin Gradle Plugin e quebra o Built-in
+  # Kotlin. O app só chama path_provider no desktop, então prende-se na última
+  # 2.2.x. Reavaliar quando jni migrar para Built-in Kotlin.
+  path_provider_android: '>=2.2.23 <2.3.0'
 
 dev_dependencies:
   flutter_test:
