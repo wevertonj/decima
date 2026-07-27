@@ -9,7 +9,7 @@ class AppLocalizationsPt extends AppLocalizations {
   AppLocalizationsPt([String locale = 'pt']) : super(locale);
 
   @override
-  String get appTitle => 'WevaCalc';
+  String get appTitle => 'Decima';
 
   @override
   String get calculator => 'Calculadora';

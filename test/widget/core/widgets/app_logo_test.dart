@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-import 'package:wevacalc/ui/core/widgets/app_logo.dart';
+import 'package:decima/ui/core/widgets/app_logo.dart';
 
 import '../../../helpers/pump_app.dart';
 

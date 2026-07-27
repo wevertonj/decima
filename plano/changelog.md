@@ -1,4 +1,4 @@
-# Changelog — WevaCalc
+# Changelog — Decima
 
 Registro de todas as alterações realizadas no projeto, organizado por etapa.
 
@@ -36,7 +36,7 @@ Registro de todas as alterações realizadas no projeto, organizado por etapa.
 
 ### App Shell
 
-- `main.dart` reescrito com `WevaCalcApp`: tema dark padrão, l10n, rotas, GetIt
+- `main.dart` reescrito com `DecimaApp`: tema dark padrão, l10n, rotas, GetIt
 
 ### Testes
 
@@ -577,7 +577,7 @@ Widget customizado que substituiu o `TextField` padrão no display da calculador
 
 ### Integração — main.dart
 
-- `WevaCalcApp` agora é `StatefulWidget` com listener no `SettingsViewModel` (singleton)
+- `DecimaApp` agora é `StatefulWidget` com listener no `SettingsViewModel` (singleton)
 - `loadSettings()` chamado antes do `runApp` para carregar preferências ao iniciar
 - `MaterialApp` recebe `theme`/`darkTheme` gerados a partir da seed color selecionada
 - `themeMode` resolvido a partir de `ThemeModeOption` → `ThemeMode`
@@ -866,12 +866,12 @@ A splash nativa (gerada estaticamente pelo `flutter_native_splash`) só seguia o
 Replicado o mecanismo do projeto irmão `verbum`: em vez de recolorir a splash já visível, a preferência de tema é espelhada no **próprio sistema operacional** (`UiModeManager.setApplicationNightMode`, Android 12+/API 31), que já decide a cor da splash **antes** do processo do app iniciar na próxima abertura.
 
 - `NightModeService` (`lib/data/services/night_mode_service.dart`) — interface com `syncThemeMode(ThemeModeOption)`
-- `NightModeServiceImpl` (`night_mode_service_impl.dart`) — resolve `ThemeModeOption.system` contra `WidgetsBinding.instance.platformDispatcher.platformBrightness` e invoca o `MethodChannel('com.wevasoft.wevacalc/night_mode')`; no-op fora do Android; engole `PlatformException`/`MissingPluginException` (sync é best-effort)
+- `NightModeServiceImpl` (`night_mode_service_impl.dart`) — resolve `ThemeModeOption.system` contra `WidgetsBinding.instance.platformDispatcher.platformBrightness` e invoca o `MethodChannel('com.wevasoft.decima/night_mode')`; no-op fora do Android; engole `PlatformException`/`MissingPluginException` (sync é best-effort)
 - `MainActivity.kt` — `configureFlutterEngine` registra o handler do canal; chama `UiModeManager.setApplicationNightMode` apenas em `SDK_INT >= S` (31); no-op silencioso abaixo disso (splash continua seguindo o sistema)
 - `SettingsViewModel`:
   - `loadSettings()` e `setThemeMode()` sincronizam nativamente (sem `await` — não bloqueia o boot nem a troca de tema)
   - Novo `syncNativeNightMode()` — re-resolve `ThemeModeOption.system` contra o brightness atual
-- `main.dart` — `_WevaCalcAppState` ganha `WidgetsBindingObserver`; `didChangePlatformBrightness()` chama `syncNativeNightMode()` para re-sincronizar se o sistema mudar de tema com o app aberto e o modo for `system`
+- `main.dart` — `_DecimaAppState` ganha `WidgetsBindingObserver`; `didChangePlatformBrightness()` chama `syncNativeNightMode()` para re-sincronizar se o sistema mudar de tema com o app aberto e o modo for `system`
 - Registrado no GetIt como lazy singleton
 
 ### Limitações aceitas
@@ -1028,7 +1028,7 @@ Colar `10 + 5 = 15` falhava (o `=` não era caractere aceito). Como `copyHistory
 ### DesktopWindowConfig (`lib/ui/core/desktop/desktop_window_config.dart`)
 
 - `windowSize` — `Size(360, 720)`, proporção mobile-like (usado como size, min e max)
-- `appTitle` — `'WevaCalc'` (título nativo da janela, usado antes do l10n estar disponível)
+- `appTitle` — `'Decima'` (título nativo da janela, usado antes do l10n estar disponível)
 - `titleBarHeight` — `40.0` (altura da `AppTitleBar`)
 
 ### DesktopWindowInitializer (`lib/ui/core/desktop/desktop_window_initializer.dart`)
@@ -1060,8 +1060,8 @@ Colar `10 + 5 = 15` falhava (o `=` não era caractere aceito). Como `copyHistory
 
 ### Runner nativo do Windows
 
-- `Runner.rc` — metadados do `.exe`: `ProductName`/`FileDescription` "WevaCalc", `CompanyName` "Wevasoft" (versão já vinha do pubspec via `FLUTTER_VERSION_*`)
-- `main.cpp` — janela inicial 360×720 e título "WevaCalc", alinhados ao `DesktopWindowConfig` para evitar flash de redimensionamento antes do `window_manager` aplicar as `WindowOptions`
+- `Runner.rc` — metadados do `.exe`: `ProductName`/`FileDescription` "Decima", `CompanyName` "Wevasoft" (versão já vinha do pubspec via `FLUTTER_VERSION_*`)
+- `main.cpp` — janela inicial 360×720 e título "Decima", alinhados ao `DesktopWindowConfig` para evitar flash de redimensionamento antes do `window_manager` aplicar as `WindowOptions`
 - Ícone `.ico` gerado na Etapa 12 já referenciado (`IDI_APP_ICON`)
 
 ### Decisões e limitações
@@ -1083,8 +1083,8 @@ O WSL2 não compila para Windows, mas o interop com o host permitiu validar o bu
 - FVM 4.1.2 ativado no Dart do Windows (`dart pub global activate fvm`) — sem tocar o Flutter global do host (3.38.5, antigo demais para o projeto)
 - `fvm install 3.44.2 --setup` — mesma versão pinada do WSL
 - Projeto copiado via `rsync` para uma cópia de build no filesystem do Windows (excluindo `.git`, `build`, `.dart_tool`, ephemerals) — build direto em `\\wsl.localhost\...` quebraria nos plugin symlinks e contaminaria o `.dart_tool` do WSL. Paths e comandos da máquina em `plano/local/ambiente.md` (não versionado)
-- `fvm use 3.44.2 --force` + `fvm flutter build windows --release` — **sucesso** (`wevacalc.exe` em ~68s, Visual Studio 2022 Community 17.7.3)
-- App lançado no desktop do Windows (janela "WevaCalc") para verificação manual: janela fixa 360×720, sem barra do sistema, drag pela title bar, minimizar/fechar, ícone no `.exe`
+- `fvm use 3.44.2 --force` + `fvm flutter build windows --release` — **sucesso** (`decima.exe` em ~68s, Visual Studio 2022 Community 17.7.3)
+- App lançado no desktop do Windows (janela "Decima") para verificação manual: janela fixa 360×720, sem barra do sistema, drag pela title bar, minimizar/fechar, ícone no `.exe`
 
 ## [Fix] Etapa 14 — Tela branca no Windows: sqflite via FFI + path do banco
 
@@ -1111,18 +1111,18 @@ Mesmo com o FFI, a tela seguia branca: o `sqlite3` 3.x embarca a lib nativa via 
 
 ### Causa 3 (descoberta na validação) — banco no CWD do processo
 
-Com o app funcional, o `wevacalc.db` foi parar em `C:\.dart_tool\sqflite_common_ffi\databases\` — o FFI resolve path relativo contra o **CWD do processo**, que varia conforme o atalho/terminal que lançou o app (banco "trocaria" de lugar entre lançamentos; raiz do `C:\` pode nem ser gravável).
+Com o app funcional, o `decima.db` foi parar em `C:\.dart_tool\sqflite_common_ffi\databases\` — o FFI resolve path relativo contra o **CWD do processo**, que varia conforme o atalho/terminal que lançou o app (banco "trocaria" de lugar entre lançamentos; raiz do `C:\` pode nem ser gravável).
 
 - Adicionado `path_provider: ^2.1.6`
 - `resolveDatabaseDirectoryResolver({bool? isDesktop})` — em desktop retorna resolver para `getApplicationSupportDirectory()`; em mobile retorna `null` (sqflite usa o diretório de databases do app)
-- `AppDatabase` ganhou `directoryResolver` opcional — quando presente, `initialize()` monta o path absoluto (`p.join(dir, 'wevacalc.db')`); `inMemory` ignora o resolver
-- Resultado no Windows: `%APPDATA%\Wevasoft\WevaCalc\wevacalc.db` (o `path_provider_windows` usa CompanyName/ProductName do `Runner.rc` ajustado nesta etapa)
+- `AppDatabase` ganhou `directoryResolver` opcional — quando presente, `initialize()` monta o path absoluto (`p.join(dir, 'decima.db')`); `inMemory` ignora o resolver
+- Resultado no Windows: `%APPDATA%\Wevasoft\Decima\decima.db` (o `path_provider_windows` usa CompanyName/ProductName do `Runner.rc` ajustado nesta etapa)
 - Efeito colateral aceito: `path_provider_android` moderno usa JNI → `dartjni.dll` embarcada no bundle Windows (inofensiva); libs FFI do sqlite passam a ser embarcadas também no Android (não usadas em runtime — sqflite mobile segue no plugin nativo)
 
 ### Validação no host
 
 - Bundle Release contém `sqlite3.dll`; app renderiza a calculadora completa (screenshot conferido: title bar com logo/nome/botões, display `0.00`, keypad, tema escuro) em janela fixa 360×720
-- Banco criado em `%APPDATA%\Wevasoft\WevaCalc\wevacalc.db`; lixo em `C:\.dart_tool` removido
+- Banco criado em `%APPDATA%\Wevasoft\Decima\decima.db`; lixo em `C:\.dart_tool` removido
 
 ### Testes
 

@@ -1,6 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 
-import 'package:wevacalc/utils/paste_input_parser.dart';
+import 'package:decima/utils/paste_input_parser.dart';
 
 void main() {
   group('PasteInputParser', () {

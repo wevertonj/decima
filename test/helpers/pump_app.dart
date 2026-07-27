@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-import 'package:wevacalc/config/theme/app_colors.dart';
-import 'package:wevacalc/config/theme/app_theme.dart';
-import 'package:wevacalc/utils/l10n/app_localizations.dart';
+import 'package:decima/config/theme/app_colors.dart';
+import 'package:decima/config/theme/app_theme.dart';
+import 'package:decima/utils/l10n/app_localizations.dart';
 
 extension PumpApp on WidgetTester {
   Future<void> pumpApp(

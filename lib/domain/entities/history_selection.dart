@@ -1,4 +1,4 @@
-import 'package:wevacalc/domain/entities/history_entry.dart';
+import 'package:decima/domain/entities/history_entry.dart';
 
 /// Represents the user's selection when tapping a specific line
 /// within a history session entry.

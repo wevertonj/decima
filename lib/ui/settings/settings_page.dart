@@ -1,12 +1,12 @@
 import 'package:flutter/material.dart';
 
-import 'package:wevacalc/config/theme/app_layout.dart';
-import 'package:wevacalc/ui/settings/settings_view_model.dart';
-import 'package:wevacalc/ui/settings/widgets/color_picker.dart';
-import 'package:wevacalc/ui/settings/widgets/decimal_separator_selector.dart';
-import 'package:wevacalc/ui/settings/widgets/language_selector.dart';
-import 'package:wevacalc/ui/settings/widgets/theme_mode_selector.dart';
-import 'package:wevacalc/utils/extensions/l10n_extension.dart';
+import 'package:decima/config/theme/app_layout.dart';
+import 'package:decima/ui/settings/settings_view_model.dart';
+import 'package:decima/ui/settings/widgets/color_picker.dart';
+import 'package:decima/ui/settings/widgets/decimal_separator_selector.dart';
+import 'package:decima/ui/settings/widgets/language_selector.dart';
+import 'package:decima/ui/settings/widgets/theme_mode_selector.dart';
+import 'package:decima/utils/extensions/l10n_extension.dart';
 
 /// Settings screen with sections for theme mode, accent color, number format,
 /// and language. Every change is persisted immediately and reflected in the

@@ -2,11 +2,11 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
 
-import 'package:wevacalc/data/services/night_mode_service.dart';
-import 'package:wevacalc/domain/enums/theme_mode_option.dart';
+import 'package:decima/data/services/night_mode_service.dart';
+import 'package:decima/domain/enums/theme_mode_option.dart';
 
 class NightModeServiceImpl implements NightModeService {
-  static const _channel = MethodChannel('com.wevasoft.wevacalc/night_mode');
+  static const _channel = MethodChannel('com.wevasoft.decima/night_mode');
 
   bool get _isSupported =>
       !kIsWeb && defaultTargetPlatform == TargetPlatform.android;

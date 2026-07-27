@@ -1,9 +1,9 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
 
-import 'package:wevacalc/domain/enums/decimal_separator.dart';
-import 'package:wevacalc/domain/enums/theme_mode_option.dart';
-import 'package:wevacalc/ui/settings/settings_view_model.dart';
+import 'package:decima/domain/enums/decimal_separator.dart';
+import 'package:decima/domain/enums/theme_mode_option.dart';
+import 'package:decima/ui/settings/settings_view_model.dart';
 
 import '../../../mocks/mock_night_mode_service.dart';
 import '../../../mocks/mock_settings_repository.dart';

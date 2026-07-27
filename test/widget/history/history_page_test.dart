@@ -2,11 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
 
-import 'package:wevacalc/domain/entities/history_entry.dart';
-import 'package:wevacalc/domain/entities/history_line.dart';
-import 'package:wevacalc/ui/history/history_page.dart';
-import 'package:wevacalc/ui/history/history_view_model.dart';
-import 'package:wevacalc/ui/history/widgets/history_list_item.dart';
+import 'package:decima/domain/entities/history_entry.dart';
+import 'package:decima/domain/entities/history_line.dart';
+import 'package:decima/ui/history/history_page.dart';
+import 'package:decima/ui/history/history_view_model.dart';
+import 'package:decima/ui/history/widgets/history_list_item.dart';
 
 import '../../helpers/pump_app.dart';
 import '../../mocks/mock_history_repository.dart';

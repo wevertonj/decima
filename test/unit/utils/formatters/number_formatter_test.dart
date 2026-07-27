@@ -1,7 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
 
-import 'package:wevacalc/domain/enums/decimal_separator.dart';
-import 'package:wevacalc/utils/formatters/number_formatter.dart';
+import 'package:decima/domain/enums/decimal_separator.dart';
+import 'package:decima/utils/formatters/number_formatter.dart';
 
 void main() {
   group('NumberFormatter', () {

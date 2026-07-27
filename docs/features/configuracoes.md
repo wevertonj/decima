@@ -27,7 +27,7 @@ Tela de configurações acessada pelo ícone de engrenagem (⚙) na tela princip
 
 As preferências do usuário (modo de tema, seed color index, separador decimal, locale) são armazenadas localmente via `SettingsRepositoryImpl` (SharedPreferences). São carregadas no startup do app antes do `runApp` e restauradas ao reabrir.
 
-O `SettingsViewModel` é registrado como **lazy singleton** no GetIt para que a mesma instância seja escutada pelo `WevaCalcApp` (raiz) e pela `SettingsPage`, garantindo propagação global das mudanças.
+O `SettingsViewModel` é registrado como **lazy singleton** no GetIt para que a mesma instância seja escutada pelo `DecimaApp` (raiz) e pela `SettingsPage`, garantindo propagação global das mudanças.
 
 ## UI
 

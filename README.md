@@ -1,4 +1,4 @@
-# WevaCalc
+# Decima
 
 Calculadora elegante e minimalista com entrada **Add2** — 2 casas decimais automáticas sem pressionar ponto.
 

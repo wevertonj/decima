@@ -1,6 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 
-import 'package:wevacalc/config/theme/app_layout.dart';
+import 'package:decima/config/theme/app_layout.dart';
 
 void main() {
   group('AppSpacing', () {

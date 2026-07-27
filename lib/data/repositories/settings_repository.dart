@@ -1,5 +1,5 @@
-import 'package:wevacalc/domain/enums/decimal_separator.dart';
-import 'package:wevacalc/domain/enums/theme_mode_option.dart';
+import 'package:decima/domain/enums/decimal_separator.dart';
+import 'package:decima/domain/enums/theme_mode_option.dart';
 
 abstract class SettingsRepository {
   Future<ThemeModeOption> getThemeMode();

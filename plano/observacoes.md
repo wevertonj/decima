@@ -1,4 +1,4 @@
-# Observações — WevaCalc
+# Observações — Decima
 
 Notas importantes, decisões tomadas e pontos de atenção durante a implementação.
 
@@ -9,7 +9,7 @@ Notas importantes, decisões tomadas e pontos de atenção durante a implementa�
 - O projeto foi gerado com `flutter create` e contém o app counter padrão
 - O `pubspec.yaml` só tem `flutter`, `cupertino_icons`, `flutter_test` e `flutter_lints`
 - O `main.dart` tem o código padrão do counter — será completamente reescrito na Etapa 1
-- O `test/widget_test.dart` testa o counter — será removido e substituído pelos testes do WevaCalc
+- O `test/widget_test.dart` testa o counter — será removido e substituído pelos testes do Decima
 - Dart SDK: `^3.11.4`
 
 ---
@@ -175,7 +175,7 @@ Cada etapa foi dimensionada para caber confortavelmente na janela de contexto de
 
 ### Splash screen theme-aware (Android 12+)
 
-- Mecanismo replicado do projeto `verbum`: a preferência de tema é espelhada via `UiModeManager.setApplicationNightMode` (canal `com.wevasoft.wevacalc/night_mode`), fazendo o **próprio Android** persistir qual variante de recurso (`values`/`values-night`) usar antes mesmo do processo do app começar
+- Mecanismo replicado do projeto `verbum`: a preferência de tema é espelhada via `UiModeManager.setApplicationNightMode` (canal `com.wevasoft.decima/night_mode`), fazendo o **próprio Android** persistir qual variante de recurso (`values`/`values-night`) usar antes mesmo do processo do app começar
 - Não há correção "ao vivo" da splash já visível — o sync de cada boot/troca de tema só corrige a **próxima** abertura
 - Só tem efeito a partir da API 31 (Android 12); abaixo disso a splash sempre segue o dark mode do sistema, sem exceção
 - Quando o iOS for implementado (Etapa 17), não há API pública equivalente — aceitar que a splash do iOS sempre siga o sistema

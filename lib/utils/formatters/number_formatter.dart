@@ -1,4 +1,4 @@
-import 'package:wevacalc/domain/enums/decimal_separator.dart';
+import 'package:decima/domain/enums/decimal_separator.dart';
 
 class NumberFormatter {
   NumberFormatter._();

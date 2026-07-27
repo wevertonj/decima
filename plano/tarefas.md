@@ -1,4 +1,4 @@
-# Tarefas — WevaCalc
+# Tarefas — Decima
 
 Checklist detalhado de cada etapa. Marque `[x]` conforme concluir.
 
@@ -533,9 +533,9 @@ Checklist detalhado de cada etapa. Marque `[x]` conforme concluir.
 
 ### Específico do Windows
 
-- [x] Validar build `flutter build windows --release` — sucesso (`wevacalc.exe` gerado em ~68s no host)
+- [x] Validar build `flutter build windows --release` — sucesso (`decima.exe` gerado em ~68s no host)
 - [x] Conferir ícone do app integrado ao `.exe` — confirmado visualmente no Windows
-- [x] Ajustar `windows/runner/Runner.rc` (ProductName/FileDescription "WevaCalc", CompanyName "Wevasoft") e `main.cpp` (janela inicial 360×720, título "WevaCalc")
+- [x] Ajustar `windows/runner/Runner.rc` (ProductName/FileDescription "Decima", CompanyName "Wevasoft") e `main.cpp` (janela inicial 360×720, título "Decima")
 
 ### Testes
 

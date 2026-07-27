@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:window_manager/window_manager.dart';
 
-import 'package:wevacalc/config/theme/app_layout.dart';
-import 'package:wevacalc/ui/core/desktop/desktop_window_config.dart';
-import 'package:wevacalc/ui/core/widgets/app_logo.dart';
-import 'package:wevacalc/utils/extensions/l10n_extension.dart';
+import 'package:decima/config/theme/app_layout.dart';
+import 'package:decima/ui/core/desktop/desktop_window_config.dart';
+import 'package:decima/ui/core/widgets/app_logo.dart';
+import 'package:decima/utils/extensions/l10n_extension.dart';
 
 /// Barra de título customizada para plataformas desktop.
 ///

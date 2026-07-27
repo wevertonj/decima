@@ -1,4 +1,4 @@
-import 'package:wevacalc/domain/entities/history_line.dart';
+import 'package:decima/domain/entities/history_line.dart';
 
 /// A history entry representing an entire calculator session.
 ///

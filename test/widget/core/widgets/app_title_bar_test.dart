@@ -3,9 +3,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:window_manager/window_manager.dart';
 
-import 'package:wevacalc/ui/core/desktop/desktop_window_config.dart';
-import 'package:wevacalc/ui/core/widgets/app_logo.dart';
-import 'package:wevacalc/ui/core/widgets/app_title_bar.dart';
+import 'package:decima/ui/core/desktop/desktop_window_config.dart';
+import 'package:decima/ui/core/widgets/app_logo.dart';
+import 'package:decima/ui/core/widgets/app_title_bar.dart';
 
 import '../../../helpers/pump_app.dart';
 
@@ -49,7 +49,7 @@ void main() {
       await tester.pumpApp(buildTitleBar());
 
       expect(find.byType(AppLogo), findsOneWidget);
-      expect(find.text('WevaCalc'), findsOneWidget);
+      expect(find.text('Decima'), findsOneWidget);
       expect(find.byIcon(Icons.remove_rounded), findsOneWidget);
       expect(find.byIcon(Icons.close_rounded), findsOneWidget);
     });

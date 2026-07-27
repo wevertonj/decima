@@ -1,10 +1,10 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-import 'package:wevacalc/data/repositories/settings_repository.dart';
-import 'package:wevacalc/data/repositories/settings_repository_impl.dart';
-import 'package:wevacalc/domain/enums/decimal_separator.dart';
-import 'package:wevacalc/domain/enums/theme_mode_option.dart';
+import 'package:decima/data/repositories/settings_repository.dart';
+import 'package:decima/data/repositories/settings_repository_impl.dart';
+import 'package:decima/domain/enums/decimal_separator.dart';
+import 'package:decima/domain/enums/theme_mode_option.dart';
 
 void main() {
   late SettingsRepository repository;

@@ -1,12 +1,12 @@
 import 'package:flutter/material.dart';
 
-import 'package:wevacalc/config/dependencies.dart';
-import 'package:wevacalc/ui/calculator/calculator_page.dart';
-import 'package:wevacalc/ui/calculator/calculator_view_model.dart';
-import 'package:wevacalc/ui/history/history_page.dart';
-import 'package:wevacalc/ui/history/history_view_model.dart';
-import 'package:wevacalc/ui/settings/settings_page.dart';
-import 'package:wevacalc/ui/settings/settings_view_model.dart';
+import 'package:decima/config/dependencies.dart';
+import 'package:decima/ui/calculator/calculator_page.dart';
+import 'package:decima/ui/calculator/calculator_view_model.dart';
+import 'package:decima/ui/history/history_page.dart';
+import 'package:decima/ui/history/history_view_model.dart';
+import 'package:decima/ui/settings/settings_page.dart';
+import 'package:decima/ui/settings/settings_view_model.dart';
 
 /// Configuração centralizada de rotas do app.
 class AppRoutes {

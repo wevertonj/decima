@@ -1,4 +1,4 @@
-package com.wevasoft.wevacalc
+package com.wevasoft.decima
 
 import android.app.UiModeManager
 import android.content.Context
@@ -13,7 +13,7 @@ class MainActivity : FlutterActivity() {
 
         MethodChannel(
             flutterEngine.dartExecutor.binaryMessenger,
-            "com.wevasoft.wevacalc/night_mode",
+            "com.wevasoft.decima/night_mode",
         ).setMethodCallHandler { call, result ->
             when (call.method) {
                 "setApplicationNightMode" -> {

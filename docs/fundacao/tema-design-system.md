@@ -2,7 +2,7 @@
 
 ## Estilo Visual
 
-O design do WevaCalc é inspirado na **One UI (Samsung)**: elegante, escuro por padrão, com superfícies sutilmente elevadas e botões circulares. O visual deve transmitir leveza e sofisticação.
+O design do Decima é inspirado na **One UI (Samsung)**: elegante, escuro por padrão, com superfícies sutilmente elevadas e botões circulares. O visual deve transmitir leveza e sofisticação.
 
 ### Características Principais
 

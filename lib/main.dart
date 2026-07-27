@@ -1,16 +1,16 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
-import 'package:wevacalc/config/dependencies.dart';
-import 'package:wevacalc/config/routes.dart';
-import 'package:wevacalc/data/database/app_database.dart';
-import 'package:wevacalc/config/theme/app_colors.dart';
-import 'package:wevacalc/config/theme/app_theme.dart';
-import 'package:wevacalc/domain/enums/theme_mode_option.dart';
-import 'package:wevacalc/ui/core/desktop/desktop_window_initializer.dart';
-import 'package:wevacalc/ui/core/widgets/desktop_shell.dart';
-import 'package:wevacalc/ui/settings/settings_view_model.dart';
-import 'package:wevacalc/utils/l10n/app_localizations.dart';
+import 'package:decima/config/dependencies.dart';
+import 'package:decima/config/routes.dart';
+import 'package:decima/data/database/app_database.dart';
+import 'package:decima/config/theme/app_colors.dart';
+import 'package:decima/config/theme/app_theme.dart';
+import 'package:decima/domain/enums/theme_mode_option.dart';
+import 'package:decima/ui/core/desktop/desktop_window_initializer.dart';
+import 'package:decima/ui/core/widgets/desktop_shell.dart';
+import 'package:decima/ui/settings/settings_view_model.dart';
+import 'package:decima/utils/l10n/app_localizations.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -25,17 +25,17 @@ void main() async {
   setupDependencies();
   await getIt<AppDatabase>().initialize();
   await getIt<SettingsViewModel>().loadSettings();
-  runApp(const WevaCalcApp());
+  runApp(const DecimaApp());
 }
 
-class WevaCalcApp extends StatefulWidget {
-  const WevaCalcApp({super.key});
+class DecimaApp extends StatefulWidget {
+  const DecimaApp({super.key});
 
   @override
-  State<WevaCalcApp> createState() => _WevaCalcAppState();
+  State<DecimaApp> createState() => _DecimaAppState();
 }
 
-class _WevaCalcAppState extends State<WevaCalcApp> with WidgetsBindingObserver {
+class _DecimaAppState extends State<DecimaApp> with WidgetsBindingObserver {
   late final SettingsViewModel _settingsVM;
 
   @override
@@ -85,7 +85,7 @@ class _WevaCalcAppState extends State<WevaCalcApp> with WidgetsBindingObserver {
     final seedColor = AppColors.seedColors[_settingsVM.seedColorIndex];
 
     return MaterialApp(
-      title: 'WevaCalc',
+      title: 'Decima',
       debugShowCheckedModeBanner: false,
       theme: AppTheme.light(seedColor: seedColor),
       darkTheme: AppTheme.dark(seedColor: seedColor),

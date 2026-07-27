@@ -1,14 +1,14 @@
 # Calculadora
 
-> Tela principal do WevaCalc: entrada Add2, timeline de cálculos, keypad, cursor editável, copiar/colar e operação por teclado físico.
+> Tela principal do Decima: entrada Add2, timeline de cálculos, keypad, cursor editável, copiar/colar e operação por teclado físico.
 
 ## Visão Geral
 
-A calculadora é a tela principal do WevaCalc. Utiliza o conceito **Add2** — entrada automática de 2 casas decimais sem necessidade de pressionar ponto — com suporte a todas as operações básicas.
+A calculadora é a tela principal do Decima. Utiliza o conceito **Add2** — entrada automática de 2 casas decimais sem necessidade de pressionar ponto — com suporte a todas as operações básicas.
 
 ## Conceito Add2
 
-O diferencial do WevaCalc é a entrada numérica com **2 casas decimais automáticas**. O usuário digita apenas números e o sistema posiciona o separador decimal automaticamente conforme os dígitos são inseridos:
+O diferencial do Decima é a entrada numérica com **2 casas decimais automáticas**. O usuário digita apenas números e o sistema posiciona o separador decimal automaticamente conforme os dígitos são inseridos:
 
 - Digitar `1` → `0.01`
 - Digitar `12` → `0.12`

@@ -4,7 +4,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:path/path.dart' as p;
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 
-import 'package:wevacalc/data/database/app_database.dart';
+import 'package:decima/data/database/app_database.dart';
 
 void main() {
   setUpAll(() {
@@ -37,7 +37,7 @@ void main() {
     });
 
     test('initialize creates the database inside the resolved directory', () async {
-      final tempDir = await Directory.systemTemp.createTemp('wevacalc_db_test');
+      final tempDir = await Directory.systemTemp.createTemp('decima_db_test');
       addTearDown(() => tempDir.delete(recursive: true));
 
       final database = AppDatabase(
@@ -47,7 +47,7 @@ void main() {
 
       await database.initialize();
 
-      final dbFile = File(p.join(tempDir.path, 'wevacalc.db'));
+      final dbFile = File(p.join(tempDir.path, 'decima.db'));
       expect(database.database.isOpen, isTrue);
       expect(dbFile.existsSync(), isTrue);
       await database.close();

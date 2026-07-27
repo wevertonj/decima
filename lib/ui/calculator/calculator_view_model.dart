@@ -2,18 +2,18 @@ import 'dart:collection';
 
 import 'package:flutter/foundation.dart';
 
-import 'package:wevacalc/data/repositories/history_repository.dart';
-import 'package:wevacalc/data/repositories/settings_repository.dart';
-import 'package:wevacalc/data/services/clipboard_service.dart';
-import 'package:wevacalc/domain/add2_engine.dart';
-import 'package:wevacalc/domain/entities/calculation.dart';
-import 'package:wevacalc/domain/entities/history_entry.dart';
-import 'package:wevacalc/domain/entities/history_line.dart';
-import 'package:wevacalc/domain/entities/history_selection.dart';
-import 'package:wevacalc/domain/enums/decimal_separator.dart';
-import 'package:wevacalc/domain/expression_evaluator.dart';
-import 'package:wevacalc/utils/formatters/number_formatter.dart';
-import 'package:wevacalc/utils/paste_input_parser.dart';
+import 'package:decima/data/repositories/history_repository.dart';
+import 'package:decima/data/repositories/settings_repository.dart';
+import 'package:decima/data/services/clipboard_service.dart';
+import 'package:decima/domain/add2_engine.dart';
+import 'package:decima/domain/entities/calculation.dart';
+import 'package:decima/domain/entities/history_entry.dart';
+import 'package:decima/domain/entities/history_line.dart';
+import 'package:decima/domain/entities/history_selection.dart';
+import 'package:decima/domain/enums/decimal_separator.dart';
+import 'package:decima/domain/expression_evaluator.dart';
+import 'package:decima/utils/formatters/number_formatter.dart';
+import 'package:decima/utils/paste_input_parser.dart';
 
 class CalculatorViewModel extends ChangeNotifier {
   CalculatorViewModel({

@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-import 'package:wevacalc/ui/calculator/widgets/animated_input_display.dart';
+import 'package:decima/ui/calculator/widgets/animated_input_display.dart';
 
 void main() {
   Widget wrap(Widget child) => MaterialApp(

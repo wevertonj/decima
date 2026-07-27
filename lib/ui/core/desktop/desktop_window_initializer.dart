@@ -1,6 +1,6 @@
 import 'package:window_manager/window_manager.dart';
 
-import 'package:wevacalc/ui/core/desktop/desktop_window_config.dart';
+import 'package:decima/ui/core/desktop/desktop_window_config.dart';
 
 /// Inicializa a janela desktop: tamanho fixo, centralizada, sem a barra
 /// de título do sistema (substituída pela AppTitleBar customizada).

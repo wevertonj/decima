@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-/// Widget que exibe o logo do WevaCalc a partir do asset de branding.
+/// Widget que exibe o logo do Decima a partir do asset de branding.
 ///
 /// Usa [Image.asset] para que o Flutter resolva automaticamente a variante
 /// de densidade correta (1.0x, 2.0x, 3.0x) de acordo com o [devicePixelRatio].

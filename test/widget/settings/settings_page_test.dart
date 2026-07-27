@@ -1,15 +1,15 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
 
-import 'package:wevacalc/config/theme/app_colors.dart';
-import 'package:wevacalc/domain/enums/decimal_separator.dart';
-import 'package:wevacalc/domain/enums/theme_mode_option.dart';
-import 'package:wevacalc/ui/settings/settings_page.dart';
-import 'package:wevacalc/ui/settings/settings_view_model.dart';
-import 'package:wevacalc/ui/settings/widgets/color_picker.dart';
-import 'package:wevacalc/ui/settings/widgets/decimal_separator_selector.dart';
-import 'package:wevacalc/ui/settings/widgets/language_selector.dart';
-import 'package:wevacalc/ui/settings/widgets/theme_mode_selector.dart';
+import 'package:decima/config/theme/app_colors.dart';
+import 'package:decima/domain/enums/decimal_separator.dart';
+import 'package:decima/domain/enums/theme_mode_option.dart';
+import 'package:decima/ui/settings/settings_page.dart';
+import 'package:decima/ui/settings/settings_view_model.dart';
+import 'package:decima/ui/settings/widgets/color_picker.dart';
+import 'package:decima/ui/settings/widgets/decimal_separator_selector.dart';
+import 'package:decima/ui/settings/widgets/language_selector.dart';
+import 'package:decima/ui/settings/widgets/theme_mode_selector.dart';
 
 import '../../helpers/pump_app.dart';
 import '../../mocks/mock_night_mode_service.dart';

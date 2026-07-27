@@ -2,7 +2,7 @@
 
 ## Visão Geral
 
-WevaCalc segue uma arquitetura limpa e simples, orientada pelos princípios **SOLID**, adequada para um app de escopo reduzido mas com código bem organizado e testável.
+Decima segue uma arquitetura limpa e simples, orientada pelos princípios **SOLID**, adequada para um app de escopo reduzido mas com código bem organizado e testável.
 
 ## Estrutura de Pastas
 
@@ -113,7 +113,7 @@ void setupDependencies() {
   );
 
   // SettingsViewModel é lazy singleton — instância compartilhada entre
-  // WevaCalcApp (raiz) e SettingsPage para propagação reativa global de tema/cor/idioma.
+  // DecimaApp (raiz) e SettingsPage para propagação reativa global de tema/cor/idioma.
   getIt.registerLazySingleton<SettingsViewModel>(
     () => SettingsViewModel(repository: getIt<SettingsRepository>()),
   );

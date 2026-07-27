@@ -1,7 +1,7 @@
 import 'package:flutter/foundation.dart';
 
-import 'package:wevacalc/data/repositories/history_repository.dart';
-import 'package:wevacalc/domain/entities/history_entry.dart';
+import 'package:decima/data/repositories/history_repository.dart';
+import 'package:decima/domain/entities/history_entry.dart';
 
 class HistoryViewModel extends ChangeNotifier {
   HistoryViewModel({required HistoryRepository historyRepository})

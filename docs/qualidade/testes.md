@@ -63,7 +63,7 @@ Centralize todos os mocks em `test/mocks/`:
 ```dart
 // test/mocks/mock_repositories.dart
 import 'package:mocktail/mocktail.dart';
-import 'package:wevacalc/data/repositories/history_repository.dart';
+import 'package:decima/data/repositories/history_repository.dart';
 
 class MockHistoryRepository extends Mock implements HistoryRepository {}
 ```

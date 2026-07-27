@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-import 'package:wevacalc/config/theme/app_colors.dart';
+import 'package:decima/config/theme/app_colors.dart';
 
 /// Gerador de ThemeData claro e escuro usando ColorScheme.fromSeed.
 class AppTheme {

@@ -1,9 +1,9 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
 
-import 'package:wevacalc/domain/entities/history_entry.dart';
-import 'package:wevacalc/domain/entities/history_line.dart';
-import 'package:wevacalc/ui/history/history_view_model.dart';
+import 'package:decima/domain/entities/history_entry.dart';
+import 'package:decima/domain/entities/history_line.dart';
+import 'package:decima/ui/history/history_view_model.dart';
 
 import '../../../mocks/mock_history_repository.dart';
 import '../../../fixtures/history_fixtures.dart';

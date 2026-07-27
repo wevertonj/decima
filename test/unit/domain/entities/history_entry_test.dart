@@ -1,6 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:wevacalc/domain/entities/history_entry.dart';
-import 'package:wevacalc/domain/entities/history_line.dart';
+import 'package:decima/domain/entities/history_entry.dart';
+import 'package:decima/domain/entities/history_line.dart';
 
 void main() {
   group('HistoryEntry', () {

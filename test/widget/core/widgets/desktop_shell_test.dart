@@ -2,8 +2,8 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-import 'package:wevacalc/ui/core/widgets/app_title_bar.dart';
-import 'package:wevacalc/ui/core/widgets/desktop_shell.dart';
+import 'package:decima/ui/core/widgets/app_title_bar.dart';
+import 'package:decima/ui/core/widgets/desktop_shell.dart';
 
 import '../../../helpers/pump_app.dart';
 

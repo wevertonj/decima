@@ -1,6 +1,6 @@
-# WevaCalc — Documentação
+# Decima — Documentação
 
-Documentação centralizada do projeto WevaCalc.
+Documentação centralizada do projeto Decima.
 
 ## Estrutura
 
@@ -21,7 +21,7 @@ docs/
 
 ## Sobre o Projeto
 
-WevaCalc é uma calculadora elegante e minimalista com design inspirado na One UI (Samsung). Utiliza o conceito **Add2** — entrada automática de 2 casas decimais sem pressionar ponto — com suporte a todas as operações básicas e parênteses. A tela principal funciona como uma **timeline** scrollável de cálculos.
+Decima é uma calculadora elegante e minimalista com design inspirado na One UI (Samsung). Utiliza o conceito **Add2** — entrada automática de 2 casas decimais sem pressionar ponto — com suporte a todas as operações básicas e parênteses. A tela principal funciona como uma **timeline** scrollável de cálculos.
 
 ### Funcionalidades Principais
 

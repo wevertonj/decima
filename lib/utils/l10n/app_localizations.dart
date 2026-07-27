@@ -103,7 +103,7 @@ abstract class AppLocalizations {
   /// The application title
   ///
   /// In en, this message translates to:
-  /// **'WevaCalc'**
+  /// **'Decima'**
   String get appTitle;
 
   /// Calculator screen title

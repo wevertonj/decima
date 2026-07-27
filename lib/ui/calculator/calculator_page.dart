@@ -1,15 +1,15 @@
 import 'package:flutter/material.dart';
 
-import 'package:wevacalc/config/routes.dart';
-import 'package:wevacalc/config/theme/app_layout.dart';
-import 'package:wevacalc/domain/entities/history_selection.dart';
-import 'package:wevacalc/ui/calculator/calculator_view_model.dart';
-import 'package:wevacalc/ui/calculator/widgets/calculator_context_menu.dart';
-import 'package:wevacalc/ui/calculator/widgets/calculator_keypad.dart';
-import 'package:wevacalc/ui/calculator/widgets/key_flash_controller.dart';
-import 'package:wevacalc/ui/calculator/widgets/keyboard_shortcuts_handler.dart';
-import 'package:wevacalc/ui/calculator/widgets/timeline_display.dart';
-import 'package:wevacalc/utils/extensions/l10n_extension.dart';
+import 'package:decima/config/routes.dart';
+import 'package:decima/config/theme/app_layout.dart';
+import 'package:decima/domain/entities/history_selection.dart';
+import 'package:decima/ui/calculator/calculator_view_model.dart';
+import 'package:decima/ui/calculator/widgets/calculator_context_menu.dart';
+import 'package:decima/ui/calculator/widgets/calculator_keypad.dart';
+import 'package:decima/ui/calculator/widgets/key_flash_controller.dart';
+import 'package:decima/ui/calculator/widgets/keyboard_shortcuts_handler.dart';
+import 'package:decima/ui/calculator/widgets/timeline_display.dart';
+import 'package:decima/utils/extensions/l10n_extension.dart';
 
 class CalculatorPage extends StatefulWidget {
   final CalculatorViewModel viewModel;

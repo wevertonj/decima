@@ -1,4 +1,4 @@
-import 'package:wevacalc/domain/enums/theme_mode_option.dart';
+import 'package:decima/domain/enums/theme_mode_option.dart';
 
 /// Mirrors the app's chosen theme into the native OS-level night mode
 /// (Android 12+ `UiModeManager`), so the next launch's native splash screen

@@ -11,7 +11,7 @@ class DesktopWindowConfig {
   static const Size windowSize = Size(360, 720);
 
   /// Título nativo da janela (usado antes do l10n estar disponível).
-  static const String appTitle = 'WevaCalc';
+  static const String appTitle = 'Decima';
 
   /// Altura da [AppTitleBar] customizada.
   static const double titleBarHeight = 40.0;

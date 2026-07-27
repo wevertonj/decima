@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-import 'package:wevacalc/config/theme/app_layout.dart';
+import 'package:decima/config/theme/app_layout.dart';
 
 /// A flat, elegant segmented control inspired by One UI.
 /// Uses smooth animations and no harsh borders.

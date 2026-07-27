@@ -1,8 +1,8 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
-import 'package:wevacalc/config/theme/app_layout.dart';
-import 'package:wevacalc/ui/calculator/widgets/key_flash_controller.dart';
+import 'package:decima/config/theme/app_layout.dart';
+import 'package:decima/ui/calculator/widgets/key_flash_controller.dart';
 
 /// Variantes visuais do botão da calculadora.
 /// - [numeric]: dígitos 0-9, 00, 000 — cor onSurface, LED glow branco ao digitar

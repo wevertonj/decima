@@ -1,6 +1,6 @@
 # Fixtures de Colar (Ctrl+V / menu de contexto)
 
-> Strings de teste manual para o fluxo de colar do WevaCalc, com o resultado verificado contra `PasteInputParser` + `CalculatorViewModel`.
+> Strings de teste manual para o fluxo de colar do Decima, com o resultado verificado contra `PasteInputParser` + `CalculatorViewModel`.
 
 Assume **separador decimal = ponto** nas Configurações. Com vírgula configurada, só a formatação do display muda (`1.250,00`) — o parse é independente da preferência.
 

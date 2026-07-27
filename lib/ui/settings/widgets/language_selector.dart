@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
-import 'package:wevacalc/config/theme/app_layout.dart';
-import 'package:wevacalc/utils/extensions/l10n_extension.dart';
+import 'package:decima/config/theme/app_layout.dart';
+import 'package:decima/utils/extensions/l10n_extension.dart';
 
 /// A selector for the app language. Offers English, Portuguese, Spanish,
 /// and a "System" option that follows the device locale.

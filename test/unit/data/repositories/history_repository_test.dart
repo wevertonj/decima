@@ -1,9 +1,9 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
-import 'package:wevacalc/data/database/app_database.dart';
-import 'package:wevacalc/data/repositories/history_repository_impl.dart';
-import 'package:wevacalc/domain/entities/history_entry.dart';
-import 'package:wevacalc/domain/entities/history_line.dart';
+import 'package:decima/data/database/app_database.dart';
+import 'package:decima/data/repositories/history_repository_impl.dart';
+import 'package:decima/domain/entities/history_entry.dart';
+import 'package:decima/domain/entities/history_line.dart';
 
 import '../../../fixtures/history_fixtures.dart';
 

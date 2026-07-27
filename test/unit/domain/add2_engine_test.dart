@@ -1,6 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 
-import 'package:wevacalc/domain/add2_engine.dart';
+import 'package:decima/domain/add2_engine.dart';
 
 void main() {
   late Add2Engine engine;

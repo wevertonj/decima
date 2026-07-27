@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 
-import 'package:wevacalc/domain/enums/decimal_separator.dart';
+import 'package:decima/domain/enums/decimal_separator.dart';
 
-import 'package:wevacalc/ui/widgets/flat_segmented_control.dart';
+import 'package:decima/ui/widgets/flat_segmented_control.dart';
 
 /// A flat selector for the decimal separator (dot or comma).
 class DecimalSeparatorSelector extends StatelessWidget {

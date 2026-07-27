@@ -2,7 +2,7 @@ import 'package:path/path.dart' as p;
 import 'package:sqflite/sqflite.dart';
 
 class AppDatabase {
-  static const String _databaseName = 'wevacalc.db';
+  static const String _databaseName = 'decima.db';
   static const int _databaseVersion = 1;
 
   final DatabaseFactory _databaseFactory;

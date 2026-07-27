@@ -29,7 +29,7 @@ int APIENTRY wWinMain(_In_ HINSTANCE instance, _In_opt_ HINSTANCE prev,
   // Mesmo tamanho de DesktopWindowConfig.windowSize — evita flash de
   // redimensionamento antes do window_manager aplicar as WindowOptions.
   Win32Window::Size size(360, 720);
-  if (!window.Create(L"WevaCalc", origin, size)) {
+  if (!window.Create(L"Decima", origin, size)) {
     return EXIT_FAILURE;
   }
   window.SetQuitOnClose(true);

@@ -9,7 +9,7 @@ Organize na seguinte ordem, separados por linha em branco:
 1. Dart SDK (`dart:*`)
 2. Flutter (`package:flutter/*`)
 3. Packages externos (`package:get_it/*`, `package:sqflite/*`, etc.)
-4. Projeto (`package:wevacalc/*`)
+4. Projeto (`package:decima/*`)
 
 ### Naming
 

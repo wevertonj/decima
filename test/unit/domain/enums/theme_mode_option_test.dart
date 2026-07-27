@@ -1,5 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:wevacalc/domain/enums/theme_mode_option.dart';
+import 'package:decima/domain/enums/theme_mode_option.dart';
 
 void main() {
   group('ThemeModeOption', () {

@@ -1,8 +1,8 @@
-# Plano de Implementação — WevaCalc
+# Plano de Implementação — Decima
 
 ## Resumo
 
-O projeto está dividido em **18 etapas** sequenciais. As **etapas 1-4** cobrem toda a lógica de negócio, dados e infraestrutura (sem UI). As **etapas 5-8** cobrem a UI da calculadora e ajustes de comportamento (porcentagem, fila de toques e parênteses + delete). A **etapa 9** cobre as demais telas (histórico e configurações) e integração de navegação. A **etapa 10** adiciona suporte a copiar e colar via menu de contexto. A **etapa 11** introduz o cursor editável no display. A **etapa 12** substitui o icônico/splash padrão do Flutter pelo logo próprio do WevaCalc. A **etapa 13** habilita operação por teclado físico. As **etapas 14-17** habilitam o suporte multi-plataforma (Windows, Linux, macOS, iOS), com janela fixa e title bar customizada nas plataformas desktop. A **etapa 18** é a revisão final, cobrindo polimento de animações, fluxos completos (incluindo clipboard, cursor, teclado físico e title bar) e qualidade geral em todas as plataformas. Cada etapa cabe na janela de contexto de 172k tokens. Todas seguem o fluxo TDD obrigatório (Red → Green → Refactor).
+O projeto está dividido em **18 etapas** sequenciais. As **etapas 1-4** cobrem toda a lógica de negócio, dados e infraestrutura (sem UI). As **etapas 5-8** cobrem a UI da calculadora e ajustes de comportamento (porcentagem, fila de toques e parênteses + delete). A **etapa 9** cobre as demais telas (histórico e configurações) e integração de navegação. A **etapa 10** adiciona suporte a copiar e colar via menu de contexto. A **etapa 11** introduz o cursor editável no display. A **etapa 12** substitui o icônico/splash padrão do Flutter pelo logo próprio do Decima. A **etapa 13** habilita operação por teclado físico. As **etapas 14-17** habilitam o suporte multi-plataforma (Windows, Linux, macOS, iOS), com janela fixa e title bar customizada nas plataformas desktop. A **etapa 18** é a revisão final, cobrindo polimento de animações, fluxos completos (incluindo clipboard, cursor, teclado físico e title bar) e qualidade geral em todas as plataformas. Cada etapa cabe na janela de contexto de 172k tokens. Todas seguem o fluxo TDD obrigatório (Red → Green → Refactor).
 
 ---
 
@@ -456,7 +456,7 @@ O projeto está dividido em **18 etapas** sequenciais. As **etapas 1-4** cobrem 
 
 ## Etapa 12 — Logo customizado e identidade visual
 
-**Objetivo**: Substituir os ícones e splash padrão do Flutter por uma identidade visual própria do WevaCalc, em todas as plataformas já configuradas no projeto. O logo deve refletir o estilo premium/One UI do app (escuro, com acento dourado/amarelo).
+**Objetivo**: Substituir os ícones e splash padrão do Flutter por uma identidade visual própria do Decima, em todas as plataformas já configuradas no projeto. O logo deve refletir o estilo premium/One UI do app (escuro, com acento dourado/amarelo).
 
 **Escopo**:
 
@@ -489,7 +489,7 @@ O projeto está dividido em **18 etapas** sequenciais. As **etapas 1-4** cobrem 
 - Verificação manual: ícone do app aparece corretamente no launcher de cada plataforma
 - Verificação manual: splash screen aparece com a arte correta
 
-**Entregável**: WevaCalc com identidade visual própria (ícones e splash) em todas as plataformas, sem traços do template padrão do Flutter.
+**Entregável**: Decima com identidade visual própria (ícones e splash) em todas as plataformas, sem traços do template padrão do Flutter.
 
 ---
 
@@ -576,7 +576,7 @@ O projeto está dividido em **18 etapas** sequenciais. As **etapas 1-4** cobrem 
 - Verificação manual: app abre em janela de tamanho fixo, sem barra do sistema, draggable pela title bar customizada
 - `flutter build windows` — sucesso
 
-**Entregável**: WevaCalc rodando no Windows com janela fixa, title bar própria do app e infra reutilizável para Linux/macOS.
+**Entregável**: Decima rodando no Windows com janela fixa, title bar própria do app e infra reutilizável para Linux/macOS.
 
 ---
 
@@ -606,7 +606,7 @@ O projeto está dividido em **18 etapas** sequenciais. As **etapas 1-4** cobrem 
 - `flutter build linux` — sucesso
 - Regressão: testes existentes continuam verdes
 
-**Entregável**: WevaCalc rodando no Linux com a mesma experiência do Windows.
+**Entregável**: Decima rodando no Linux com a mesma experiência do Windows.
 
 ---
 
@@ -634,7 +634,7 @@ O projeto está dividido em **18 etapas** sequenciais. As **etapas 1-4** cobrem 
 - `flutter build macos` — sucesso
 - Regressão: testes existentes continuam verdes
 
-**Entregável**: WevaCalc rodando no macOS respeitando convenções da plataforma, com janela fixa.
+**Entregável**: Decima rodando no macOS respeitando convenções da plataforma, com janela fixa.
 
 ---
 
@@ -666,7 +666,7 @@ O projeto está dividido em **18 etapas** sequenciais. As **etapas 1-4** cobrem 
 - `flutter build ios --no-codesign` — sucesso (build sem assinatura para validar compilação)
 - Regressão: testes existentes continuam verdes
 
-**Entregável**: WevaCalc rodando no iOS com paridade visual e funcional em relação ao Android.
+**Entregável**: Decima rodando no iOS com paridade visual e funcional em relação ao Android.
 
 ---
 

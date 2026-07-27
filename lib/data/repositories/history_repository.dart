@@ -1,4 +1,4 @@
-import 'package:wevacalc/domain/entities/history_entry.dart';
+import 'package:decima/domain/entities/history_entry.dart';
 
 abstract class HistoryRepository {
   Future<List<HistoryEntry>> getAll();

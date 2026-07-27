@@ -1,8 +1,8 @@
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-import 'package:wevacalc/data/services/clipboard_service.dart';
-import 'package:wevacalc/data/services/clipboard_service_impl.dart';
+import 'package:decima/data/services/clipboard_service.dart';
+import 'package:decima/data/services/clipboard_service_impl.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();

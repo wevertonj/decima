@@ -1,7 +1,7 @@
 import 'dart:convert';
 
-import 'package:wevacalc/domain/entities/history_entry.dart';
-import 'package:wevacalc/domain/entities/history_line.dart';
+import 'package:decima/domain/entities/history_entry.dart';
+import 'package:decima/domain/entities/history_line.dart';
 
 class HistoryModel {
   final int? id;

@@ -1,7 +1,7 @@
-import 'package:wevacalc/data/database/app_database.dart';
-import 'package:wevacalc/data/models/history_model.dart';
-import 'package:wevacalc/data/repositories/history_repository.dart';
-import 'package:wevacalc/domain/entities/history_entry.dart';
+import 'package:decima/data/database/app_database.dart';
+import 'package:decima/data/models/history_model.dart';
+import 'package:decima/data/repositories/history_repository.dart';
+import 'package:decima/domain/entities/history_entry.dart';
 
 class HistoryRepositoryImpl implements HistoryRepository {
   static const String _tableName = 'history';
