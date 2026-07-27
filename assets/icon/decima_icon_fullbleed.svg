@@ -1,0 +1,25 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="1024" height="1024">
+  <!-- Export full-bleed OPACO do ícone (sem squircle — a plataforma aplica a
+       própria máscara): consumido por `flutter_launcher_icons.image_path`
+       (ícone iOS + launcher legado Android < 8) e pelos ícones web
+       (favicon, Icon-*, maskable). Glifo "1.0": barra ("1"), ponto decimal
+       (protagonista — Decima = decimal) e anel ("0") com furo VAZADO.
+       Gradiente diagonal hue-puro do seed `AppColors.defaultSeedColor`
+       (#005CEE). PNGs são derivados 1:1 — nunca editar PNG diretamente. -->
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#4D8DF3"/>
+      <stop offset="100%" stop-color="#005CEE"/>
+    </linearGradient>
+    <mask id="cuts">
+      <rect width="1024" height="1024" fill="#FFFFFF"/>
+      <circle cx="672" cy="512" r="80" fill="#000000"/>
+    </mask>
+  </defs>
+  <rect width="1024" height="1024" fill="url(#bg)"/>
+  <g mask="url(#cuts)">
+    <rect x="152" y="312" width="120" height="400" rx="60" ry="60" fill="#FFFFFF"/>
+    <circle cx="372" cy="652" r="60" fill="#FFFFFF"/>
+    <circle cx="672" cy="512" r="200" fill="#FFFFFF"/>
+  </g>
+</svg>

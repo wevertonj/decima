@@ -1,0 +1,12 @@
+{
+  "name": "decima-icon-tool",
+  "private": true,
+  "description": "Rasteriza os SVGs versionados do ícone/splash do Decima nos PNGs derivados (ver assets/icon/*.svg)",
+  "type": "module",
+  "scripts": {
+    "render": "node render.mjs"
+  },
+  "dependencies": {
+    "sharp": "^0.34.1"
+  }
+}

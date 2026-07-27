@@ -1,32 +1,41 @@
+# Ícone do launcher. Master vetor transparente em
+# `assets/icon/decima_icon_master.svg` (glifo "1.0" — barra + ponto decimal +
+# anel vazado); fontes de build em `assets/icon/` (full-bleed p/ iOS/legado +
+# camadas do adaptive icon). PNGs derivados via `tool/icon` (npm run render).
+# Regenerar com `dart run flutter_launcher_icons` — não editar os PNGs nativos.
 flutter_launcher_icons:
   # Android
   android: true
   # iOS
   ios: true
+  remove_alpha_ios: true
   # Web
   web:
     generate: true
-    image_path: assets/branding/logo.png
+    image_path: assets/icon/decima_icon_fullbleed.png
   # Windows
   windows:
     generate: true
-    image_path: assets/branding/logo.png
+    image_path: assets/icon/decima_icon_fullbleed.png
     icon_size: 48
   # Linux
   linux:
     generate: true
-    image_path: assets/branding/logo.png
+    image_path: assets/icon/decima_icon_fullbleed.png
   # macOS
   macos:
     generate: true
-    image_path: assets/branding/logo.png
+    image_path: assets/icon/decima_icon_fullbleed.png
 
-  # Imagem-fonte para Android e iOS (alta resolução, sem padding)
-  image_path: assets/branding/logo.png
+  # Imagem-fonte para Android e iOS (alta resolução, opaca, sem squircle —
+  # a plataforma aplica a própria máscara)
+  image_path: assets/icon/decima_icon_fullbleed.png
 
-  # Android — ícone adaptativo (Android 8+)
-  adaptive_icon_background: '#181818'
-  adaptive_icon_foreground: assets/branding/logo.png
+  # Adaptive icon (Android 8+): fundo com o gradiente e glifo "1.0" na frente
+  # (75%, dentro da safe zone), preservando a identidade sob qualquer máscara
+  adaptive_icon_background: assets/icon/decima_icon_background.png
+  adaptive_icon_foreground: assets/icon/decima_icon_foreground.png
+  # Themed icon (Android 13+): o sistema tinge a silhueta do glifo
+  adaptive_icon_monochrome: assets/icon/decima_icon_foreground.png
 
-  # Remove os cantos arredondados do Android legacy (a logo já tem)
   min_sdk_android: 21

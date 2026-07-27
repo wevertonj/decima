@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="1024" height="1024">
+  <!-- Camada de fundo do adaptive icon (Android). Gradiente diagonal hue-puro
+       do seed blue — tint #4D8DF3 → token `AppColors.defaultSeedColor`
+       (#005CEE). -->
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#4D8DF3"/>
+      <stop offset="100%" stop-color="#005CEE"/>
+    </linearGradient>
+  </defs>
+  <rect x="0" y="0" width="1024" height="1024" fill="url(#bg)"/>
+</svg>

@@ -49,3 +49,6 @@ app.*.map.json
 /android/app/release
 
 /.github/
+
+# Node (tool/icon — pipeline de rasterização do ícone)
+node_modules/

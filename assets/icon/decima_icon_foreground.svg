@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="1024" height="1024">
+  <!-- Camada de frente do adaptive icon (Android), monochrome (Android 13+).
+       Glifo "1.0" branco `flat` com o furo do anel VAZADO (transparente: quem
+       aparece nele é a camada de fundo; no themed icon o sistema tinge só a
+       silhueta). Mesma geometria do full-bleed, escalada a 75% — extremos do
+       glifo ≤ raio 315/1024 (30,8% — safe zone estrita do círculo de 66dp do
+       adaptive icon). -->
+  <g transform="translate(128 128) scale(0.75)">
+    <mask id="cuts">
+      <rect x="-171" y="-171" width="1366" height="1366" fill="#FFFFFF"/>
+      <circle cx="672" cy="512" r="80" fill="#000000"/>
+    </mask>
+    <g mask="url(#cuts)">
+      <rect x="152" y="312" width="120" height="400" rx="60" ry="60" fill="#FFFFFF"/>
+      <circle cx="372" cy="652" r="60" fill="#FFFFFF"/>
+      <circle cx="672" cy="512" r="200" fill="#FFFFFF"/>
+    </g>
+  </g>
+</svg>
