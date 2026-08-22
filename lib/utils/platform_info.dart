@@ -25,4 +25,14 @@ class PlatformInfo {
         return false;
     }
   }
+
+  /// True quando rodando em Linux (GTK).
+  ///
+  /// Existe para desviar de APIs do `window_manager` cujo comportamento no
+  /// GTK difere do Windows/macOS — ver `initDesktopWindow`.
+  static bool get isLinux {
+    if (kIsWeb) return false;
+
+    return defaultTargetPlatform == TargetPlatform.linux;
+  }
 }

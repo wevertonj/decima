@@ -9,13 +9,16 @@ import 'package:decima/data/database/app_database.dart';
 import 'package:decima/data/repositories/settings_repository.dart';
 import 'package:decima/config/theme/app_colors.dart';
 import 'package:decima/config/theme/app_theme.dart';
+import 'package:decima/domain/entities/window_position.dart';
 import 'package:decima/domain/enums/theme_mode_option.dart';
 import 'package:decima/ui/calculator/calculator_view_model.dart';
 import 'package:decima/ui/core/desktop/desktop_window_initializer.dart';
 import 'package:decima/ui/core/desktop/window_close_handler.dart';
+import 'package:decima/ui/core/desktop/window_position.dart';
 import 'package:decima/ui/core/widgets/desktop_shell.dart';
 import 'package:decima/ui/settings/settings_view_model.dart';
 import 'package:decima/utils/l10n/app_localizations.dart';
+import 'package:decima/utils/platform_info.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -87,8 +90,20 @@ class _DecimaAppState extends State<DecimaApp> with WidgetsBindingObserver {
 
   /// Gravada no fechamento (e não a cada `onWindowMoved`) para poupar I/O —
   /// ver "Memória da posição da janela" em `docs/fundacao/arquitetura.md`.
-  Future<void> _saveWindowPosition(double x, double y) =>
-      _settingsRepository.setWindowPosition(x, y);
+  ///
+  /// Posição que o gerenciador de janelas não sabe informar é descartada:
+  /// gravá-la reabriria a janela num canto em vez de centralizada.
+  Future<void> _saveWindowPosition(double x, double y) async {
+    final position = WindowPosition(x: x, y: y);
+    if (!isWindowPositionStorable(
+      position: position,
+      isLinux: PlatformInfo.isLinux,
+    )) {
+      return;
+    }
+
+    await _settingsRepository.setWindowPosition(x, y);
+  }
 
   Future<AppExitResponse> _onExitRequested() async {
     await _flushSession();

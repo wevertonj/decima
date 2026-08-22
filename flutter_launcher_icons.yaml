@@ -19,10 +19,10 @@ flutter_launcher_icons:
   # sobrescreveria o .ico com o full-bleed quadrado de 48 px.
   windows:
     generate: false
-  # Linux
-  linux:
-    generate: true
-    image_path: assets/icon/decima_icon_fullbleed.png
+  # Linux: NÃO existe suporte no flutter_launcher_icons (a chave `linux` era
+  # ignorada silenciosamente). O ícone do Linux vem do tema hicolor, gerado
+  # pelo `tool/icon` a partir do master e instalado junto do `.desktop` —
+  # ver `linux/packaging/` e `docs/fundacao/empacotamento-linux.md`.
   # macOS
   macos:
     generate: true

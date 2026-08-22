@@ -1,0 +1,20 @@
+[Desktop Entry]
+Type=Application
+Version=1.5
+Name=Decima
+GenericName=Calculator
+GenericName[pt_BR]=Calculadora
+Comment=Add2 calculator — two decimal places typed automatically
+Comment[pt_BR]=Calculadora Add2 — duas casas decimais digitadas automaticamente
+# Substituído pelo caminho absoluto do binário no bundle por
+# `install-desktop-entry.sh`; AppImage/Flatpak/Snap resolvem via PATH.
+Exec=decima
+Icon=com.wevasoft.decima
+Terminal=false
+Categories=Utility;Calculator;
+Keywords=calculator;calculadora;add2;math;
+# Precisa bater com o WM_CLASS da janela (definido por g_set_prgname com o
+# APPLICATION_ID em linux/CMakeLists.txt) — é o que liga a janela a esta
+# entrada, e portanto ao ícone e ao nome mostrados no dock e no alt-tab.
+StartupWMClass=com.wevasoft.decima
+StartupNotify=true

@@ -7,6 +7,7 @@ import 'package:decima/data/repositories/settings_repository.dart';
 import 'package:decima/domain/entities/window_position.dart';
 import 'package:decima/ui/core/desktop/desktop_window_config.dart';
 import 'package:decima/ui/core/desktop/window_position.dart';
+import 'package:decima/utils/platform_info.dart';
 
 /// Inicializa a janela desktop: tamanho fixo, sem a barra de título do
 /// sistema (substituída pela AppTitleBar customizada) e na última posição
@@ -32,7 +33,14 @@ Future<void> initDesktopWindow({
 
   await windowManager.waitUntilReadyToShow(options, () async {
     await windowManager.setResizable(false);
-    await windowManager.setMaximizable(false);
+    // No GTK, `setMaximizable(false)` é implementado como
+    // `GDK_WINDOW_TYPE_HINT_DIALOG` — a janela vira um diálogo e some da barra
+    // de tarefas e do alt-tab, além de deixar de ser minimizável em vários
+    // WMs. Lá o `setResizable(false)` já impede maximizar, então a chamada só
+    // traria o efeito colateral.
+    if (!PlatformInfo.isLinux) {
+      await windowManager.setMaximizable(false);
+    }
     // Antes do show(): reposicionar depois faria a janela piscar no centro.
     if (position != null) {
       await windowManager.setPosition(Offset(position.x, position.y));

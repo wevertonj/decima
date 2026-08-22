@@ -138,12 +138,13 @@ Compartilhada entre Windows, Linux e macOS. Fica em `lib/ui/core/desktop/` (lóg
 | Artefato | Responsabilidade |
 |----------|------------------|
 | `DesktopWindowConfig` | Constantes da janela: tamanho fixo (`360 × 720`), título nativo, altura da title bar |
-| `initDesktopWindow()` | Chamado antes de `runApp` em desktop: `WindowOptions` com `TitleBarStyle.hidden`, `setResizable(false)`, `setMaximizable(false)`, restauração da última posição |
+| `initDesktopWindow()` | Chamado antes de `runApp` em desktop: `WindowOptions` com `TitleBarStyle.hidden`, `setResizable(false)`, `setMaximizable(false)` (exceto Linux), restauração da última posição |
 | `AppTitleBar` | Title bar customizada: `DragToMoveArea` + logo/nome à esquerda, minimizar/fechar à direita |
 | `DesktopShell` | Envolve o app com a `AppTitleBar` **apenas** em desktop; em mobile devolve o `child` intacto |
 | `WindowCloseHandler` | Intercepta o fechamento da janela para gravar a sessão e a posição antes de o processo terminar |
 | `isWindowPositionReachable()` | Função pura: valida a posição salva contra os monitores atuais (`window_position.dart`) |
-| `PlatformInfo.isDesktop` | Detecção de plataforma via `defaultTargetPlatform` (e não `Platform`), sobrescritível nos testes |
+| `isWindowPositionStorable()` | Função pura: decide se a posição lida do plugin merece ser gravada (`window_position.dart`) |
+| `PlatformInfo.isDesktop` / `.isLinux` | Detecção de plataforma via `defaultTargetPlatform` (e não `Platform`), sobrescritível nos testes |
 
 ### Fechamento da janela
 
@@ -166,7 +167,7 @@ A janela reabre onde o usuário a deixou. O caminho completo:
 
 | Etapa | Onde | O quê |
 |-------|------|-------|
-| Gravar | `WindowCloseHandler` → `onSavePosition` | `windowManager.getPosition()` → `SettingsRepository.setWindowPosition(x, y)` |
+| Gravar | `WindowCloseHandler` → `onSavePosition` | `windowManager.getPosition()` → `isWindowPositionStorable()` → `SettingsRepository.setWindowPosition(x, y)` |
 | Ler | `initDesktopWindow()` | `getWindowPosition()` antes de montar as `WindowOptions` |
 | Validar | `isWindowPositionReachable()` | Posição salva × `screenRetriever.getAllDisplays()` |
 | Aplicar | `waitUntilReadyToShow` | `center: position == null`; `setPosition` **antes** do `show()` |
@@ -177,6 +178,8 @@ A janela reabre onde o usuário a deixou. O caminho completo:
 | `window_y` | `double` | Coordenada Y do canto superior esquerdo, em pixels lógicos |
 
 **Regra de alcançabilidade** — o critério é a **title bar**, que é por onde a janela se move. Somando as interseções da faixa `windowSize.width × titleBarHeight` com a área útil de cada monitor, é preciso alcançar `minGrabWidth × titleBarHeight` (80 × 40 px). Somar entre displays mantém válida a janela repartida entre dois monitores adjacentes. Caem no centro: posição ausente, `NaN`/infinito, lista de displays vazia, monitor desconectado, e mudança de resolução ou de DPI que tenha deixado a title bar fora de alcance.
+
+**Regra de gravação** — `isWindowPositionStorable()` descarta `NaN`/infinito e, **em Linux**, a origem exata `(0,0)`: no Wayland o protocolo não expõe coordenadas globais e `getPosition()` sempre devolve a origem, então gravá-la reabriria a janela encostada no canto em vez de centralizada. O custo do falso negativo em X11 (janela realmente no canto) é abrir centralizada da próxima vez. Detalhes em [`empacotamento-linux.md`](empacotamento-linux.md).
 
 `WindowPosition` (`domain/entities/`) trafega `double` puro em vez de `Offset` — repositórios não importam Flutter. A conversão para `Offset` acontece só na fronteira com o `window_manager`.
 
@@ -203,3 +206,4 @@ A janela reabre onde o usuário a deixou. O caminho completo:
 | Posição gravada só no fechamento | Encerramento anormal (crash, corte de energia) perde a última posição | Aceito — menos I/O que salvar a cada `onWindowMoved`; a alternativa com debounce fica documentada aqui, sem implementar |
 | Plugin de janela não roda em `flutter test` | Method channels indisponíveis tornam o handler intestável | `WindowCloseBridge` abstrai o plugin; a regra de posição é função pura, testada sem plugin |
 | `windowManager.getPosition()` devolve pixels **lógicos** | Misturar com coordenadas físicas erra a posição em telas com DPI ≠ 100% | Gravar e restaurar sempre pelo `window_manager`, nunca por API nativa direta |
+| A mesma chamada do `window_manager` tem semântica diferente por plataforma | `setMaximizable(false)` vira `_NET_WM_WINDOW_TYPE_DIALOG` no GTK; `getPosition()` devolve `(0,0)` no Wayland | Desvios concentrados em `PlatformInfo.isLinux` e em funções puras testáveis — ver [`empacotamento-linux.md`](empacotamento-linux.md) |
