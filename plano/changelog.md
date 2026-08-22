@@ -1286,3 +1286,31 @@ O elo com o sintoma original: chamado via interop do WSL, o diálogo de erro nã
 
 Processo Windows lançado via interop que "trava" consumindo CPU: antes de assumir trabalho pesado, checar **I/O do processo** (`Win32_Process.ReadTransferCount`) e **`MainWindowTitle`** — um diálogo modal invisível parece exatamente um loop CPU-bound. O texto do diálogo é legível via UI Automation sem interação.
 
+## [Melhoria] Etapa 14.1 — Ícone Windows com cantos arredondados
+
+> Pedido do usuário após validar o instalador: o ícone aparecia **quadrado** no instalador, no Menu Iniciar e na barra de tarefas.
+
+O Windows (ao contrário do Android adaptativo/iOS) **não aplica máscara** ao ícone — os cantos arredondados precisam estar no próprio `.ico`, com transparência. O `app_icon.ico` anterior era um único frame de **48 px quadrado**, gerado pelo `flutter_launcher_icons` a partir do full-bleed (`icon_size: 48`).
+
+### Mudanças
+
+- `tool/icon/render.mjs` passa a gerar o `windows/runner/resources/app_icon.ico` no próprio pipeline: o **master** (`decima_icon_master.svg`, squircle de raio 22,4% com fundo transparente) é rasterizado direto do vetor em **16/20/24/32/40/48/64/256 px** e montado num `.ico` multi-tamanho via `png-to-ico` (nova dependência do `tool/icon`; entradas BMP — máxima compatibilidade com o shell)
+- `flutter_launcher_icons.yaml`: `windows.generate: false` com comentário-guarda — reativar sobrescreveria o `.ico` com o full-bleed quadrado
+- Nenhum SVG novo: o master já era o desenho arredondado da marca; agora Windows usa a mesma identidade do runtime
+
+### Alcance
+
+| Superfície | Origem do ícone |
+|------------|-----------------|
+| Menu Iniciar, barra de tarefas, alt-tab | `.ico` embutido no `decima.exe` via `Runner.rc` (exige rebuild do exe) |
+| Ícone do próprio `setup.exe` | `SetupIconFile` no `decima.iss` (mesmo `.ico`) |
+| "Aplicativos instalados" / desinstalação | `UninstallDisplayIcon={app}\decima.exe` |
+
+### Gotcha — cache de ícones do Windows (validado na prática)
+
+Após atualizar por cima, cada superfície tem cache próprio e o refresh não é uniforme:
+
+| Superfície | Cache | O que resolveu |
+|------------|-------|----------------|
+| Menu Iniciar | Cache do StartMenuExperienceHost | `ie4uinit.exe -show` bastou |
+| Barra de tarefas | `%LOCALAPPDATA%\Microsoft\Windows\Explorer\iconcache_*.db` (um por resolução) | `ie4uinit` **não** basta: parar o Explorer → apagar os `iconcache_*.db` → reiniciar o Explorer (a janela do app em execução não é afetada; pastas abertas precisam ser reabertas) |

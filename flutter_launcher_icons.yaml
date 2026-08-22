@@ -13,11 +13,12 @@ flutter_launcher_icons:
   web:
     generate: true
     image_path: assets/icon/decima_icon_fullbleed.png
-  # Windows
+  # Windows: NÃO gerar aqui — o shell do Windows não aplica máscara, então o
+  # `app_icon.ico` (multi-tamanho, cantos arredondados do master squircle) é
+  # gerado pelo próprio pipeline em `tool/icon/render.mjs`. Reativar isto
+  # sobrescreveria o .ico com o full-bleed quadrado de 48 px.
   windows:
-    generate: true
-    image_path: assets/icon/decima_icon_fullbleed.png
-    icon_size: 48
+    generate: false
   # Linux
   linux:
     generate: true

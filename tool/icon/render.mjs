@@ -15,6 +15,8 @@
 // original): a splash (flutter_native_splash) trata o mesmo arquivo como 4x —
 // reduzir o base mudaria o tamanho visual da splash.
 import sharp from 'sharp';
+import pngToIco from 'png-to-ico';
+import { writeFile } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
 import path from 'node:path';
 
@@ -41,5 +43,21 @@ for (const [svg, size, out] of JOBS) {
   await sharp(svg, { density: 300 }).resize(size, size).png().toFile(out);
   console.log(`${path.relative(ROOT, out)} (${size}×${size})`);
 }
+
+// Ícone Windows (app_icon.ico): o Windows NÃO aplica máscara própria — os
+// cantos arredondados precisam estar no próprio .ico (com transparência).
+// Por isso a fonte aqui é o MASTER (squircle 22,4%), não o full-bleed, e cada
+// tamanho é rasterizado direto do vetor. Entradas armazenadas como BMP pelo
+// png-to-ico — máxima compatibilidade com o shell (taskbar, Menu Iniciar,
+// alt-tab). Consumido pelo Runner.rc (embutido no exe) e pelo SetupIconFile
+// do instalador. `flutter_launcher_icons` está com `windows.generate: false`
+// para não sobrescrever este arquivo com o full-bleed quadrado de 48 px.
+const ICO_SIZES = [16, 20, 24, 32, 40, 48, 64, 256];
+const ICO_OUT = p('windows', 'runner', 'resources', 'app_icon.ico');
+const icoPngs = await Promise.all(ICO_SIZES.map((size) =>
+  sharp(p('assets/icon/decima_icon_master.svg'), { density: 300 })
+    .resize(size, size).png().toBuffer()));
+await writeFile(ICO_OUT, await pngToIco(icoPngs));
+console.log(`${path.relative(ROOT, ICO_OUT)} (${ICO_SIZES.join('/')})`);
 console.log('\nPNGs derivados OK. Agora rode na raiz:');
 console.log('  dart run flutter_launcher_icons && dart run flutter_native_splash:create');
