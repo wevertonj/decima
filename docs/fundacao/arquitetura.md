@@ -41,6 +41,7 @@ lib/
 │   │   └── widgets/
 │   └── core/                  # Widgets e utilitários globais da UI
 │       ├── theme/
+│       ├── desktop/           # Infra de janela (config, init, close handler, posição)
 │       └── widgets/
 │
 ├── utils/                     # Utilitários
@@ -129,3 +130,76 @@ Navegação simples entre 3 telas principais:
 - **Settings** — Configurações (tema, idioma)
 
 A configuração de rotas fica centralizada em `lib/config/routes.dart`.
+
+## Infra de Desktop
+
+Compartilhada entre Windows, Linux e macOS. Fica em `lib/ui/core/desktop/` (lógica de janela) e `lib/ui/core/widgets/` (widgets do shell).
+
+| Artefato | Responsabilidade |
+|----------|------------------|
+| `DesktopWindowConfig` | Constantes da janela: tamanho fixo (`360 × 720`), título nativo, altura da title bar |
+| `initDesktopWindow()` | Chamado antes de `runApp` em desktop: `WindowOptions` com `TitleBarStyle.hidden`, `setResizable(false)`, `setMaximizable(false)`, restauração da última posição |
+| `AppTitleBar` | Title bar customizada: `DragToMoveArea` + logo/nome à esquerda, minimizar/fechar à direita |
+| `DesktopShell` | Envolve o app com a `AppTitleBar` **apenas** em desktop; em mobile devolve o `child` intacto |
+| `WindowCloseHandler` | Intercepta o fechamento da janela para gravar a sessão e a posição antes de o processo terminar |
+| `isWindowPositionReachable()` | Função pura: valida a posição salva contra os monitores atuais (`window_position.dart`) |
+| `PlatformInfo.isDesktop` | Detecção de plataforma via `defaultTargetPlatform` (e não `Platform`), sobrescritível nos testes |
+
+### Fechamento da janela
+
+`WindowCloseHandler` liga `setPreventClose(true)` e escuta `WindowListener.onWindowClose`. O pedido de fechamento — `X` da title bar, `Alt+F4` ou "Fechar janela" da barra de tarefas — vira: `onFlush()` (hoje `CalculatorViewModel.flushSession()`) → `windowManager.destroy()`.
+
+| Garantia | Como |
+|----------|------|
+| A janela sempre fecha | `destroy()` fica no `finally`; exceção da gravação é engolida |
+| Gravação travada não prende o app | `onFlush().timeout(flushTimeout)` — 3 s por padrão |
+| Testável sem method channel | Toda chamada ao plugin passa por `WindowCloseBridge`; os testes injetam uma ponte falsa |
+| Inerte em mobile | `initState` retorna antes de registrar qualquer coisa quando `!PlatformInfo.isDesktop` |
+
+O handler é montado no `MaterialApp.builder` do `_DecimaAppState`, acima do `DesktopShell`. Em mobile o papel equivalente é do `AppLifecycleListener` (`onHide` / `onPause` / `onExitRequested`) registrado no mesmo state.
+
+As duas gravações do fechamento — sessão e posição — rodam em `Future.wait` (sem `eagerError`) sob o mesmo `flushTimeout`: uma travada ou com erro não impede a outra, e nenhuma impede o `destroy()`.
+
+### Memória da posição da janela
+
+A janela reabre onde o usuário a deixou. O caminho completo:
+
+| Etapa | Onde | O quê |
+|-------|------|-------|
+| Gravar | `WindowCloseHandler` → `onSavePosition` | `windowManager.getPosition()` → `SettingsRepository.setWindowPosition(x, y)` |
+| Ler | `initDesktopWindow()` | `getWindowPosition()` antes de montar as `WindowOptions` |
+| Validar | `isWindowPositionReachable()` | Posição salva × `screenRetriever.getAllDisplays()` |
+| Aplicar | `waitUntilReadyToShow` | `center: position == null`; `setPosition` **antes** do `show()` |
+
+| Chave em `SharedPreferences` | Tipo | Conteúdo |
+|------------------------------|------|----------|
+| `window_x` | `double` | Coordenada X do canto superior esquerdo, em pixels lógicos |
+| `window_y` | `double` | Coordenada Y do canto superior esquerdo, em pixels lógicos |
+
+**Regra de alcançabilidade** — o critério é a **title bar**, que é por onde a janela se move. Somando as interseções da faixa `windowSize.width × titleBarHeight` com a área útil de cada monitor, é preciso alcançar `minGrabWidth × titleBarHeight` (80 × 40 px). Somar entre displays mantém válida a janela repartida entre dois monitores adjacentes. Caem no centro: posição ausente, `NaN`/infinito, lista de displays vazia, monitor desconectado, e mudança de resolução ou de DPI que tenha deixado a title bar fora de alcance.
+
+`WindowPosition` (`domain/entities/`) trafega `double` puro em vez de `Offset` — repositórios não importam Flutter. A conversão para `Offset` acontece só na fronteira com o `window_manager`.
+
+## Segurança e Cibersegurança
+
+| Vetor | Risco no contexto | Regra aplicada |
+|-------|-------------------|----------------|
+| Entrada não confiável (OWASP A03 — Injection) | `shared_preferences.json` e `decima.db` são arquivos editáveis pelo usuário ou por outro processo do mesmo perfil | Todo valor lido é validado ou tem default: `getWindowPosition()` exige as duas chaves; `isWindowPositionReachable()` descarta `NaN`/infinito e coordenadas fora dos monitores; enums caem no `orElse` |
+| Estado inutilizável (DoS local) | Uma posição corrompida abriria a janela fora da tela — o app existiria sem forma de ser usado | Fallback para `center: true`; a title bar precisa de área alcançável em algum display |
+| App impossível de fechar | `setPreventClose(true)` sem `destroy()` garantido prende o processo | `destroy()` no `finally`, gravações sob `flushTimeout` |
+| Armazenamento local (OWASP M9 — Insecure Data Storage) | Histórico e preferências podem conter dados financeiros | Persistência restrita ao perfil do usuário (`%APPDATA%\Wevasoft\Decima` no Windows, diretório privado do app em mobile); sem criptografia por decisão de escopo — nenhum segredo é gravado |
+| Exposição em log | Expressões, resultados e caminhos de arquivo | Nenhum `print`/log de dado do usuário em runtime |
+| Menor privilégio | — | App 100% offline: sem permissão de rede, sem telemetria, sem serviço externo; a única dependência de plataforma é janela/preferências/SQLite |
+
+## Desenvolvimento & Gotchas
+
+| Gotcha | Impacto | Ação |
+|--------|---------|------|
+| `initDesktopWindow()` depende do `SettingsRepository` | Ler a posição salva antes de `setupDependencies()` explodiria no `getIt` | Em `main()`, `setupDependencies()` vem **antes** do branch de plataforma; o repositório é injetado por parâmetro |
+| `setPosition` depois do `show()` | A janela aparece no centro e "pula" para a posição salva | Reposicionar dentro do `waitUntilReadyToShow`, antes do `show()` |
+| `center: true` com posição salva | O `WindowOptions.center` sobrescreve o `setPosition` | `center: position == null` |
+| `screen_retriever` era dependência transitiva | Importar `Display` direto de um pacote não declarado quebra em `pub upgrade` | Declarado em `dependencies` no `pubspec.yaml` |
+| `Display.visiblePosition`/`visibleSize` são nulos em algumas plataformas | Validar contra `null` descartaria posições válidas | Fallback para `Offset.zero` + `display.size` |
+| Posição gravada só no fechamento | Encerramento anormal (crash, corte de energia) perde a última posição | Aceito — menos I/O que salvar a cada `onWindowMoved`; a alternativa com debounce fica documentada aqui, sem implementar |
+| Plugin de janela não roda em `flutter test` | Method channels indisponíveis tornam o handler intestável | `WindowCloseBridge` abstrai o plugin; a regra de posição é função pura, testada sem plugin |
+| `windowManager.getPosition()` devolve pixels **lógicos** | Misturar com coordenadas físicas erra a posição em telas com DPI ≠ 100% | Gravar e restaurar sempre pelo `window_manager`, nunca por API nativa direta |

@@ -617,6 +617,41 @@ O projeto está dividido em **18 etapas** sequenciais. As **etapas 1-4** cobrem 
 
 ---
 
+## Etapa 14.2 — Persistência ao fechar e memória da janela
+
+**Objetivo**: Corrigir dois atritos identificados no **uso diário do Decima instalado no Windows**: (1) fechar pelo `X` descarta o cálculo em andamento — hoje só `=` e `C` persistem no histórico; (2) a janela sempre reabre centralizada, ignorando onde o usuário a deixou.
+
+**Escopo**:
+
+- **A — Flush da sessão ao fechar** (multiplataforma):
+  - Estado atual: `CalculatorViewModel._saveOrUpdateSession()` é chamado apenas em `equals()`, `clear()` e `loadSession()`, e é **fire-and-forget** (o `Future` do repositório não é aguardado). Uma expressão digitada e nunca avaliada não existe em `_sessionLines` — não há o que gravar; e mesmo o `=` recém-pressionado pode ter a escrita interrompida pelo encerramento do processo
+  - Novo `Future<void> flushSession()` público no `CalculatorViewModel`:
+    - Avalia a expressão pendente quando ela é avaliável (contém ao menos um operador), auto-fechando parênteses — mesmo caminho do `equals()`, extraído para um helper compartilhado
+    - Número digitado sem operador **não** vira entrada de histórico (não há cálculo) — regra documentada
+    - Aguarda de fato a escrita: `_saveOrUpdateSession()` passa a devolver `Future<void>` e o `add` em voo (`_addInFlight`) é aguardado antes de retornar
+    - Idempotente — chamadas repetidas não duplicam linhas nem criam sessões novas
+  - **Desktop**: interceptar o fechamento com `windowManager.setPreventClose(true)` + `WindowListener.onWindowClose` → `flushSession()` → `windowManager.destroy()`. Cobre o `X` da `AppTitleBar`, `Alt+F4` e "Fechar janela" pela barra de tarefas
+  - **Mobile**: `AppLifecycleListener` (`onExitRequested` / `onHide` / `onPause`) no shell do app — o Android encerra o processo sem garantir `detached`, então o flush precisa acontecer já no `paused`/`hidden`
+  - Risco a mitigar: `setPreventClose(true)` sem um `destroy()` garantido deixa o app impossível de fechar — o `destroy()` fica em `finally`, com timeout no flush
+- **B — Memória da posição da janela** (desktop):
+  - `SettingsRepository` ganha `getWindowPosition()` / `setWindowPosition(x, y)` sobre `SharedPreferences` (chaves `window_x` / `window_y`), trafegando `double` — nada de `Offset`, para manter repositórios e ViewModels livres de import do Flutter
+  - `initDesktopWindow()` lê a posição salva: `center: true` só quando não há posição válida; caso contrário `setPosition` **antes** do `show()`, para não piscar no centro
+  - Validação contra os monitores atuais via `screen_retriever` (já presente como dependência transitiva do `window_manager`; declarar em `dependencies` se importado direto): posição fora de qualquer display — monitor desconectado, mudança de resolução ou de DPI — cai no centro. A regra fica em uma **função pura** testável sem plugin
+  - Gravação no fechamento, junto do flush da sessão (menos I/O que salvar a cada `onWindowMoved`); `onWindowMoved` com debounce fica documentado como alternativa caso encerramentos anormais se mostrem comuns
+- **Fora de escopo**: memória de tamanho da janela (o tamanho é fixo por design) e memória de qual monitor por índice (a validação por coordenada já resolve o caso comum)
+
+**Testes**:
+
+- Unit: `flushSession()` com expressão pendente avaliável, com número solto, com sessão já persistida (idempotência) e com escrita em voo
+- Unit: `SettingsRepository` — salvar/ler posição, ausência devolve `null`
+- Unit: função pura de validação de posição contra uma lista de displays (dentro, fora, parcialmente visível)
+- Widget: handler de fechamento chama o flush antes de destruir a janela
+- Verificação manual: digitar sem `=` → fechar pelo `X` → reabrir e conferir o histórico; mover a janela → fechar → reabrir no mesmo lugar; desconectar o monitor secundário → volta ao centro
+
+**Entregável**: nenhum cálculo perdido ao fechar o app, em qualquer plataforma, e janela desktop que reabre onde o usuário a deixou.
+
+---
+
 ## Etapa 15 — Suporte a Linux
 
 **Objetivo**: Habilitar o build para Linux reutilizando a infra de desktop da Etapa 14. Validar a title bar customizada e o tamanho fixo no ambiente Linux (GTK).
@@ -807,6 +842,9 @@ Etapa 14 (Windows + infra desktop)
 Etapa 14.1 (Instalador Windows .exe)
     │
     ▼
+Etapa 14.2 (Persistência ao fechar + posição da janela)
+    │
+    ▼
 Etapa 15 (Linux)
     │
     ▼
@@ -827,7 +865,7 @@ Etapa 18 (Polimento e Revisão Final)
 | **Interface Visual e Comportamento** | 5, 6, 7, 8, 9 |
 | **Funcionalidades extras** | 10, 11 |
 | **Identidade visual e entrada** | 12, 13 |
-| **Multi-plataforma** | 14, 14.1, 15, 16, 17 |
+| **Multi-plataforma** | 14, 14.1, 14.2, 15, 16, 17 |
 | **Polimento Final** | 18 |
 
 ## Estimativa de Complexidade por Etapa
@@ -850,6 +888,7 @@ Etapa 18 (Polimento e Revisão Final)
 | 13 — Teclado físico | Média | ~1-2 | ~10 |
 | 14 — Windows + infra desktop | Média-Alta | ~4-5 (DesktopShell, AppTitleBar, config) | ~4 |
 | 14.1 — Instalador Windows | Baixa-Média | ~4 (iss, build script, docs) | manual |
+| 14.2 — Persistência ao fechar + posição da janela | Média | ~2-3 (close handler, posição) | ~12 |
 | 15 — Linux | Baixa | ~0 (só nativo) | ~0 |
 | 16 — macOS | Baixa-Média | ~0-1 (ajuste do AppTitleBar) | ~1 |
 | 17 — iOS | Baixa | ~0 (só nativo) | ~0 |

@@ -604,6 +604,97 @@ Do checklist original:
 
 ---
 
+## Etapa 14.2 — Persistência ao fechar e memória da janela
+
+> Origem: uso diário do Decima instalado no Windows. (1) Fechar pelo `X` descarta o cálculo em andamento — só `=` e `C` persistem hoje. (2) A janela sempre reabre centralizada.
+
+### A — Flush da sessão ao fechar (multiplataforma)
+
+#### Testes PRIMEIRO (TDD Red)
+
+- [x] Atualizar `test/unit/ui/calculator/calculator_view_model_test.dart`
+  - Cenário: `flushSession()` com expressão pendente avaliável (`10 + 5` sem `=`) grava a linha no histórico
+  - Cenário: `flushSession()` com parênteses abertos auto-fecha antes de avaliar
+  - Cenário: `flushSession()` com número solto sem operador **não** grava nada
+  - Cenário: `flushSession()` com sessão vazia é no-op
+  - Cenário: `flushSession()` após `=` (nada novo) é no-op — não duplica linha nem cria sessão nova
+  - Cenário: `flushSession()` chamado duas vezes seguidas é idempotente
+  - Cenário: `flushSession()` aguarda o `add` em voo (`_addInFlight`) — o `Future` só completa depois da escrita
+  - Cenário: `flushSession()` em modo de edição (`_editText`) usa o mesmo caminho do `equals()`
+- [x] Criar `test/widget/core/desktop/window_close_handler_test.dart`
+  - Cenário: pedido de fechamento chama `flushSession()` **antes** de destruir a janela
+  - Cenário: flush que lança exceção ainda destrói a janela (app nunca fica impossível de fechar)
+  - Cenário: timeout no flush não bloqueia o fechamento
+  - Cenário: em mobile o handler não registra `WindowListener`
+
+#### Implementação (TDD Green)
+
+- [x] Extrair de `equals()` um helper compartilhado que avalia + formata + adiciona a linha à sessão
+- [x] Tornar `_saveOrUpdateSession()` `Future<void>` e aguardar o `add` em voo (resolve a corrida do `_addInFlight`)
+- [x] Implementar `Future<void> flushSession()` no `CalculatorViewModel`
+  - Avalia a expressão pendente quando há ao menos um operador; auto-fecha parênteses
+  - Número digitado sem operador não vira entrada (regra documentada)
+  - Aguarda a escrita concluir; idempotente
+- [x] Criar `lib/ui/core/desktop/window_close_handler.dart`
+  - `windowManager.setPreventClose(true)` + `WindowListener.onWindowClose` → `flushSession()` → `windowManager.destroy()`
+  - `destroy()` em `finally` + timeout no flush — garantia de que a janela sempre fecha
+  - Registrar/desregistrar o listener no ciclo de vida do widget
+- [x] Integrar o handler ao `_DecimaAppState` (`MaterialApp.builder`, acima do `DesktopShell`), ativo apenas quando `DesktopShell.isDesktop`
+- [x] Adicionar `AppLifecycleListener` no `_DecimaAppState` para mobile
+  - Flush em `onHide`/`onPause` (o Android encerra o processo sem garantir `detached`) e em `onExitRequested`
+- [x] Verificar que o flush cobre `X` da `AppTitleBar`, `Alt+F4` e "Fechar janela" pela barra de tarefas — os três chegam como `onWindowClose` com `setPreventClose(true)`; validação manual pendente no Windows
+
+### B — Memória da posição da janela (desktop)
+
+#### Testes PRIMEIRO (TDD Red)
+
+- [x] Atualizar `test/unit/data/repositories/settings_repository_test.dart`
+  - Cenários: salvar e ler a posição, ausência devolve `null`, valor parcial (só `x`) devolve `null`
+- [x] Criar `test/unit/ui/core/desktop/window_position_test.dart`
+  - Cenários: posição dentro de um display, fora de todos, parcialmente visível (title bar alcançável ou não), lista de displays vazia
+- [x] Extra: cenários novos em `window_close_handler_test.dart` (posição gravada antes do `destroy`, erro em cada gravação, ausência de callback)
+
+#### Implementação (TDD Green)
+
+- [x] Adicionar `getWindowPosition()` / `setWindowPosition(double x, double y)` à interface `SettingsRepository`
+- [x] Implementar em `SettingsRepositoryImpl` com chaves `window_x` / `window_y` — trafegar `double`, **sem** `Offset` (repositórios não importam Flutter) — via entidade `WindowPosition`
+- [x] Criar `lib/ui/core/desktop/window_position.dart` com a função pura de validação da posição contra a lista de displays
+  - Critério: área da title bar visível somada entre os displays ≥ `minGrabWidth × titleBarHeight` (80 × 40 px)
+- [x] Ajustar `initDesktopWindow()`
+  - Ler a posição salva; `center: true` apenas quando não houver posição válida
+  - `setPosition` **antes** do `show()` — sem piscar no centro
+  - Descartar posição inválida (monitor desconectado, mudança de resolução/DPI) → centro
+  - `setupDependencies()` subiu no `main()`: o `SettingsRepository` é injetado por parâmetro
+- [x] Consultar os displays via `screen_retriever` (declarar em `dependencies` se importado direto — hoje é transitivo do `window_manager`)
+- [x] Gravar a posição no fechamento, junto do flush da sessão (`getPosition()` antes do `destroy()`)
+  - As duas gravações em `Future.wait` sem `eagerError`, sob o mesmo `flushTimeout`
+- [x] Documentar `onWindowMoved` com debounce como alternativa (cobre encerramento anormal) — sem implementar
+
+### Documentação
+
+- [x] Documentar a persistência ao fechar em `docs/features/calculadora.md` (incluindo a regra do número solto)
+- [x] Documentar o close handler em `docs/fundacao/arquitetura.md` (nova seção "Infra de Desktop")
+- [x] Documentar a memória de posição em `docs/fundacao/arquitetura.md` (infra de desktop)
+  - Extra: `arquitetura.md` ganhou as seções `## Segurança e Cibersegurança` e `## Desenvolvimento & Gotchas` que faltavam
+- [x] Atualizar `plano/changelog.md` — partes A e B registradas
+
+### Validação
+
+- [x] `flutter test` — 100% verde (683 testes, após a parte B)
+- [x] `flutter analyze` — zero warnings
+- [x] Regressão: testes das Etapas 13 e 14 continuam verdes
+- [x] `flutter build windows --release` — sucesso (cópia de build do host, 49,8 s)
+- [x] Teste manual: digitar `10 + 5` sem `=` → fechar pelo `X` → reabrir → cálculo no histórico
+  - Dirigido por script via interop (`SendKeys` + `WM_CLOSE`); linha `0.10 + 0.05 = 0.15` gravada no `decima.db`
+- [ ] Teste manual: `=` e fechar imediatamente → a última linha está gravada
+- [x] Teste manual: mover a janela → fechar → reabrir na mesma posição
+  - Movida para `200,150` → `window_x`/`window_y` gravados → reabriu em `200,150`
+- [x] Teste manual: fechar em um monitor secundário → desconectá-lo → reabrir volta ao centro
+  - Sem monitor extra disponível: simulado adulterando as chaves para `9999,9999` (fora de qualquer display) → abriu no centro e regravou a posição válida
+- [ ] Teste manual (Android): sair do app pelo gesto/botão → reabrir → cálculo preservado
+
+---
+
 ## Etapa 15 — Suporte a Linux
 
 ### Habilitação da plataforma

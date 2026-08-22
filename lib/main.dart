@@ -1,28 +1,35 @@
+import 'dart:ui' show AppExitResponse;
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import 'package:decima/config/dependencies.dart';
 import 'package:decima/config/routes.dart';
 import 'package:decima/data/database/app_database.dart';
+import 'package:decima/data/repositories/settings_repository.dart';
 import 'package:decima/config/theme/app_colors.dart';
 import 'package:decima/config/theme/app_theme.dart';
 import 'package:decima/domain/enums/theme_mode_option.dart';
+import 'package:decima/ui/calculator/calculator_view_model.dart';
 import 'package:decima/ui/core/desktop/desktop_window_initializer.dart';
+import 'package:decima/ui/core/desktop/window_close_handler.dart';
 import 'package:decima/ui/core/widgets/desktop_shell.dart';
 import 'package:decima/ui/settings/settings_view_model.dart';
 import 'package:decima/utils/l10n/app_localizations.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  // Antes da janela: `initDesktopWindow` lê a última posição pelo
+  // `SettingsRepository`. Registrar dependências não tem efeito colateral.
+  setupDependencies();
   if (DesktopShell.isDesktop) {
-    await initDesktopWindow();
+    await initDesktopWindow(settingsRepository: getIt<SettingsRepository>());
   } else {
     await SystemChrome.setPreferredOrientations([
       DeviceOrientation.portraitUp,
       DeviceOrientation.portraitDown,
     ]);
   }
-  setupDependencies();
   await getIt<AppDatabase>().initialize();
   await getIt<SettingsViewModel>().loadSettings();
   runApp(const DecimaApp());
@@ -37,24 +44,56 @@ class DecimaApp extends StatefulWidget {
 
 class _DecimaAppState extends State<DecimaApp> with WidgetsBindingObserver {
   late final SettingsViewModel _settingsVM;
+  late final CalculatorViewModel _calculatorVM;
+  late final SettingsRepository _settingsRepository;
+
+  /// Grava a sessão quando o app vai para segundo plano em mobile. O Android
+  /// encerra o processo sem garantir `detached`, então o flush precisa
+  /// acontecer já em `hidden`/`paused`. Em desktop quem cuida disso é o
+  /// [WindowCloseHandler] — ali `onHide` também dispara ao minimizar, e
+  /// fechar o cálculo em andamento nesse caso surpreenderia o usuário.
+  AppLifecycleListener? _lifecycleListener;
 
   @override
   void initState() {
     super.initState();
     _settingsVM = getIt<SettingsViewModel>();
     _settingsVM.addListener(_onSettingsChanged);
+    _calculatorVM = getIt<CalculatorViewModel>();
+    _settingsRepository = getIt<SettingsRepository>();
+    if (!DesktopShell.isDesktop) {
+      _lifecycleListener = AppLifecycleListener(
+        onHide: _flushSession,
+        onPause: _flushSession,
+        onExitRequested: _onExitRequested,
+      );
+    }
     WidgetsBinding.instance.addObserver(this);
   }
 
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
+    _lifecycleListener?.dispose();
     _settingsVM.removeListener(_onSettingsChanged);
     super.dispose();
   }
 
   void _onSettingsChanged() {
     setState(() {});
+  }
+
+  Future<void> _flushSession() => _calculatorVM.flushSession();
+
+  /// Gravada no fechamento (e não a cada `onWindowMoved`) para poupar I/O —
+  /// ver "Memória da posição da janela" em `docs/fundacao/arquitetura.md`.
+  Future<void> _saveWindowPosition(double x, double y) =>
+      _settingsRepository.setWindowPosition(x, y);
+
+  Future<AppExitResponse> _onExitRequested() async {
+    await _flushSession();
+
+    return AppExitResponse.exit;
   }
 
   @override
@@ -96,7 +135,11 @@ class _DecimaAppState extends State<DecimaApp> with WidgetsBindingObserver {
       routes: AppRoutes.routes,
       initialRoute: AppRoutes.calculator,
       builder: (context, child) {
-        return DesktopShell(child: child ?? const SizedBox.shrink());
+        return WindowCloseHandler(
+          onFlush: _flushSession,
+          onSavePosition: _saveWindowPosition,
+          child: DesktopShell(child: child ?? const SizedBox.shrink()),
+        );
       },
     );
   }

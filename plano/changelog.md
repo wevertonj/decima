@@ -1314,3 +1314,114 @@ Após atualizar por cima, cada superfície tem cache próprio e o refresh não �
 |------------|-------|----------------|
 | Menu Iniciar | Cache do StartMenuExperienceHost | `ie4uinit.exe -show` bastou |
 | Barra de tarefas | `%LOCALAPPDATA%\Microsoft\Windows\Explorer\iconcache_*.db` (um por resolução) | `ie4uinit` **não** basta: parar o Explorer → apagar os `iconcache_*.db` → reiniciar o Explorer (a janela do app em execução não é afetada; pastas abertas precisam ser reabertas) |
+
+---
+
+## [Concluída] Etapa 14.2 A — Flush da sessão ao fechar
+
+> Origem: uso diário do Decima instalado no Windows. Fechar pelo `X` descartava o cálculo em andamento — só `=` e `C` persistiam.
+
+### `CalculatorViewModel.flushSession()`
+
+Novo `Future<void> flushSession()` público. Fecha o cálculo pendente exatamente como um `=` faria e **aguarda a escrita chegar ao banco** antes de completar.
+
+| Estado ao fechar | Comportamento |
+|------------------|---------------|
+| Expressão com ao menos um operador | Avaliada e gravada |
+| Parênteses abertos | Auto-fechados antes de avaliar |
+| Número solto, sem operador | Não grava — não há cálculo (regra documentada) |
+| Sessão vazia / logo após `=` | No-op, sem duplicar linha nem criar sessão nova |
+| Cursor no meio da expressão | Mesmo caminho do `=` (o `_editText` é a fonte da verdade) |
+
+### Refatorações que viabilizaram o flush
+
+- `equals()` tinha os caminhos "modo de edição" e "tokens commitados" duplicados quase inteiros. Extraídos `_commitPendingCalculation()` (avalia + registra na timeline/sessão + persiste + reseta) e `_pendingRawExpression()` (normaliza, valida o operador, auto-fecha parênteses). `equals()` virou `_runAction(_commitPendingCalculation)` e `flushSession()` reusa a mesma operação — sem um segundo caminho de avaliação para manter em sincronia
+- `_saveOrUpdateSession()` era **fire-and-forget**: devolve `Future<void>` e encadeia toda escrita em `_pendingWrite`, que `flushSession()` aguarda. Uma falha de escrita não envenena a cadeia — as esperas seguintes continuam completando, para o app nunca ficar impossível de fechar
+- **Corrida do `_addInFlight`**: quando a 2ª linha chegava com o `add` da 1ª ainda em voo, ela era marcada como persistida e **nunca gravada**. Agora o `update` é encadeado no `Future` do `add` e usa o id que ele devolve
+- **Troca de sessão com `add` em voo**: `clear`/`loadSession`/paste passam por `_resetSessionTracking()`, que incrementa `_sessionGeneration`; o `add` só adota o id se a geração não mudou (antes, o id da sessão antiga vazava para a nova). O `update` já encadeado continua gravando na sessão a que suas linhas pertencem
+
+### `WindowCloseHandler` (desktop)
+
+`lib/ui/core/desktop/window_close_handler.dart` — `setPreventClose(true)` + `WindowListener.onWindowClose` → `onFlush()` → `windowManager.destroy()`. Cobre o `X` da title bar, `Alt+F4` e "Fechar janela" da barra de tarefas.
+
+| Garantia | Como |
+|----------|------|
+| A janela sempre fecha | `destroy()` no `finally`; exceção da gravação engolida |
+| Gravação travada não prende o app | `onFlush().timeout(flushTimeout)`, 3 s por padrão |
+| Testável sem method channel | `WindowCloseBridge` abstrai o plugin; os testes injetam uma ponte falsa |
+| Inerte em mobile | `initState` retorna antes de registrar quando `!PlatformInfo.isDesktop` |
+
+Montado no `MaterialApp.builder` do `_DecimaAppState`, acima do `DesktopShell`.
+
+### Mobile
+
+`AppLifecycleListener` no `_DecimaAppState` com `onHide` / `onPause` / `onExitRequested` — o Android encerra o processo sem garantir `detached`. Registrado **apenas** em mobile: em desktop o `onHide` também dispara ao minimizar, e fechar o cálculo em andamento ao minimizar surpreenderia o usuário.
+
+### Testes
+
+- `calculator_view_model_test.dart` — grupo `flushSession` com 9 cenários (expressão pendente, parênteses abertos, número solto, sessão vazia, pós-`=`, idempotência, `add` em voo, modo de edição, `update` encadeado no `add`)
+- `test/widget/core/desktop/window_close_handler_test.dart` — 8 cenários (registro do listener, flush antes do destroy, flush que lança, timeout, dispose, Android, iOS)
+- **Total: 657 testes — 100% verde**
+- `flutter analyze` — zero issues
+
+---
+
+## [Concluída] Etapa 14.2 B — Memória da posição da janela
+
+> Origem: uso diário do Decima instalado no Windows. A janela sempre reabria centralizada, ignorando onde o usuário a tinha deixado.
+
+### Fluxo
+
+| Etapa | Onde | O quê |
+|-------|------|-------|
+| Gravar | `WindowCloseHandler` → `onSavePosition` | `windowManager.getPosition()` → `SettingsRepository.setWindowPosition(x, y)` |
+| Ler | `initDesktopWindow()` | `getWindowPosition()` antes de montar as `WindowOptions` |
+| Validar | `isWindowPositionReachable()` | Posição salva × `screenRetriever.getAllDisplays()` |
+| Aplicar | `waitUntilReadyToShow` | `center: position == null`; `setPosition` **antes** do `show()` — sem piscar no centro |
+
+### `SettingsRepository`
+
+`getWindowPosition()` / `setWindowPosition(double x, double y)` sobre as chaves `window_x` / `window_y` do `SharedPreferences`. Trafega a entidade `WindowPosition` (`domain/entities/`), com `double` puro em vez de `Offset` — repositórios continuam sem importar Flutter. Só uma das chaves gravada (escrita interrompida) equivale a não ter posição: devolve `null`.
+
+### Regra de alcançabilidade (`lib/ui/core/desktop/window_position.dart`)
+
+Função pura, testada sem plugin. O critério é a **title bar** — é por ela que a janela se move: a soma das interseções da faixa `windowSize.width × titleBarHeight` com a área útil de cada monitor precisa alcançar `minGrabWidth × titleBarHeight` (80 × 40 px).
+
+| Situação | Resultado |
+|----------|-----------|
+| Janela inteira dentro de um display | Restaura |
+| Janela repartida entre dois monitores adjacentes | Restaura — as áreas são **somadas** entre displays |
+| Só uma fatia da title bar visível, ≥ 80 × 40 px | Restaura (dá para arrastar de volta) |
+| Fatia menor que o mínimo, acima do topo, abaixo da barra de tarefas | Centro |
+| Monitor desconectado, mudança de resolução/DPI | Centro |
+| `NaN`/infinito, lista de displays vazia, falha ao ler | Centro |
+
+`screen_retriever` (já transitivo do `window_manager`) passou a ser declarado em `dependencies` — a validação importa `Display` direto.
+
+### Gravação no fechamento
+
+`WindowCloseHandler` ganhou `onSavePosition` e `WindowCloseBridge.getPosition()`. As duas gravações do fechamento rodam em `Future.wait` **sem `eagerError`** e sob o mesmo `flushTimeout`: uma travada ou com erro não impede a outra, e nenhuma impede o `destroy()`. Gravar no fechamento (e não a cada `onWindowMoved`) poupa I/O; o custo aceito é perder a última posição num encerramento anormal — a alternativa com debounce está documentada em `docs/fundacao/arquitetura.md`, sem implementar.
+
+### Ordem no `main()`
+
+`setupDependencies()` subiu para antes do branch de plataforma: `initDesktopWindow()` agora recebe o `SettingsRepository` por parâmetro e o `getIt` precisa estar montado. Registrar dependências não tem efeito colateral.
+
+### Testes
+
+- `settings_repository_test.dart` — grupo `windowPosition` com 6 cenários (default, ida e volta, coordenadas negativas, sobrescrita, só `x`, só `y`)
+- `test/unit/ui/core/desktop/window_position_test.dart` — 16 cenários da função pura (dentro, secundário, origem exata, fora de tudo, monitor desconectado, parcialmente visível alcançável e não, acima do topo, abaixo da barra de tarefas, repartida entre monitores, sem display, `NaN`/infinito, display sem área útil, tamanho customizado)
+- `window_close_handler_test.dart` — 4 cenários novos (posição gravada antes do `destroy`, erro ao gravar posição, erro no flush não impede a posição, sem callback não consulta o plugin)
+- **Total: 683 testes — 100% verde**
+- `flutter analyze` — zero issues
+
+### Validação no Windows real
+
+`flutter build windows --release` verde na cópia de build do host. A janela foi dirigida por script (`SetWindowPos` + `WM_CLOSE` via interop), lendo `%APPDATA%\Wevasoft\Decima\shared_preferences.json` entre as execuções:
+
+| Cenário | Resultado |
+|---------|-----------|
+| 1ª abertura, sem posição salva | Centralizada em `2700,156` |
+| Mover para `200,150` → fechar | `window_x: 200.0`, `window_y: 150.0` gravados |
+| Reabrir | Abriu exatamente em `200,150` |
+| Adulterar para `9999,9999` (monitor inexistente) → reabrir | Voltou ao centro e regravou a posição válida |
+| Digitar `10 + 5` sem `=` → fechar pelo `WM_CLOSE` → conferir o banco | Linha `0.10 + 0.05 = 0.15` gravada (fecha também o pendente da parte A) |

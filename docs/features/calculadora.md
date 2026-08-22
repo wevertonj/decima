@@ -86,6 +86,26 @@ Toda operação avaliada (ao pressionar `=`) é salva no histórico (SQLite) com
 - Resultado
 - Timestamp
 
+### Flush ao fechar o app
+
+`CalculatorViewModel.flushSession()` fecha o cálculo em andamento antes de o processo terminar — nenhum cálculo é perdido por fechar o app sem pressionar `=`.
+
+| Situação ao fechar | Comportamento |
+|--------------------|---------------|
+| Expressão com ao menos um operador (`10.00 + 5.00`) | Avaliada e gravada como se o `=` tivesse sido pressionado |
+| Parênteses abertos (`( 10.00 + 5.00`) | Auto-fechados antes de avaliar, igual ao `=` |
+| Número solto, sem operador (`12.00`) | **Não** grava — não há cálculo, apenas um número digitado |
+| Sessão vazia | No-op |
+| Logo após um `=` | No-op — não duplica a linha nem cria sessão nova |
+| Cursor no meio da expressão (modo de edição) | Mesmo caminho do `=`: o texto editado é a fonte da verdade |
+
+`flushSession()` é idempotente e o `Future` que devolve só completa depois de a escrita chegar ao banco — inclusive um `add` ainda em voo, cujo id é aguardado para que a segunda linha vire `update` da mesma sessão, nunca uma sessão nova.
+
+| Plataforma | Gatilho |
+|------------|---------|
+| Desktop | `WindowCloseHandler` — `X` da title bar, `Alt+F4` e "Fechar janela" da barra de tarefas |
+| Mobile | `AppLifecycleListener` (`onHide` / `onPause` / `onExitRequested`) no `_DecimaAppState` |
+
 ## Fila de Toques
 
 Todo toque em qualquer botão é enfileirado e processado em ordem, mesmo durante animações de feedback. O `onPressed` é despachado no `onTapDown` (sem aguardar `tapUp`), eliminando latência. Não há `debounce`/`throttle` — toques nunca são descartados. Animações (LED glow, flash de fundo) são independentes do despacho da ação.
@@ -259,3 +279,7 @@ O caractere é a fonte **primária** da camada 3 porque teclas como `%`, `*`, `(
 | Rótulos dos botões duplicados entre keypad e handler | Divergência silenciosa quebra o feedback visual | Rótulos não numéricos são constantes em `CalculatorKeypad` (`clearLabel`, `percentLabel`, `parenthesisLabel`, `equalsLabel`, `doubleZeroLabel`, `tripleZeroLabel`) |
 | `_committed` fica obsoleto quando o modo de edição é ativado | Estado derivado calculado sobre ele divergia do texto exibido (`openParenCount` reportava 0 com `(` na tela) | Todo estado derivado de parênteses lê `_editText` quando ele existe |
 | Inserir `)` no fim do bloco numérico sem `(` pendente | Gerava `)` órfão (`12.50)`), tornando a expressão inavaliável e a prévia `null` | `_editInsertParenthesis` só fecha com `openParenCount > 0`; caso contrário abre antes do bloco |
+| `flushSession()` altera o estado visível (a expressão vira linha da timeline) | Em desktop, chamar no `onHide` faria o cálculo em andamento sumir ao **minimizar** | O `AppLifecycleListener` só é registrado em mobile; em desktop o gatilho é o `WindowCloseHandler` |
+| `_saveOrUpdateSession()` era fire-and-forget | O processo podia morrer no meio da escrita, perdendo o `=` recém-pressionado | Devolve `Future<void>` e encadeia toda escrita em `_pendingWrite`, que `flushSession()` aguarda |
+| `add` em voo quando chega a 2ª linha da sessão | A linha era marcada como persistida sem nunca ser gravada (`_addInFlight` só bumpava o contador) | O `update` é encadeado no `Future` do `add` e usa o id que ele devolve |
+| `clear`/`loadSession`/paste com `add` em voo | O id da sessão antiga era adotado pela sessão nova | `_resetSessionTracking()` incrementa `_sessionGeneration`; o `add` só adota o id se a geração não mudou |
