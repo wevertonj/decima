@@ -62,8 +62,14 @@ class HistoryEntry {
           isFavorite == other.isFavorite;
 
   @override
-  int get hashCode =>
-      Object.hash(id, Object.hashAll(lines), result, createdAt, name, isFavorite);
+  int get hashCode => Object.hash(
+    id,
+    Object.hashAll(lines),
+    result,
+    createdAt,
+    name,
+    isFavorite,
+  );
 
   static bool _listEquals(List<HistoryLine> a, List<HistoryLine> b) {
     if (a.length != b.length) return false;

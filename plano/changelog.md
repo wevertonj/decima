@@ -1165,3 +1165,311 @@ No `AnimatedInputDisplay`, os wrappers de animação (`_RollingChar`/`_PopInChar
 - Janela fixa 360×720, title bar customizada (drag, minimizar, fechar), ícone no `.exe`, tema escuro — tudo funcional no Windows
 - Teclado físico completo (fecha a pendência da Etapa 13) e colar validado com os dados de `plano/fixtures-colar.md`
 - **Etapa 14 concluída**
+
+## [Em andamento] Etapa 14.1 — Instalador Windows (.exe)
+
+> **Estado**: infraestrutura completa e sincronizada, **artefato ainda não gerado**. A compilação do Inno foi suspensa por lentidão (ver "Pendências" ao final). Nada foi instalado na máquina ainda.
+
+Antecipada por necessidade de dogfooding: o empacotamento estava marcado como "fora de escopo, apenas documentar" nas Etapas 14–17, mas usar o app no dia a dia exige instalá-lo de fato. Objetivo declarado: **o instalador que dê menos atrito para quem instala**, já mirando a publicação no GitHub Releases como projeto de portfólio.
+
+### Escolha da ferramenta
+
+| Opção | Veredito |
+|-------|----------|
+| **Inno Setup 6.2** | **Escolhida** — `.exe` único, já instalado no host, sem pré-requisito para o usuário final |
+| MSIX | Descartada para distribuição direta: sideload exige que o usuário instale o certificado autoassinado na Trusted Root — mais atrito que o aviso do SmartScreen. Só compensaria via Microsoft Store |
+
+### `tool/installer/decima.iss`
+
+- `AppId` GUID fixo — novas versões atualizam in-place em vez de instalar lado a lado
+- `PrivilegesRequired=lowest` → instala em `%LOCALAPPDATA%\Programs\Decima` **sem prompt de UAC**
+- `PrivilegesRequiredOverridesAllowed=commandline` (e não `dialog`): mantém `/ALLUSERS` disponível sem impor a tela de escolha de modo na abertura
+- Wizard mínimo — `DisableWelcomePage`, `DisableReadyPage`, `DisableProgramGroupPage`: idioma (só se o locale não casar) → tarefas → instalar → concluir
+- Idiomas `BrazilianPortuguese` + `Default` (inglês), seguindo o locale do sistema
+- Menu Iniciar sempre; atalho de desktop como tarefa opcional desmarcada
+- `CloseApplications=yes` — fecha o Decima aberto antes de sobrescrever os binários
+- Dados do usuário em `%APPDATA%\Wevasoft\Decima` **preservados** na desinstalação (reinstalar não perde histórico)
+- `ArchitecturesAllowed=x64`, `MinVersion=10.0` — `x64compatible` evitado por exigir Inno 6.3+
+
+### `tool/installer/build_installer.sh`
+
+- Pipeline completa da bridge WSL→Windows: `rsync` → `flutter clean` → `flutter build windows --release` → runtime C++ → `ISCC.exe` → `dist/`
+- Versão lida do `pubspec.yaml` e injetada via `/DAppVersion`
+- Flags `--no-clean` (pula o clean) e `--skip-build` (só reempacota o Release atual)
+- Gera `.sha256` junto do instalador — sem assinatura de código, o hash é a única verificação de integridade para quem baixa
+- Configuração de máquina em `local.env` (ignorado pelo git), com `local.env.example` versionado — nada de caminho de máquina no repositório público
+
+### Runtime C++ app-local
+
+As DLLs do redist do MSVC (`msvcp140*`, `vcruntime140*`) são copiadas para junto do `decima.exe`. Sem isso o instalador exigiria o "Visual C++ Redistributable" pré-instalado — o maior pré-requisito silencioso de apps Flutter no Windows.
+
+### Percalços na implementação
+
+| Problema | Diagnóstico | Correção |
+|----------|-------------|----------|
+| `ISCC.exe` "não é reconhecido como comando" | A interop do WSL reescreve aspas duplas ao repassar para o `cmd.exe`; o caminho do Inno tem espaços | Nenhuma aspa: o diretório entra no `PATH` da própria linha e o exe é chamado pelo nome |
+| Redist do MSVC não encontrado | `find` com `-maxdepth 6`; o caminho real tem 7 níveis | Glob direto em `Program Files*/Microsoft Visual Studio/*/*/VC/Redist/MSVC/*/x64/Microsoft.VC*.CRT` |
+| Alteração no `.iss` não surtia efeito | `--skip-build` pulava o `rsync` junto com o build — a cópia no Windows continuava com o `.iss` antigo | `rsync` movido para fora do bloco condicional: sincroniza sempre |
+| `ISCC.exe` aparentava estar travado (CPU 0,06s) | Leitura pontual enganosa — o processo estava compactando (chegou a 600s de CPU com `lzma2/max`) | `Compression=lzma2/normal`: alguns minutos em vez de mais de dez, com diferença de tamanho marginal |
+
+### Documentação
+
+- `docs/fundacao/empacotamento-windows.md` — artefatos, uso, configuração, decisões de instalação, conteúdo do bundle, seção de segurança (SmartScreen, DLL hijacking, menor privilégio) e gotchas
+- `README.md` — seção "Instalação (Windows)" com o aviso de SmartScreen e a orientação de conferir o SHA-256
+- `docs/README.md` — índice atualizado
+- `.gitignore` — `tool/installer/local.env` e `/dist/`
+
+### Fora de escopo (documentado)
+
+- **Assinatura de código** — certificado OV exige token HSM pago; o SmartScreen seguirá avisando
+- **Auto-update** — atualizar é reinstalar por cima
+- **winget / Microsoft Store**
+
+### Pendências (retomar amanhã)
+
+A compilação do instalador foi **suspensa** — o `.exe` nunca chegou a ser gerado. Duas rodadas foram interrompidas:
+
+| Rodada | Compressão | Resultado |
+|--------|-----------|-----------|
+| 1ª | `lzma2/max` | Interrompida com 606 s de CPU, sem terminar |
+| 2ª | `lzma2/normal` | Interrompida com ~690 s de CPU / 13m41s de relógio, sem terminar |
+
+**Medição do gargalo**: `ISCC.exe` com 647 s de relógio para 634 s de CPU = **1,00 núcleo, 98% CPU-bound**. Sem espera de I/O — Defender e disco descartados. Os ~8% no Gerenciador de Tarefas são uma thread saturada sobre o total de threads lógicas.
+
+Restam dois problemas independentes, detalhados em `plano/tarefas.md` (Etapa 14.1 → "Ajustes pendentes"):
+
+- **A — LZMA single-thread**: `LZMANumBlockThreads=4` é a única diretiva que dá paralelismo real no Inno (ganho esperado ~3×); `LZMAUseSeparateProcess=yes` e `LZMABlockSize` complementam. **GPU está descartado** — LZMA é sequencial e cheio de desvios, não existe caminho em GPU no Inno nem nas implementações de referência
+- **B — taxa absoluta anômala**: 33 MB / 634 s ≈ **52 KB/s**, uma a duas ordens de grandeza abaixo do esperado para LZMA2 normal (~2–5 MB/s). Multi-thread sozinho levaria a ~150 KB/s, ainda absurdo. Diagnóstico: rodar o ISCC **sem `/Q`** (imprime `Compressing: <arquivo>` e revela se está preso em um arquivo ou comendo mais do que os 33 MB esperados) e comparar com um baseline de 7-Zip no host
+
+**Estado dos artefatos**: `dist/` vazio nos dois lados (WSL e cópia Windows). O build Release do Windows está pronto e íntegro na cópia (`decima.exe` + 9 DLLs do runtime C++ já staged), então retomar é só rodar `tool/installer/build_installer.sh --skip-build` depois de aplicar os ajustes.
+
+## [Concluída] Etapa 14.1 — Instalador Windows: causa raiz da "lentidão" e artefato gerado
+
+> **Estado**: `dist/decima-0.5.0-windows-x64-setup.exe` (12 MB) gerado em **2,6 s** de compilação, smoke test de instalação/desinstalação passou. Falta só a verificação manual interativa do usuário.
+
+### A "lentidão" era um crash: o ISCC nunca esteve comprimindo
+
+O diagnóstico da sessão anterior — "LZMA single-thread a 52 KB/s" — estava errado. A investigação desta sessão, na ordem:
+
+| Passo | Evidência | Conclusão |
+|-------|-----------|-----------|
+| Baseline da máquina (`xz -6 -T1` no WSL, mesmo CPU) | 33 MB em 13,9 s ≈ **2,4 MB/s** | Ryzen 5 3600 nunca foi o gargalo; 52 KB/s seria ~46× abaixo do próprio hardware |
+| Volume do `[Files]` | 33 MB / 27 arquivos, só o Release | O glob não estava comprimindo nada além do esperado |
+| I/O do processo `ISCC.exe` durante o "trabalho" | CPU 15 s em 15 s de relógio com **0 bytes lidos e 0 escritos**; `dist/` nunca criado | O processo nunca tocou o payload — não é compressão lenta, é loop |
+| Saída redirecionada para arquivo (fora do pipe interop) | Banner e depois **0% de CPU**, thread em `WaitReason: UserRequest`, `MainWindowTitle: "Error"` | Há um **diálogo modal invisível** esperando clique |
+| Texto do diálogo via UI Automation | `Runtime error 216 at 02CE44A4` | GPF do runtime Delphi dentro do compilador |
+| Log de eventos do Windows (`Application Error`) | `0xc0000005` em **`ISPP.dll`**, offset fixo `0x244a4`, em todas as tentativas | Crash determinístico no pré-processador do Inno |
+| `.iss` mínimo (`Compression=zip`) em console nativo (`Start-Process`) | Mesmo crash | Não é o nosso script, não é LZMA, não é a interop — o **Inno Setup 6.2.2 estava quebrado nesta máquina** |
+
+O elo com o sintoma original: chamado via interop do WSL, o diálogo de erro não tem onde aparecer e o processo degenera em **spin de 100% de CPU em 1 núcleo** — exatamente o "647 s de relógio para 634 s de CPU" medido antes. As duas rodadas interrompidas (`lzma2/max` e `lzma2/normal`) nunca teriam terminado, com qualquer compressor.
+
+### Correção
+
+- `winget upgrade JRSoftware.InnoSetup` → **6.7.3** (o 6.2.2 veio de instalação antiga; o upgrade mantém `C:\Program Files (x86)\Inno Setup 6`, então o `local.env` não muda)
+- Compilação do instalador: de "infinito" para **2,6 s** (payload 33 MB → instalador 12 MB)
+
+### Ajustes aplicados (das anotações + modernização)
+
+- `LZMAUseSeparateProcess=yes` + `LZMANumBlockThreads=4` no `[Setup]` — compressão fora do processo 32-bit do compilador, em blocos paralelos; mantidos como boa prática ainda que a causa raiz fosse outra
+- `/Q` removido da chamada do ISCC no `build_installer.sh` — o `Compressing: <arquivo>` por item é o que distingue "comprimindo" de "travado"; o silêncio pós-banner do 6.2.2 teria sido denunciado na hora
+- `ArchitecturesAllowed`/`ArchitecturesInstallIn64BitMode`: `x64` → `x64compatible` (o 6.7 avisa deprecação de `x64`; `x64compatible` cobre também Windows ARM64 com emulação x64). Cabeçalho do `.iss` atualizado para "Inno Setup 6.3+"
+
+### Smoke test do artefato (automatizado, máquina limpa ao final)
+
+| Fase | Resultado |
+|------|-----------|
+| `/VERYSILENT /SUPPRESSMSGBOXES /NORESTART` | Bundle completo em `%LOCALAPPDATA%\Programs\Decima` + `Decima.lnk` no Menu Iniciar |
+| Abrir o exe instalado | Processo sobe com janela "Decima" — runtime C++ app-local validado fora da pasta de build |
+| `unins000.exe /VERYSILENT` | Pasta do programa e atalho removidos; `%APPDATA%\Wevasoft\Decima` (`decima.db` + `shared_preferences.json`) **preservado** |
+
+### Lição de diagnóstico registrada
+
+Processo Windows lançado via interop que "trava" consumindo CPU: antes de assumir trabalho pesado, checar **I/O do processo** (`Win32_Process.ReadTransferCount`) e **`MainWindowTitle`** — um diálogo modal invisível parece exatamente um loop CPU-bound. O texto do diálogo é legível via UI Automation sem interação.
+
+## [Melhoria] Etapa 14.1 — Ícone Windows com cantos arredondados
+
+> Pedido do usuário após validar o instalador: o ícone aparecia **quadrado** no instalador, no Menu Iniciar e na barra de tarefas.
+
+O Windows (ao contrário do Android adaptativo/iOS) **não aplica máscara** ao ícone — os cantos arredondados precisam estar no próprio `.ico`, com transparência. O `app_icon.ico` anterior era um único frame de **48 px quadrado**, gerado pelo `flutter_launcher_icons` a partir do full-bleed (`icon_size: 48`).
+
+### Mudanças
+
+- `tool/icon/render.mjs` passa a gerar o `windows/runner/resources/app_icon.ico` no próprio pipeline: o **master** (`decima_icon_master.svg`, squircle de raio 22,4% com fundo transparente) é rasterizado direto do vetor em **16/20/24/32/40/48/64/256 px** e montado num `.ico` multi-tamanho via `png-to-ico` (nova dependência do `tool/icon`; entradas BMP — máxima compatibilidade com o shell)
+- `flutter_launcher_icons.yaml`: `windows.generate: false` com comentário-guarda — reativar sobrescreveria o `.ico` com o full-bleed quadrado
+- Nenhum SVG novo: o master já era o desenho arredondado da marca; agora Windows usa a mesma identidade do runtime
+
+### Alcance
+
+| Superfície | Origem do ícone |
+|------------|-----------------|
+| Menu Iniciar, barra de tarefas, alt-tab | `.ico` embutido no `decima.exe` via `Runner.rc` (exige rebuild do exe) |
+| Ícone do próprio `setup.exe` | `SetupIconFile` no `decima.iss` (mesmo `.ico`) |
+| "Aplicativos instalados" / desinstalação | `UninstallDisplayIcon={app}\decima.exe` |
+
+### Gotcha — cache de ícones do Windows (validado na prática)
+
+Após atualizar por cima, cada superfície tem cache próprio e o refresh não é uniforme:
+
+| Superfície | Cache | O que resolveu |
+|------------|-------|----------------|
+| Menu Iniciar | Cache do StartMenuExperienceHost | `ie4uinit.exe -show` bastou |
+| Barra de tarefas | `%LOCALAPPDATA%\Microsoft\Windows\Explorer\iconcache_*.db` (um por resolução) | `ie4uinit` **não** basta: parar o Explorer → apagar os `iconcache_*.db` → reiniciar o Explorer (a janela do app em execução não é afetada; pastas abertas precisam ser reabertas) |
+
+---
+
+## [Concluída] Etapa 14.2 A — Flush da sessão ao fechar
+
+> Origem: uso diário do Decima instalado no Windows. Fechar pelo `X` descartava o cálculo em andamento — só `=` e `C` persistiam.
+
+### `CalculatorViewModel.flushSession()`
+
+Novo `Future<void> flushSession()` público. Fecha o cálculo pendente exatamente como um `=` faria e **aguarda a escrita chegar ao banco** antes de completar.
+
+| Estado ao fechar | Comportamento |
+|------------------|---------------|
+| Expressão com ao menos um operador | Avaliada e gravada |
+| Parênteses abertos | Auto-fechados antes de avaliar |
+| Número solto, sem operador | Não grava — não há cálculo (regra documentada) |
+| Sessão vazia / logo após `=` | No-op, sem duplicar linha nem criar sessão nova |
+| Cursor no meio da expressão | Mesmo caminho do `=` (o `_editText` é a fonte da verdade) |
+
+### Refatorações que viabilizaram o flush
+
+- `equals()` tinha os caminhos "modo de edição" e "tokens commitados" duplicados quase inteiros. Extraídos `_commitPendingCalculation()` (avalia + registra na timeline/sessão + persiste + reseta) e `_pendingRawExpression()` (normaliza, valida o operador, auto-fecha parênteses). `equals()` virou `_runAction(_commitPendingCalculation)` e `flushSession()` reusa a mesma operação — sem um segundo caminho de avaliação para manter em sincronia
+- `_saveOrUpdateSession()` era **fire-and-forget**: devolve `Future<void>` e encadeia toda escrita em `_pendingWrite`, que `flushSession()` aguarda. Uma falha de escrita não envenena a cadeia — as esperas seguintes continuam completando, para o app nunca ficar impossível de fechar
+- **Corrida do `_addInFlight`**: quando a 2ª linha chegava com o `add` da 1ª ainda em voo, ela era marcada como persistida e **nunca gravada**. Agora o `update` é encadeado no `Future` do `add` e usa o id que ele devolve
+- **Troca de sessão com `add` em voo**: `clear`/`loadSession`/paste passam por `_resetSessionTracking()`, que incrementa `_sessionGeneration`; o `add` só adota o id se a geração não mudou (antes, o id da sessão antiga vazava para a nova). O `update` já encadeado continua gravando na sessão a que suas linhas pertencem
+
+### `WindowCloseHandler` (desktop)
+
+`lib/ui/core/desktop/window_close_handler.dart` — `setPreventClose(true)` + `WindowListener.onWindowClose` → `onFlush()` → `windowManager.destroy()`. Cobre o `X` da title bar, `Alt+F4` e "Fechar janela" da barra de tarefas.
+
+| Garantia | Como |
+|----------|------|
+| A janela sempre fecha | `destroy()` no `finally`; exceção da gravação engolida |
+| Gravação travada não prende o app | `onFlush().timeout(flushTimeout)`, 3 s por padrão |
+| Testável sem method channel | `WindowCloseBridge` abstrai o plugin; os testes injetam uma ponte falsa |
+| Inerte em mobile | `initState` retorna antes de registrar quando `!PlatformInfo.isDesktop` |
+
+Montado no `MaterialApp.builder` do `_DecimaAppState`, acima do `DesktopShell`.
+
+### Mobile
+
+`AppLifecycleListener` no `_DecimaAppState` com `onHide` / `onPause` / `onExitRequested` — o Android encerra o processo sem garantir `detached`. Registrado **apenas** em mobile: em desktop o `onHide` também dispara ao minimizar, e fechar o cálculo em andamento ao minimizar surpreenderia o usuário.
+
+### Testes
+
+- `calculator_view_model_test.dart` — grupo `flushSession` com 9 cenários (expressão pendente, parênteses abertos, número solto, sessão vazia, pós-`=`, idempotência, `add` em voo, modo de edição, `update` encadeado no `add`)
+- `test/widget/core/desktop/window_close_handler_test.dart` — 8 cenários (registro do listener, flush antes do destroy, flush que lança, timeout, dispose, Android, iOS)
+- **Total: 657 testes — 100% verde**
+- `flutter analyze` — zero issues
+
+---
+
+## [Concluída] Etapa 14.2 B — Memória da posição da janela
+
+> Origem: uso diário do Decima instalado no Windows. A janela sempre reabria centralizada, ignorando onde o usuário a tinha deixado.
+
+### Fluxo
+
+| Etapa | Onde | O quê |
+|-------|------|-------|
+| Gravar | `WindowCloseHandler` → `onSavePosition` | `windowManager.getPosition()` → `SettingsRepository.setWindowPosition(x, y)` |
+| Ler | `initDesktopWindow()` | `getWindowPosition()` antes de montar as `WindowOptions` |
+| Validar | `isWindowPositionReachable()` | Posição salva × `screenRetriever.getAllDisplays()` |
+| Aplicar | `waitUntilReadyToShow` | `center: position == null`; `setPosition` **antes** do `show()` — sem piscar no centro |
+
+### `SettingsRepository`
+
+`getWindowPosition()` / `setWindowPosition(double x, double y)` sobre as chaves `window_x` / `window_y` do `SharedPreferences`. Trafega a entidade `WindowPosition` (`domain/entities/`), com `double` puro em vez de `Offset` — repositórios continuam sem importar Flutter. Só uma das chaves gravada (escrita interrompida) equivale a não ter posição: devolve `null`.
+
+### Regra de alcançabilidade (`lib/ui/core/desktop/window_position.dart`)
+
+Função pura, testada sem plugin. O critério é a **title bar** — é por ela que a janela se move: a soma das interseções da faixa `windowSize.width × titleBarHeight` com a área útil de cada monitor precisa alcançar `minGrabWidth × titleBarHeight` (80 × 40 px).
+
+| Situação | Resultado |
+|----------|-----------|
+| Janela inteira dentro de um display | Restaura |
+| Janela repartida entre dois monitores adjacentes | Restaura — as áreas são **somadas** entre displays |
+| Só uma fatia da title bar visível, ≥ 80 × 40 px | Restaura (dá para arrastar de volta) |
+| Fatia menor que o mínimo, acima do topo, abaixo da barra de tarefas | Centro |
+| Monitor desconectado, mudança de resolução/DPI | Centro |
+| `NaN`/infinito, lista de displays vazia, falha ao ler | Centro |
+
+`screen_retriever` (já transitivo do `window_manager`) passou a ser declarado em `dependencies` — a validação importa `Display` direto.
+
+### Gravação no fechamento
+
+`WindowCloseHandler` ganhou `onSavePosition` e `WindowCloseBridge.getPosition()`. As duas gravações do fechamento rodam em `Future.wait` **sem `eagerError`** e sob o mesmo `flushTimeout`: uma travada ou com erro não impede a outra, e nenhuma impede o `destroy()`. Gravar no fechamento (e não a cada `onWindowMoved`) poupa I/O; o custo aceito é perder a última posição num encerramento anormal — a alternativa com debounce está documentada em `docs/fundacao/arquitetura.md`, sem implementar.
+
+### Ordem no `main()`
+
+`setupDependencies()` subiu para antes do branch de plataforma: `initDesktopWindow()` agora recebe o `SettingsRepository` por parâmetro e o `getIt` precisa estar montado. Registrar dependências não tem efeito colateral.
+
+### Testes
+
+- `settings_repository_test.dart` — grupo `windowPosition` com 6 cenários (default, ida e volta, coordenadas negativas, sobrescrita, só `x`, só `y`)
+- `test/unit/ui/core/desktop/window_position_test.dart` — 16 cenários da função pura (dentro, secundário, origem exata, fora de tudo, monitor desconectado, parcialmente visível alcançável e não, acima do topo, abaixo da barra de tarefas, repartida entre monitores, sem display, `NaN`/infinito, display sem área útil, tamanho customizado)
+- `window_close_handler_test.dart` — 4 cenários novos (posição gravada antes do `destroy`, erro ao gravar posição, erro no flush não impede a posição, sem callback não consulta o plugin)
+- **Total: 683 testes — 100% verde**
+- `flutter analyze` — zero issues
+
+### Validação no Windows real
+
+`flutter build windows --release` verde na cópia de build do host. A janela foi dirigida por script (`SetWindowPos` + `WM_CLOSE` via interop), lendo `%APPDATA%\Wevasoft\Decima\shared_preferences.json` entre as execuções:
+
+| Cenário | Resultado |
+|---------|-----------|
+| 1ª abertura, sem posição salva | Centralizada em `2700,156` |
+| Mover para `200,150` → fechar | `window_x: 200.0`, `window_y: 150.0` gravados |
+| Reabrir | Abriu exatamente em `200,150` |
+| Adulterar para `9999,9999` (monitor inexistente) → reabrir | Voltou ao centro e regravou a posição válida |
+| Digitar `10 + 5` sem `=` → fechar pelo `WM_CLOSE` → conferir o banco | Linha `0.10 + 0.05 = 0.15` gravada (fecha também o pendente da parte A) |
+
+---
+
+## [Concluída] Etapa 14.3 — CI/CD, fluxo de branches e distribuição
+
+Mudança estrutural de processo: o padrão husky dos outros projetos (`pre-commit`/`commit-msg`/`pre-push`) foi portado para GitHub Actions, e a `main` deixou de aceitar commits diretos.
+
+### Fluxo de branches
+
+- Branch `dev` criada (herdando os 3 commits não pushados da `main`) e promovida a branch padrão
+- Rulesets: `main-protegida` (PR + checks `commitlint`/`analyze`/`test`/`build-android`/`build-windows` + bypass por deploy key) e `dev-integracao` (sem force-push/deleção)
+- `main` local resetada para `origin/main` — todo o trabalho pendente entra via PR
+
+### Tooling
+
+- `.fvmrc` — pin do Flutter `3.44.2` (o CI lê daqui via ação composta `setup-flutter`)
+- `commitlint.yaml` + `commitlint_cli ^0.8.1` — Conventional Commits validados no CI (o merge é ignorado pelo linter, confirmado)
+- `tool/bump_version.dart` + `test/tool/bump_version_test.dart` — motor D5/D6 copiado do runway (7 testes verdes); no decima é invocado pelo `release.yml`, não por hook
+- `/.github/` removido do `.gitignore` — a linha bloqueava o versionamento dos workflows
+- `dart format` aplicado ao repo (26 arquivos) — gate `--set-exit-if-changed` no CI
+- `build.gradle.kts` — `signingConfigs.release` lê `android/key.properties` (git-ignorado); keystore de upload em `~/.keystores/decima/decima-release.jks` e em secrets (base64). Sem o arquivo, fallback para debug (forks continuam buildando)
+
+### Workflows
+
+- `ci.yml` (PRs para `dev`/`main`; push na `dev`): commitlint por range, format + analyze, testes com gate de cobertura de 85% (baseline 88,4%), APK release (push na `dev` vira `X.Y.Z-dev.<run>` e distribui ao grupo `dev` do Firebase), bundle Windows zipado com runtime MSVC app-local
+- `release.yml` (push na `main`): motor decide o bump pelo range desde a última tag `v*` → commit `chore(release): vX.Y.Z+B` + tag via deploy key (bypass do ruleset) → APK assinado ao grupo `stable` do Firebase com notas do `CHANGELOG.md` → instalador Inno Setup + `.sha256` → GitHub Release. Range sem bump = NOOP (nada é publicado)
+- Segurança: `pull_request` (nunca `pull_request_target`), secrets ausentes em fork, `permissions: contents: read` no CI, credenciais só em `$RUNNER_TEMP`
+
+### Firebase
+
+- Projeto `decima-wevasoft` (app Android `com.wevasoft.decima` já registrado); grupos de testers `dev` e `stable` criados via CLI
+- Sem SDK Firebase no app — App Distribution usa apenas APK + App ID + service account
+
+### Pendências (ações manuais do dev)
+
+- Secret `FIREBASE_SERVICE_ACCOUNT` (gerar chave no console do Firebase)
+- Deploy key `release-bot` + secret `RELEASE_DEPLOY_KEY` (geração de chave SSH bloqueada no ambiente da IA)
+
+### Documentação
+
+- Novo `docs/fundacao/ci-cd.md` (fluxo, jobs, secrets, OWASP CI/CD, gotchas)
+- `README.md` com badges de CI/Release e seção "Contribuição e Release"; índice de `docs/` atualizado
+
+### Testes
+
+- `test/tool/bump_version_test.dart` — 7 cenários (RESULT minor/patch/major, NOOP interno, anti-loop de release, range vazio, âncora de fallback)
+- **Total: 690 testes — 100% verde**
+- `flutter analyze` — zero issues

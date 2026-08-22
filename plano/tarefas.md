@@ -553,6 +553,196 @@ Checklist detalhado de cada etapa. Marque `[x]` conforme concluir.
 
 ---
 
+## Etapa 14.1 — Instalador Windows (.exe) ✅
+
+### Script do instalador
+
+- [x] Criar `tool/installer/decima.iss` (Inno Setup 6.3+)
+  - `AppId` GUID fixo, versão injetada via `/DAppVersion`
+  - Instalação por usuário (`PrivilegesRequired=lowest`), sem UAC
+  - Wizard mínimo (sem Welcome/Ready/Group), pt-BR + inglês
+  - Menu Iniciar sempre; atalho de desktop como tarefa opcional
+  - `CloseApplications=yes` para upgrade in-place
+- [x] Preservar dados do usuário (`%APPDATA%\Wevasoft\Decima`) na desinstalação
+
+### Automação
+
+- [x] Criar `tool/installer/build_installer.sh` — sync → clean → build → runtime C++ → ISCC → `dist/`
+- [x] Flags `--no-clean` e `--skip-build`
+- [x] Criar `tool/installer/local.env.example` e ignorar `local.env` + `/dist/` no `.gitignore`
+- [x] Copiar DLLs do redist MSVC para o bundle (app-local, sem pré-requisito)
+
+### Documentação
+
+- [x] Criar `docs/fundacao/empacotamento-windows.md` (decisões, gotchas, segurança)
+- [x] Adicionar seção "Instalação (Windows)" no `README.md` com o aviso de SmartScreen
+- [x] Registrar no índice `docs/README.md`
+
+### Validação
+
+- [x] `dist/decima-<versão>-windows-x64-setup.exe` gerado — `decima-0.5.0-windows-x64-setup.exe`, 12 MB, compilado em 2,6 s, `.sha256` ao lado
+- [x] Smoke test automatizado: instalação silenciosa (`/VERYSILENT`) → bundle em `%LOCALAPPDATA%\Programs\Decima` + atalho no Menu Iniciar → `decima.exe` abre com janela "Decima" → desinstalação silenciosa remove programa e atalho e **preserva** `%APPDATA%\Wevasoft\Decima` (a máquina ficou limpa: app desinstalado ao final)
+- [x] Verificação manual: instalar → abrir pelo Menu Iniciar → operar → desinstalar
+- [x] Verificação manual: reinstalar por cima preserva o histórico
+
+### Ajustes — tempo de compilação do instalador ✅ (causa raiz encontrada)
+
+O diagnóstico anterior ("LZMA single-thread a 52 KB/s") estava **errado**: o processo nunca esteve comprimindo.
+
+**Causa raiz**: o Inno Setup **6.2.2** instalado no host crashava em **toda** compilação — access violation (`0xc0000005`) no **`ISPP.dll`**, sempre no offset `0x244a4` ("Runtime error 216"), antes de ler qualquer arquivo do `[Files]` (I/O do processo: **0 bytes** lidos/escritos, `dist/` nunca criado). O runtime Delphi exibe o erro num **diálogo modal invisível** para quem chama via interop do WSL (`MainWindowTitle: "Error"`, thread em `WaitReason: UserRequest`); preso no pipe do console interop, o mesmo estado degenerava em spin de 100% de CPU — lido nas sessões anteriores como "compressão CPU-bound lenta". Reproduzido até com um `.iss` mínimo usando `Compression=zip` e em console nativo (`Start-Process`), e confirmado pelo log de eventos do Windows (`Application Error`, 3 crashes em `ISPP.dll`).
+
+**Correção**: `winget upgrade JRSoftware.InnoSetup` → **6.7.3**. A mesma compilação passou a levar **2,6 s** (era "infinito").
+
+Do checklist original:
+
+- [x] `LZMANumBlockThreads=4` + `LZMAUseSeparateProcess=yes` no `[Setup]` — mantidos como boa prática (paralelismo real por blocos, compressão fora do processo 32-bit do compilador)
+- [x] `/Q` removido do `build_installer.sh` — o `Compressing: <arquivo>` é o que denuncia travamento; sem ele o silêncio pós-banner é indistinguível de compressão longa
+- [x] Volume do `[Files]` confirmado: 33 MB / 27 arquivos, apenas o Release
+- [x] Baseline da máquina: `xz -6 -T1` no WSL (mesmo CPU) = 33 MB em 13,9 s ≈ **2,4 MB/s** — a máquina nunca foi o gargalo
+- [x] ~~`LZMABlockSize`, `LZMAMatchFinder=HC`, `lzma2/fast`~~ — obsoletos com a causa raiz corrigida
+- [x] Extra: `ArchitecturesAllowed`/`ArchitecturesInstallIn64BitMode` migrados de `x64` (deprecado no Inno 6.3+) para `x64compatible` — cobre também Windows ARM64 com emulação x64
+
+---
+
+## Etapa 14.2 — Persistência ao fechar e memória da janela
+
+> Origem: uso diário do Decima instalado no Windows. (1) Fechar pelo `X` descarta o cálculo em andamento — só `=` e `C` persistem hoje. (2) A janela sempre reabre centralizada.
+
+### A — Flush da sessão ao fechar (multiplataforma)
+
+#### Testes PRIMEIRO (TDD Red)
+
+- [x] Atualizar `test/unit/ui/calculator/calculator_view_model_test.dart`
+  - Cenário: `flushSession()` com expressão pendente avaliável (`10 + 5` sem `=`) grava a linha no histórico
+  - Cenário: `flushSession()` com parênteses abertos auto-fecha antes de avaliar
+  - Cenário: `flushSession()` com número solto sem operador **não** grava nada
+  - Cenário: `flushSession()` com sessão vazia é no-op
+  - Cenário: `flushSession()` após `=` (nada novo) é no-op — não duplica linha nem cria sessão nova
+  - Cenário: `flushSession()` chamado duas vezes seguidas é idempotente
+  - Cenário: `flushSession()` aguarda o `add` em voo (`_addInFlight`) — o `Future` só completa depois da escrita
+  - Cenário: `flushSession()` em modo de edição (`_editText`) usa o mesmo caminho do `equals()`
+- [x] Criar `test/widget/core/desktop/window_close_handler_test.dart`
+  - Cenário: pedido de fechamento chama `flushSession()` **antes** de destruir a janela
+  - Cenário: flush que lança exceção ainda destrói a janela (app nunca fica impossível de fechar)
+  - Cenário: timeout no flush não bloqueia o fechamento
+  - Cenário: em mobile o handler não registra `WindowListener`
+
+#### Implementação (TDD Green)
+
+- [x] Extrair de `equals()` um helper compartilhado que avalia + formata + adiciona a linha à sessão
+- [x] Tornar `_saveOrUpdateSession()` `Future<void>` e aguardar o `add` em voo (resolve a corrida do `_addInFlight`)
+- [x] Implementar `Future<void> flushSession()` no `CalculatorViewModel`
+  - Avalia a expressão pendente quando há ao menos um operador; auto-fecha parênteses
+  - Número digitado sem operador não vira entrada (regra documentada)
+  - Aguarda a escrita concluir; idempotente
+- [x] Criar `lib/ui/core/desktop/window_close_handler.dart`
+  - `windowManager.setPreventClose(true)` + `WindowListener.onWindowClose` → `flushSession()` → `windowManager.destroy()`
+  - `destroy()` em `finally` + timeout no flush — garantia de que a janela sempre fecha
+  - Registrar/desregistrar o listener no ciclo de vida do widget
+- [x] Integrar o handler ao `_DecimaAppState` (`MaterialApp.builder`, acima do `DesktopShell`), ativo apenas quando `DesktopShell.isDesktop`
+- [x] Adicionar `AppLifecycleListener` no `_DecimaAppState` para mobile
+  - Flush em `onHide`/`onPause` (o Android encerra o processo sem garantir `detached`) e em `onExitRequested`
+- [x] Verificar que o flush cobre `X` da `AppTitleBar`, `Alt+F4` e "Fechar janela" pela barra de tarefas — os três chegam como `onWindowClose` com `setPreventClose(true)`; validação manual pendente no Windows
+
+### B — Memória da posição da janela (desktop)
+
+#### Testes PRIMEIRO (TDD Red)
+
+- [x] Atualizar `test/unit/data/repositories/settings_repository_test.dart`
+  - Cenários: salvar e ler a posição, ausência devolve `null`, valor parcial (só `x`) devolve `null`
+- [x] Criar `test/unit/ui/core/desktop/window_position_test.dart`
+  - Cenários: posição dentro de um display, fora de todos, parcialmente visível (title bar alcançável ou não), lista de displays vazia
+- [x] Extra: cenários novos em `window_close_handler_test.dart` (posição gravada antes do `destroy`, erro em cada gravação, ausência de callback)
+
+#### Implementação (TDD Green)
+
+- [x] Adicionar `getWindowPosition()` / `setWindowPosition(double x, double y)` à interface `SettingsRepository`
+- [x] Implementar em `SettingsRepositoryImpl` com chaves `window_x` / `window_y` — trafegar `double`, **sem** `Offset` (repositórios não importam Flutter) — via entidade `WindowPosition`
+- [x] Criar `lib/ui/core/desktop/window_position.dart` com a função pura de validação da posição contra a lista de displays
+  - Critério: área da title bar visível somada entre os displays ≥ `minGrabWidth × titleBarHeight` (80 × 40 px)
+- [x] Ajustar `initDesktopWindow()`
+  - Ler a posição salva; `center: true` apenas quando não houver posição válida
+  - `setPosition` **antes** do `show()` — sem piscar no centro
+  - Descartar posição inválida (monitor desconectado, mudança de resolução/DPI) → centro
+  - `setupDependencies()` subiu no `main()`: o `SettingsRepository` é injetado por parâmetro
+- [x] Consultar os displays via `screen_retriever` (declarar em `dependencies` se importado direto — hoje é transitivo do `window_manager`)
+- [x] Gravar a posição no fechamento, junto do flush da sessão (`getPosition()` antes do `destroy()`)
+  - As duas gravações em `Future.wait` sem `eagerError`, sob o mesmo `flushTimeout`
+- [x] Documentar `onWindowMoved` com debounce como alternativa (cobre encerramento anormal) — sem implementar
+
+### Documentação
+
+- [x] Documentar a persistência ao fechar em `docs/features/calculadora.md` (incluindo a regra do número solto)
+- [x] Documentar o close handler em `docs/fundacao/arquitetura.md` (nova seção "Infra de Desktop")
+- [x] Documentar a memória de posição em `docs/fundacao/arquitetura.md` (infra de desktop)
+  - Extra: `arquitetura.md` ganhou as seções `## Segurança e Cibersegurança` e `## Desenvolvimento & Gotchas` que faltavam
+- [x] Atualizar `plano/changelog.md` — partes A e B registradas
+
+### Validação
+
+- [x] `flutter test` — 100% verde (683 testes, após a parte B)
+- [x] `flutter analyze` — zero warnings
+- [x] Regressão: testes das Etapas 13 e 14 continuam verdes
+- [x] `flutter build windows --release` — sucesso (cópia de build do host, 49,8 s)
+- [x] Teste manual: digitar `10 + 5` sem `=` → fechar pelo `X` → reabrir → cálculo no histórico
+  - Dirigido por script via interop (`SendKeys` + `WM_CLOSE`); linha `0.10 + 0.05 = 0.15` gravada no `decima.db`
+- [ ] Teste manual: `=` e fechar imediatamente → a última linha está gravada
+- [x] Teste manual: mover a janela → fechar → reabrir na mesma posição
+  - Movida para `200,150` → `window_x`/`window_y` gravados → reabriu em `200,150`
+- [x] Teste manual: fechar em um monitor secundário → desconectá-lo → reabrir volta ao centro
+  - Sem monitor extra disponível: simulado adulterando as chaves para `9999,9999` (fora de qualquer display) → abriu no centro e regravou a posição válida
+- [ ] Teste manual (Android): sair do app pelo gesto/botão → reabrir → cálculo preservado
+
+---
+
+## Etapa 14.3 — CI/CD, fluxo de branches e distribuição
+
+### Fluxo de branches e governança
+
+- [x] Criar branch `dev` (contendo os commits ainda não pushados da `main`) e torná-la a branch padrão
+- [x] Ruleset `main-protegida`: PR obrigatório + checks `commitlint`/`analyze`/`test`/`build-android`/`build-windows`, sem force-push/deleção, bypass para deploy keys
+- [x] Ruleset `dev-integracao`: sem force-push/deleção (commits diretos permitidos)
+- [x] Resetar a `main` local para `origin/main` (os 3 commits não pushados entram via PR)
+
+### Tooling no repositório
+
+- [x] `.fvmrc` pinando Flutter `3.44.2` (fonte da versão do SDK no CI)
+- [x] Remover `/.github/` do `.gitignore` (bloqueava o versionamento dos workflows)
+- [x] `commitlint.yaml` + `commitlint_cli ^0.8.1` em dev_dependencies (padrão runway/verbum/dosia)
+- [x] Copiar `tool/bump_version.dart` (motor D5/D6 do runway) + `test/tool/bump_version_test.dart` — 7 testes verdes
+- [x] `dart format` aplicado ao repo inteiro (gate de formatação no CI)
+- [x] `signingConfigs.release` no `build.gradle.kts` lendo `android/key.properties` (fallback: debug)
+- [x] Keystore de upload gerado em `~/.keystores/decima/decima-release.jks` + `key.properties` local
+
+### Workflows
+
+- [x] `.github/actions/setup-flutter/action.yml` — ação composta (Flutter do `.fvmrc` + cache + pub get)
+- [x] `.github/workflows/ci.yml` — commitlint, format+analyze, test+coverage (gate 85%), build-android (+ Firebase grupo `dev` em push), build-windows (zip com runtime MSVC)
+- [x] `.github/workflows/release.yml` — bump SemVer + `CHANGELOG.md` + tag via deploy key, APK assinado → Firebase grupo `stable`, instalador Inno Setup + `.sha256`, GitHub Release
+
+### Firebase e secrets
+
+- [x] Grupos de testers `dev` e `stable` criados no projeto `decima-wevasoft` (tester inicial adicionado)
+- [x] Secrets: `ANDROID_KEYSTORE_BASE64`, `ANDROID_KEYSTORE_PASSWORD`, `ANDROID_KEY_PASSWORD`, `ANDROID_KEY_ALIAS`; variável `FIREBASE_ANDROID_APP_ID`
+- [ ] Secret `FIREBASE_SERVICE_ACCOUNT` (chave de service account gerada no console — ação manual)
+- [ ] Deploy key de escrita `release-bot` + secret `RELEASE_DEPLOY_KEY` (ação manual — bloqueada no ambiente da IA)
+
+### Documentação
+
+- [x] Criar `docs/fundacao/ci-cd.md` (fluxo, jobs, secrets, segurança, gotchas)
+- [x] Atualizar `docs/README.md` (índice) e `README.md` (badges + seção "Contribuição e Release")
+- [x] Registrar a etapa em `plano/plano.md`, `plano/tarefas.md` e `plano/changelog.md`
+
+### Validação
+
+- [x] `flutter test` — 100% verde (690 testes, incluindo os 7 do motor)
+- [x] `flutter analyze` — zero warnings
+- [x] `dart run commitlint_cli --from=origin/main --to=HEAD` — todos os commits válidos
+- [ ] Primeiro PR `dev` → `main` com pipeline 100% verde
+- [ ] Primeiro release automático publicado (Firebase `stable` + GitHub Release)
+
+---
+
 ## Etapa 15 — Suporte a Linux
 
 ### Habilitação da plataforma

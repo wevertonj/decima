@@ -1,6 +1,10 @@
 # Notas locais de ambiente (específicas da máquina — nunca versionar)
 plano/local/
 CLAUDE.local.md
+tool/installer/local.env
+
+# Artefatos de distribuição (instaladores gerados)
+/dist/
 
 # Miscellaneous
 *.class
@@ -48,8 +52,6 @@ app.*.map.json
 /android/app/profile
 /android/app/release
 /android/build/
-
-/.github/
 
 # Node (tool/icon — pipeline de rasterização do ícone)
 node_modules/

@@ -10,8 +10,5 @@ class HistorySelection {
   /// into the calculator timeline.
   final int lineIndex;
 
-  const HistorySelection({
-    required this.entry,
-    required this.lineIndex,
-  });
+  const HistorySelection({required this.entry, required this.lineIndex});
 }

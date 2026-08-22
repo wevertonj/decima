@@ -288,9 +288,7 @@ void main() {
           () => mockRepository.getDecimalSeparator(),
         ).thenAnswer((_) async => DecimalSeparator.dot);
         when(() => mockRepository.getLocale()).thenAnswer((_) async => null);
-        when(
-          () => mockRepository.setThemeMode(any()),
-        ).thenAnswer((_) async {});
+        when(() => mockRepository.setThemeMode(any())).thenAnswer((_) async {});
 
         viewModel = SettingsViewModel(
           settingsRepository: mockRepository,
@@ -314,19 +312,16 @@ void main() {
         ).called(1);
       });
 
-      test(
-        'syncNativeNightMode re-syncs the current theme mode',
-        () async {
-          await viewModel.loadSettings();
-          clearInteractions(mockNightModeService);
+      test('syncNativeNightMode re-syncs the current theme mode', () async {
+        await viewModel.loadSettings();
+        clearInteractions(mockNightModeService);
 
-          viewModel.syncNativeNightMode();
+        viewModel.syncNativeNightMode();
 
-          verify(
-            () => mockNightModeService.syncThemeMode(ThemeModeOption.dark),
-          ).called(1);
-        },
-      );
+        verify(
+          () => mockNightModeService.syncThemeMode(ThemeModeOption.dark),
+        ).called(1);
+      });
     });
   });
 }

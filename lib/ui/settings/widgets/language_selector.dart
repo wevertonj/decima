@@ -47,12 +47,12 @@ class LanguageSelector extends StatelessWidget {
               vertical: AppLayout.padding.small,
             ),
             decoration: BoxDecoration(
-              color: isSelected 
+              color: isSelected
                   ? colors.surfaceContainerHighest.withValues(alpha: 0.8)
                   : colors.surfaceContainerHighest.withValues(alpha: 0.3),
               borderRadius: BorderRadius.circular(AppLayout.radius.circular),
               border: Border.all(
-                color: isSelected 
+                color: isSelected
                     ? colors.onSurface.withValues(alpha: 0.1)
                     : Colors.transparent,
                 width: 1,
@@ -69,7 +69,9 @@ class LanguageSelector extends StatelessWidget {
                   duration: const Duration(milliseconds: 350),
                   curve: Curves.easeOutCubic,
                   style: TextStyle(
-                    color: isSelected ? colors.onSurface : colors.onSurface.withValues(alpha: 0.6),
+                    color: isSelected
+                        ? colors.onSurface
+                        : colors.onSurface.withValues(alpha: 0.6),
                     fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400,
                     fontSize: 14,
                   ),

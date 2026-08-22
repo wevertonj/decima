@@ -36,22 +36,25 @@ void main() {
       await database.close();
     });
 
-    test('initialize creates the database inside the resolved directory', () async {
-      final tempDir = await Directory.systemTemp.createTemp('decima_db_test');
-      addTearDown(() => tempDir.delete(recursive: true));
+    test(
+      'initialize creates the database inside the resolved directory',
+      () async {
+        final tempDir = await Directory.systemTemp.createTemp('decima_db_test');
+        addTearDown(() => tempDir.delete(recursive: true));
 
-      final database = AppDatabase(
-        databaseFactory: databaseFactoryFfi,
-        directoryResolver: () async => tempDir.path,
-      );
+        final database = AppDatabase(
+          databaseFactory: databaseFactoryFfi,
+          directoryResolver: () async => tempDir.path,
+        );
 
-      await database.initialize();
+        await database.initialize();
 
-      final dbFile = File(p.join(tempDir.path, 'decima.db'));
-      expect(database.database.isOpen, isTrue);
-      expect(dbFile.existsSync(), isTrue);
-      await database.close();
-    });
+        final dbFile = File(p.join(tempDir.path, 'decima.db'));
+        expect(database.database.isOpen, isTrue);
+        expect(dbFile.existsSync(), isTrue);
+        await database.close();
+      },
+    );
 
     test('without resolver keeps the factory default relative path', () async {
       final database = AppDatabase(databaseFactory: databaseFactoryFfi);

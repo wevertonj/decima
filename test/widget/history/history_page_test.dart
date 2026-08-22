@@ -22,7 +22,12 @@ void main() {
       count,
       (i) => HistoryEntry(
         id: i + 1,
-        lines: [HistoryLine(expression: '${(i + 1) * 10}.00 + ${(i + 1) * 5}.00', result: '${(i + 1) * 15}.00')],
+        lines: [
+          HistoryLine(
+            expression: '${(i + 1) * 10}.00 + ${(i + 1) * 5}.00',
+            result: '${(i + 1) * 15}.00',
+          ),
+        ],
         result: '${(i + 1) * 15}.00',
         createdAt: now.subtract(Duration(minutes: i)),
         isFavorite: favorites,
@@ -100,7 +105,7 @@ void main() {
           HistoryEntry(
             id: 1,
             lines: [HistoryLine(expression: '50.00 + 25.00', result: '75.00')],
-          result: '75.00',
+            result: '75.00',
             createdAt: now,
           ),
         ];
@@ -123,7 +128,7 @@ void main() {
           HistoryEntry(
             id: 1,
             lines: [HistoryLine(expression: '100.00 × 2.00', result: '200.00')],
-          result: '200.00',
+            result: '200.00',
             createdAt: now,
             name: 'Conta do mercado',
           ),
@@ -171,14 +176,12 @@ void main() {
     });
 
     group('favorites', () {
-      testWidgets('should toggle favorite when star is tapped', (
-        tester,
-      ) async {
+      testWidgets('should toggle favorite when star is tapped', (tester) async {
         final entries = [
           HistoryEntry(
             id: 1,
             lines: [HistoryLine(expression: '10.00 + 5.00', result: '15.00')],
-          result: '15.00',
+            result: '15.00',
             createdAt: now,
             isFavorite: false,
           ),
@@ -324,7 +327,7 @@ void main() {
           HistoryEntry(
             id: 1,
             lines: [HistoryLine(expression: '10.00 + 5.00', result: '15.00')],
-          result: '15.00',
+            result: '15.00',
             createdAt: now,
           ),
         ];
@@ -351,7 +354,7 @@ void main() {
           HistoryEntry(
             id: 1,
             lines: [HistoryLine(expression: '10.00 + 5.00', result: '15.00')],
-          result: '15.00',
+            result: '15.00',
             createdAt: now,
           ),
         ];
@@ -415,10 +418,7 @@ void main() {
           findsNothing,
         );
         // Truncated version with "..." should be visible
-        expect(
-          find.textContaining('...'),
-          findsOneWidget,
-        );
+        expect(find.textContaining('...'), findsOneWidget);
       });
     });
   });

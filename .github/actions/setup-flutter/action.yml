@@ -1,0 +1,23 @@
+# Ação composta: instala o Flutter pinado no `.fvmrc` (mesma versão do FVM
+# local) com cache e resolve as dependências do projeto.
+name: Setup Flutter
+description: Instala o Flutter na versão do .fvmrc e roda flutter pub get.
+
+runs:
+  using: composite
+  steps:
+    - name: Ler versão do .fvmrc
+      id: fvm
+      shell: bash
+      run: echo "version=$(jq -r .flutter .fvmrc)" >> "$GITHUB_OUTPUT"
+
+    - name: Instalar Flutter
+      uses: subosito/flutter-action@v2
+      with:
+        flutter-version: ${{ steps.fvm.outputs.version }}
+        channel: stable
+        cache: true
+
+    - name: Resolver dependências
+      shell: bash
+      run: flutter pub get

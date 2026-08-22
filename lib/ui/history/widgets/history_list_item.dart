@@ -150,9 +150,7 @@ class _HistoryListItemState extends State<HistoryListItem> {
                 color: _expanded
                     ? colors.primary.withValues(alpha: 0.2)
                     : colors.onSurface.withValues(alpha: 0.1),
-                borderRadius: BorderRadius.circular(
-                  AppLayout.radius.circular,
-                ),
+                borderRadius: BorderRadius.circular(AppLayout.radius.circular),
               ),
               child: Text(
                 '${entry.lineCount}',
@@ -171,10 +169,8 @@ class _HistoryListItemState extends State<HistoryListItem> {
             duration: const Duration(milliseconds: 400),
             switchInCurve: Curves.easeOutBack,
             switchOutCurve: Curves.easeInBack,
-            transitionBuilder: (child, animation) => ScaleTransition(
-              scale: animation,
-              child: child,
-            ),
+            transitionBuilder: (child, animation) =>
+                ScaleTransition(scale: animation, child: child),
             child: Icon(
               entry.isFavorite
                   ? Icons.star_rounded

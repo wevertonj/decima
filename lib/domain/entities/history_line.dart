@@ -3,15 +3,9 @@ class HistoryLine {
   final String expression;
   final String result;
 
-  const HistoryLine({
-    required this.expression,
-    required this.result,
-  });
+  const HistoryLine({required this.expression, required this.result});
 
-  Map<String, dynamic> toJson() => {
-    'expression': expression,
-    'result': result,
-  };
+  Map<String, dynamic> toJson() => {'expression': expression, 'result': result};
 
   factory HistoryLine.fromJson(Map<String, dynamic> json) {
     return HistoryLine(

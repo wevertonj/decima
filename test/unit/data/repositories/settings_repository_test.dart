@@ -3,6 +3,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:decima/data/repositories/settings_repository.dart';
 import 'package:decima/data/repositories/settings_repository_impl.dart';
+import 'package:decima/domain/entities/window_position.dart';
 import 'package:decima/domain/enums/decimal_separator.dart';
 import 'package:decima/domain/enums/theme_mode_option.dart';
 
@@ -110,6 +111,57 @@ void main() {
         await repository.setLocale(null);
 
         final result = await repository.getLocale();
+
+        expect(result, isNull);
+      });
+    });
+
+    group('windowPosition', () {
+      test('should return null when no position was saved', () async {
+        final result = await repository.getWindowPosition();
+
+        expect(result, isNull);
+      });
+
+      test('should save and load the window position', () async {
+        await repository.setWindowPosition(1280.0, 240.5);
+
+        final result = await repository.getWindowPosition();
+
+        expect(result, const WindowPosition(x: 1280.0, y: 240.5));
+      });
+
+      test('should save negative coordinates (display to the left)', () async {
+        await repository.setWindowPosition(-1920.0, -80.0);
+
+        final result = await repository.getWindowPosition();
+
+        expect(result, const WindowPosition(x: -1920.0, y: -80.0));
+      });
+
+      test('should overwrite a previously saved position', () async {
+        await repository.setWindowPosition(100.0, 100.0);
+        await repository.setWindowPosition(300.0, 50.0);
+
+        final result = await repository.getWindowPosition();
+
+        expect(result, const WindowPosition(x: 300.0, y: 50.0));
+      });
+
+      test('should return null when only x is stored', () async {
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.setDouble('window_x', 120.0);
+
+        final result = await repository.getWindowPosition();
+
+        expect(result, isNull);
+      });
+
+      test('should return null when only y is stored', () async {
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.setDouble('window_y', 120.0);
+
+        final result = await repository.getWindowPosition();
 
         expect(result, isNull);
       });

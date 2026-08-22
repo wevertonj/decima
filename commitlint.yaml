@@ -1,0 +1,8 @@
+include: package:commitlint_cli/commitlint.yaml
+
+rules:
+  # Scopes livres: qualquer valor ou nenhum é aceito
+  scope-enum:
+    - 0
+    - always
+    - []

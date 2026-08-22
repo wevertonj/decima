@@ -84,10 +84,7 @@ class HistoryRepositoryImpl implements HistoryRepository {
     // Only update expression (lines JSON) and result.
     await _database.database.update(
       _tableName,
-      {
-        'expression': map['expression'],
-        'result': map['result'],
-      },
+      {'expression': map['expression'], 'result': map['result']},
       where: 'id = ?',
       whereArgs: [entry.id],
     );

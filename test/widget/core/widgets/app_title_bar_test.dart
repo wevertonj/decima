@@ -13,9 +13,7 @@ void main() {
   Widget buildTitleBar({VoidCallback? onMinimize, VoidCallback? onClose}) {
     return Scaffold(
       body: Column(
-        children: [
-          AppTitleBar(onMinimize: onMinimize, onClose: onClose),
-        ],
+        children: [AppTitleBar(onMinimize: onMinimize, onClose: onClose)],
       ),
     );
   }
@@ -108,10 +106,7 @@ void main() {
       expect(idleColor, isNotNull);
       expect(idleColor!.a, 0.0);
 
-      await hoverAt(
-        tester,
-        tester.getCenter(find.byIcon(Icons.close_rounded)),
-      );
+      await hoverAt(tester, tester.getCenter(find.byIcon(Icons.close_rounded)));
 
       final hoveredColor = buttonColor(tester, Icons.close_rounded);
       expect(hoveredColor, isNotNull);

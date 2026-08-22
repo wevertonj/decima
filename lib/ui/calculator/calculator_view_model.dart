@@ -59,10 +59,18 @@ class CalculatorViewModel extends ChangeNotifier {
   /// save calls (e.g., `clear()` right after `=` should not re-add).
   int _persistedLineCount = 0;
 
-  /// True once an `add` has been issued for the current session, even before
-  /// the asynchronous future resolves with the new id. Prevents duplicate
-  /// `add` calls when subsequent persistence happens synchronously after `=`.
-  bool _addInFlight = false;
+  /// In-flight `add` for the current session, resolving with the id assigned
+  /// by the database. `null` when no creation is pending. Subsequent saves
+  /// chain onto it instead of issuing a second `add`.
+  Future<int?>? _pendingAdd;
+
+  /// Chain of every write already issued. [flushSession] awaits it so the
+  /// app shutting down never interrupts a persistence call in progress.
+  Future<void> _pendingWrite = Future<void>.value();
+
+  /// Incremented whenever the session is reset (clear, load, paste). Lets an
+  /// in-flight `add` know its id belongs to a session that no longer exists.
+  int _sessionGeneration = 0;
 
   /// Operator typed but not yet committed (waiting for the right-hand side).
   String? _pendingOperator;
@@ -462,90 +470,78 @@ class CalculatorViewModel extends ChangeNotifier {
   }
 
   void equals() {
-    _runAction(() {
-      if (_editText != null) {
-        var raw = _normalizeForEvaluator(_editText!);
-        if (raw.trim().isEmpty) return;
-        // Need at least one operator anywhere to be evaluable.
-        if (!RegExp(r'[+\u2212\u00d7\u00f7]').hasMatch(raw)) return;
-        // Auto-close any unbalanced parentheses, same as the committed path.
-        final open = openParenCount;
-        if (open > 0) {
-          raw = '$raw${' )' * open}';
-        }
-        final result = _evaluator.evaluate(raw);
-        if (result == null) return;
+    _runAction(_commitPendingCalculation);
+  }
 
-        final formattedExpression = _formatExpression(raw);
-        final formattedResult = _formatValue(result);
+  /// Persists the in-progress session and waits for the write to land.
+  ///
+  /// Called when the desktop window is closing and when the app goes to the
+  /// background on mobile. The pending expression is closed exactly as a `=`
+  /// press would close it — unbalanced parentheses auto-closed, the result
+  /// appended to the timeline. A number typed without any operator is **not**
+  /// a calculation and never becomes a history entry.
+  ///
+  /// Idempotent: with nothing new to write it only awaits the writes already
+  /// issued, including an `add` still in flight.
+  Future<void> flushSession() {
+    // `equals()` já é a operação "fecha o cálculo pendente": ignora entradas
+    // sem operador, auto-fecha parênteses e é no-op quando nada mudou.
+    equals();
 
-        final calculation = Calculation(
-          expression: formattedExpression,
-          result: formattedResult,
-          timestamp: DateTime.now(),
-        );
-        _timelineEntries.add(calculation);
-        _sessionLines.add(HistoryLine(expression: raw, result: result));
-        _saveOrUpdateSession();
+    return _pendingWrite;
+  }
 
-        _exitEditMode();
-        _committed.clear();
-        _pendingOperator = null;
-        _engineActive = false;
-        _shouldResetOnInput = true;
-        _currentIsPercentage = false;
-        _add2Engine.setValue(_parseToInt(result));
-        _atEnd = true;
-        notifyListeners();
+  /// Closes the in-progress calculation: evaluates the pending expression,
+  /// records the line in the timeline and in the session, and leaves the
+  /// state exactly as a `=` press does. No-op when there is nothing
+  /// evaluable — empty display, or no operator typed.
+  void _commitPendingCalculation() {
+    final raw = _pendingRawExpression();
+    if (raw == null) return;
 
-        return;
-      }
-      // Need at least one operator anywhere to be evaluable.
-      final hasOperator =
-          _pendingOperator != null || _committed.any(_isOperator);
-      if (!hasOperator) return;
+    final result = _evaluator.evaluate(raw);
+    if (result == null) return;
 
-      if (_pendingOperator != null && !_engineActive) {
-        // "12.50 +" with no RHS — evaluator handles trailing operator
-        // gracefully, so we still proceed.
-      }
-
-      var raw = _buildFullExpression();
-      // Auto-close any unbalanced parentheses before evaluation.
-      final open = openParenCount;
-      if (open > 0) {
-        raw = '$raw${' )' * open}';
-      }
-
-      final result = _evaluator.evaluate(raw);
-      if (result == null) return;
-
-      final formattedExpression = _formatExpression(raw);
-      final formattedResult = _formatValue(result);
-
-      final calculation = Calculation(
-        expression: formattedExpression,
-        result: formattedResult,
+    _timelineEntries.add(
+      Calculation(
+        expression: _formatExpression(raw),
+        result: _formatValue(result),
         timestamp: DateTime.now(),
-      );
+      ),
+    );
 
-      _timelineEntries.add(calculation);
+    // Store the raw expression/result pair for session-based saving, then
+    // persist: create on the first =, update on subsequent ones.
+    _sessionLines.add(HistoryLine(expression: raw, result: result));
+    _saveOrUpdateSession();
 
-      // Store the raw expression/result pair for session-based saving.
-      _sessionLines.add(HistoryLine(expression: raw, result: result));
+    _exitEditMode();
+    _committed.clear();
+    _pendingOperator = null;
+    _engineActive = false;
+    _shouldResetOnInput = true;
+    _currentIsPercentage = false;
+    _add2Engine.setValue(_parseToInt(result));
+    _atEnd = true;
+    notifyListeners();
+  }
 
-      // Persist the session: create on first =, update on subsequent.
-      _saveOrUpdateSession();
+  /// The pending expression ready for the evaluator — separators normalized
+  /// and unbalanced parentheses auto-closed — or `null` when there is
+  /// nothing to evaluate: empty display, or no operator typed anywhere.
+  ///
+  /// A trailing operator with no right-hand side ("12.50 +") is kept as is;
+  /// the evaluator handles it gracefully.
+  String? _pendingRawExpression() {
+    final raw = _editText != null
+        ? _normalizeForEvaluator(_editText!)
+        : _buildFullExpression();
+    if (raw.trim().isEmpty) return null;
+    if (!_operatorRegExp.hasMatch(raw)) return null;
 
-      _committed.clear();
-      _pendingOperator = null;
-      _engineActive = false;
-      _shouldResetOnInput = true;
-      _currentIsPercentage = false;
-      _add2Engine.setValue(_parseToInt(result));
+    final open = openParenCount;
 
-      notifyListeners();
-    });
+    return open > 0 ? '$raw${' )' * open}' : raw;
   }
 
   void clear() {
@@ -565,8 +561,7 @@ class CalculatorViewModel extends ChangeNotifier {
       _currentIsPercentage = false;
       _timelineEntries.clear();
       _sessionLines.clear();
-      _currentSessionId = null;
-      _persistedLineCount = 0;
+      _resetSessionTracking();
       notifyListeners();
     });
   }
@@ -770,6 +765,10 @@ class CalculatorViewModel extends ChangeNotifier {
 
   static final RegExp _digitRegExp = RegExp(r'[0-9]');
   static final RegExp _numberCharRegExp = RegExp(r'[0-9.,%]');
+
+  /// Binary operators as they appear in an expression. Note the minus is the
+  /// U+2212 sign, never the hyphen a negative result is formatted with.
+  static final RegExp _operatorRegExp = RegExp(r'[+−×÷]');
 
   /// Inserts the digit string [digits] (only `0-9` chars) at the current
   /// cursor position, applying Add2 formatting to the surrounding number
@@ -1133,6 +1132,7 @@ class CalculatorViewModel extends ChangeNotifier {
     final upToIndex = selection.lineIndex.clamp(0, entry.lines.length - 1);
 
     // Track the loaded session so subsequent = presses update it.
+    _resetSessionTracking();
     _currentSessionId = entry.id;
     _persistedLineCount = 0; // Updated after lines are added below.
 
@@ -1182,53 +1182,84 @@ class CalculatorViewModel extends ChangeNotifier {
   /// and stores its ID in [_currentSessionId]. Subsequent calls update the
   /// existing row with the latest lines and result. No-op when there are
   /// no new lines since the last persist.
-  void _saveOrUpdateSession() {
-    if (_sessionLines.isEmpty) return;
-    if (_sessionLines.length == _persistedLineCount) return;
+  ///
+  /// Returns a future that completes once every write issued so far has
+  /// landed — [flushSession] awaits it so a shutting-down app never cuts a
+  /// write short.
+  Future<void> _saveOrUpdateSession() {
+    if (_sessionLines.isEmpty) return _pendingWrite;
+    if (_sessionLines.length == _persistedLineCount) return _pendingWrite;
 
-    final lastResult = _sessionLines.last.result;
-    final linesSnapshot = List.of(_sessionLines);
+    final lines = List.of(_sessionLines);
+    final lastResult = lines.last.result;
+    _persistedLineCount = lines.length;
 
-    if (_currentSessionId != null) {
-      _historyRepository.update(
-        HistoryEntry(
-          id: _currentSessionId,
-          lines: linesSnapshot,
-          result: lastResult,
-          createdAt: DateTime.now(),
-        ),
+    final sessionId = _currentSessionId;
+    if (sessionId != null) {
+      return _trackWrite(
+        _historyRepository.update(_sessionEntry(sessionId, lines, lastResult)),
       );
-      _persistedLineCount = linesSnapshot.length;
-
-      return;
     }
 
-    if (_addInFlight) {
-      // First add already issued but id not yet returned. Do not issue
-      // another add; the in-flight future will set the id and the next
-      // persist call will go through the update branch.
-      _persistedLineCount = linesSnapshot.length;
+    final pendingAdd = _pendingAdd;
+    if (pendingAdd != null) {
+      // The `add` for the first line has not returned an id yet. Chain the
+      // update onto the id it produces instead of creating a second session.
+      return _trackWrite(
+        pendingAdd.then<void>((id) async {
+          if (id == null) return;
 
-      return;
+          await _historyRepository.update(_sessionEntry(id, lines, lastResult));
+        }),
+      );
     }
 
-    _addInFlight = true;
-    _persistedLineCount = linesSnapshot.length;
-    _historyRepository
-        .add(
-          HistoryEntry(
-            lines: linesSnapshot,
-            result: lastResult,
-            createdAt: DateTime.now(),
-          ),
-        )
+    final generation = _sessionGeneration;
+    final add = _historyRepository
+        .add(_sessionEntry(null, lines, lastResult))
         .then((saved) {
-          _addInFlight = false;
-          // Only adopt the id if the session wasn't reset in the meantime.
-          if (_persistedLineCount > 0) {
+          // The session may have been reset (clear/load/paste) while the add
+          // was in flight — the id then belongs to a session that is gone.
+          if (_sessionGeneration == generation) {
+            _pendingAdd = null;
             _currentSessionId = saved.id;
           }
+
+          return saved.id;
         });
+    _pendingAdd = add;
+
+    return _trackWrite(add);
+  }
+
+  HistoryEntry _sessionEntry(int? id, List<HistoryLine> lines, String result) {
+    return HistoryEntry(
+      id: id,
+      lines: lines,
+      result: result,
+      createdAt: DateTime.now(),
+    );
+  }
+
+  /// Appends [write] to the chain of pending writes and returns a future
+  /// completing when it lands. A failed write never poisons the chain: later
+  /// waits still complete, so the app is always able to close.
+  Future<void> _trackWrite(Future<void> write) {
+    final chained = _pendingWrite.then((_) => write);
+    _pendingWrite = chained.catchError((_) {});
+
+    return chained;
+  }
+
+  /// Drops every trace of the current session so the next lines start a new
+  /// one. An `add` still in flight is detached: its id no longer lands in
+  /// [_currentSessionId], but the update chained onto it still writes to the
+  /// session those lines belong to.
+  void _resetSessionTracking() {
+    _sessionGeneration++;
+    _currentSessionId = null;
+    _persistedLineCount = 0;
+    _pendingAdd = null;
   }
 
   String _engineToken() {
@@ -1445,8 +1476,7 @@ class CalculatorViewModel extends ChangeNotifier {
     _currentIsPercentage = false;
     _timelineEntries.clear();
     _sessionLines.clear();
-    _currentSessionId = null;
-    _persistedLineCount = 0;
+    _resetSessionTracking();
 
     for (final line in lines) {
       _timelineEntries.add(

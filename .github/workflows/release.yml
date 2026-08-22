@@ -1,0 +1,229 @@
+# Release — motor de versionamento + distribuição (porta do hook pre-push
+# D5/D6 dos outros projetos para o CI).
+#
+# A cada push na `main` (merge de PR): `tool/bump_version.dart` decide o bump
+# SemVer pelo range de commits desde a última tag `v*`. Com bump, o workflow
+# commita `chore(release): vX.Y.Z+B` + tag `vX.Y.Z` na main — o push usa a
+# deploy key `RELEASE_DEPLOY_KEY` (bypass do ruleset `main-protegida`) —,
+# builda APK assinado e instalador Windows, distribui no Firebase (grupo
+# stable) e publica o GitHub Release. Sem bump (range só de chore/docs/etc.),
+# NOOP: nada é publicado.
+#
+# Anti-loop: o push do commit de release redispara este workflow, mas um range
+# só de `chore(release)` resulta em NOOP no motor (decisão D6).
+name: Release
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release-main
+  cancel-in-progress: false
+
+env:
+  HAS_KEYSTORE: ${{ secrets.ANDROID_KEYSTORE_BASE64 != '' }}
+  HAS_FIREBASE: ${{ secrets.FIREBASE_SERVICE_ACCOUNT != '' }}
+  HAS_DEPLOY_KEY: ${{ secrets.RELEASE_DEPLOY_KEY != '' }}
+
+jobs:
+  bump:
+    name: bump-version
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    outputs:
+      released: ${{ steps.bump.outputs.released }}
+      version: ${{ steps.bump.outputs.version }}
+      semver: ${{ steps.bump.outputs.semver }}
+      sha: ${{ steps.bump.outputs.sha }}
+    steps:
+      # Com a ssh-key, o push do commit de release autentica como a deploy key
+      # e aciona o bypass do ruleset. Sem a secret, o checkout cai no token
+      # padrão e o passo de bump falha com instrução clara.
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          ssh-key: ${{ secrets.RELEASE_DEPLOY_KEY }}
+
+      - uses: ./.github/actions/setup-flutter
+
+      - name: Calcular bump, changelog e tag
+        id: bump
+        run: |
+          set -euo pipefail
+          out=$(dart run tool/bump_version.dart)
+          line=$(printf '%s\n' "$out" | grep -E '^(RESULT|NOOP)' | tail -n1)
+          echo "Motor: $line"
+          if [ "${line#RESULT}" != "$line" ] && [ "$HAS_DEPLOY_KEY" != 'true' ]; then
+            echo "::error::Há release a publicar, mas a secret RELEASE_DEPLOY_KEY não está configurada — o push do commit de release seria rejeitado pelo ruleset. Configure a deploy key (docs/fundacao/ci-cd.md) e rode o workflow de novo."
+            exit 1
+          fi
+          if [ "${line#RESULT}" != "$line" ]; then
+            new=$(echo "$line" | awk '{print $3}')
+            semver=${new%+*}
+            git config user.name 'github-actions[bot]'
+            git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+            git add pubspec.yaml CHANGELOG.md
+            git commit -m "chore(release): v$new"
+            git tag -a "v$semver" -m "v$semver"
+            git push origin main --follow-tags
+            {
+              echo "released=true"
+              echo "version=$new"
+              echo "semver=$semver"
+              echo "sha=$(git rev-parse HEAD)"
+            } >> "$GITHUB_OUTPUT"
+          else
+            echo "released=false" >> "$GITHUB_OUTPUT"
+            echo "Range sem bump SemVer — nada a publicar." >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+  android:
+    name: release-android
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    needs: bump
+    if: needs.bump.outputs.released == 'true'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.bump.outputs.sha }}
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - uses: ./.github/actions/setup-flutter
+
+      - name: Materializar keystore de release
+        if: env.HAS_KEYSTORE == 'true'
+        env:
+          ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+        run: |
+          printf '%s' "$ANDROID_KEYSTORE_BASE64" | base64 -d > "$RUNNER_TEMP/release.jks"
+          {
+            echo "storePassword=$ANDROID_KEYSTORE_PASSWORD"
+            echo "keyPassword=$ANDROID_KEY_PASSWORD"
+            echo "keyAlias=$ANDROID_KEY_ALIAS"
+            echo "storeFile=$RUNNER_TEMP/release.jks"
+          } > android/key.properties
+
+      - name: Build APK assinado
+        run: flutter build apk --release
+
+      - name: Renomear APK com a versão
+        run: cp build/app/outputs/flutter-apk/app-release.apk "decima-${{ needs.bump.outputs.semver }}-android.apk"
+
+      - name: Publicar APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-android
+          path: decima-*-android.apk
+          retention-days: 30
+
+      - name: Notas da versão (seção do CHANGELOG)
+        run: awk '/^## \[/{n++} n == 1 {print} n == 2 {exit}' CHANGELOG.md > "$RUNNER_TEMP/release-notes.md"
+
+      - name: Distribuir no Firebase (grupo stable)
+        if: env.HAS_FIREBASE == 'true'
+        env:
+          FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+          FIREBASE_ANDROID_APP_ID: ${{ vars.FIREBASE_ANDROID_APP_ID }}
+        run: |
+          printf '%s' "$FIREBASE_SERVICE_ACCOUNT" > "$RUNNER_TEMP/firebase-sa.json"
+          export GOOGLE_APPLICATION_CREDENTIALS="$RUNNER_TEMP/firebase-sa.json"
+          npx -y firebase-tools@14 appdistribution:distribute \
+            "decima-${{ needs.bump.outputs.semver }}-android.apk" \
+            --app "$FIREBASE_ANDROID_APP_ID" \
+            --groups stable \
+            --release-notes-file "$RUNNER_TEMP/release-notes.md"
+
+      - name: Aviso — Firebase não configurado
+        if: env.HAS_FIREBASE != 'true'
+        run: echo "::warning::Secret FIREBASE_SERVICE_ACCOUNT ausente — distribuição para o Firebase pulada."
+
+  windows:
+    name: release-windows
+    runs-on: windows-latest
+    timeout-minutes: 45
+    needs: bump
+    if: needs.bump.outputs.released == 'true'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.bump.outputs.sha }}
+
+      - uses: ./.github/actions/setup-flutter
+
+      - name: Build Windows release
+        shell: bash
+        run: flutter build windows --release
+
+      - name: Incluir runtime MSVC no bundle
+        shell: pwsh
+        run: |
+          $release = 'build/windows/x64/runner/Release'
+          $crt = Get-ChildItem -Path 'C:\Program Files\Microsoft Visual Studio\*\*\VC\Redist\MSVC\*\x64\Microsoft.VC*.CRT' -Directory -ErrorAction SilentlyContinue | Select-Object -First 1
+          if (-not $crt) { throw 'Redist do MSVC não encontrado no runner.' }
+          Copy-Item -Path (Join-Path $crt.FullName '*.dll') -Destination $release -Force
+
+      - name: Instalar Inno Setup (>= 6.3)
+        run: choco install innosetup -y --no-progress
+
+      - name: Compilar instalador
+        shell: pwsh
+        run: |
+          $iscc = 'C:\Program Files (x86)\Inno Setup 6\ISCC.exe'
+          & $iscc "/DAppVersion=${{ needs.bump.outputs.semver }}" 'tool\installer\decima.iss'
+          if ($LASTEXITCODE -ne 0) { throw "ISCC falhou ($LASTEXITCODE)" }
+
+      - name: Gerar SHA-256
+        shell: pwsh
+        run: |
+          $exe = Get-ChildItem 'dist' -Filter '*.exe' | Select-Object -First 1
+          $hash = (Get-FileHash $exe.FullName -Algorithm SHA256).Hash.ToLower()
+          "$hash  $($exe.Name)" | Out-File -Encoding ascii "dist/$($exe.Name).sha256"
+          Get-Content "dist/$($exe.Name).sha256"
+
+      - name: Publicar instalador
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-windows
+          path: dist/*
+          retention-days: 30
+
+  publish:
+    name: publish-release
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    needs: [bump, android, windows]
+    if: needs.bump.outputs.released == 'true'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.bump.outputs.sha }}
+
+      - uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+          merge-multiple: true
+
+      - name: Notas da versão (seção do CHANGELOG)
+        run: awk '/^## \[/{n++} n == 1 {print} n == 2 {exit}' CHANGELOG.md > notes.md
+
+      - name: Criar GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "v${{ needs.bump.outputs.semver }}" \
+            --title "v${{ needs.bump.outputs.semver }}" \
+            --notes-file notes.md \
+            artifacts/*

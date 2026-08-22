@@ -14,7 +14,11 @@ void main() {
 
   setUpAll(() {
     registerFallbackValue(
-      HistoryEntry(lines: [HistoryLine(expression: '', result: '')], result: '', createdAt: DateTime(2026)),
+      HistoryEntry(
+        lines: [HistoryLine(expression: '', result: '')],
+        result: '',
+        createdAt: DateTime(2026),
+      ),
     );
   });
 
@@ -65,7 +69,9 @@ void main() {
           20,
           (i) => HistoryEntry(
             id: i + 1,
-            lines: [HistoryLine(expression: '$i.00 + 1.00', result: '${i + 1}.00')],
+            lines: [
+              HistoryLine(expression: '$i.00 + 1.00', result: '${i + 1}.00'),
+            ],
             result: '${i + 1}.00',
             createdAt: DateTime(2026, 1, 1, i),
           ),
@@ -129,7 +135,9 @@ void main() {
           20,
           (i) => HistoryEntry(
             id: i + 1,
-            lines: [HistoryLine(expression: '$i.00 + 1.00', result: '${i + 1}.00')],
+            lines: [
+              HistoryLine(expression: '$i.00 + 1.00', result: '${i + 1}.00'),
+            ],
             result: '${i + 1}.00',
             createdAt: DateTime(2026, 1, 1, i),
           ),
@@ -160,7 +168,9 @@ void main() {
           20,
           (i) => HistoryEntry(
             id: i + 1,
-            lines: [HistoryLine(expression: '$i.00 + 1.00', result: '${i + 1}.00')],
+            lines: [
+              HistoryLine(expression: '$i.00 + 1.00', result: '${i + 1}.00'),
+            ],
             result: '${i + 1}.00',
             createdAt: DateTime(2026, 1, 1, i),
           ),
@@ -197,7 +207,9 @@ void main() {
           20,
           (i) => HistoryEntry(
             id: i + 1,
-            lines: [HistoryLine(expression: '$i.00 + 1.00', result: '${i + 1}.00')],
+            lines: [
+              HistoryLine(expression: '$i.00 + 1.00', result: '${i + 1}.00'),
+            ],
             result: '${i + 1}.00',
             createdAt: DateTime(2026, 1, 1, i),
           ),
@@ -237,7 +249,9 @@ void main() {
           20,
           (i) => HistoryEntry(
             id: i + 1,
-            lines: [HistoryLine(expression: '$i.00 + 1.00', result: '${i + 1}.00')],
+            lines: [
+              HistoryLine(expression: '$i.00 + 1.00', result: '${i + 1}.00'),
+            ],
             result: '${i + 1}.00',
             createdAt: DateTime(2026, 1, 1, i),
           ),
@@ -492,7 +506,9 @@ void main() {
           20,
           (i) => HistoryEntry(
             id: i + 1,
-            lines: [HistoryLine(expression: '$i.00 + 1.00', result: '${i + 1}.00')],
+            lines: [
+              HistoryLine(expression: '$i.00 + 1.00', result: '${i + 1}.00'),
+            ],
             result: '${i + 1}.00',
             createdAt: DateTime(2026, 1, 1, i),
             isFavorite: true,

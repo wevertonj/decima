@@ -580,6 +580,105 @@ O projeto está dividido em **18 etapas** sequenciais. As **etapas 1-4** cobrem 
 
 ---
 
+## Etapa 14.1 — Instalador Windows (.exe)
+
+**Objetivo**: Empacotar o build Release do Windows em um instalador `.exe` distribuível, permitindo instalar o Decima na máquina para uso diário e publicar o artefato no GitHub Releases. Originalmente o empacotamento estava fora de escopo (apenas documentado) — antecipado por necessidade de dogfooding.
+
+**Escopo**:
+
+- **Ferramenta**: Inno Setup 6.3+ (`ISCC.exe`), escolhido sobre MSIX por não exigir certificado instalado pelo usuário final para sideload
+- **Script do instalador** (`tool/installer/decima.iss`):
+  - `AppId` fixo (GUID) para que novas versões atualizem in-place
+  - Instalação **por usuário** (`PrivilegesRequired=lowest`) → `%LOCALAPPDATA%\Programs\Decima`, sem prompt de UAC
+  - Wizard mínimo (sem Welcome/Ready/Group), pt-BR + inglês conforme locale do sistema
+  - Atalho no Menu Iniciar sempre; atalho de desktop como tarefa opcional
+  - `CloseApplications=yes` — fecha o app aberto antes de sobrescrever binários
+  - Dados do usuário (`%APPDATA%\Wevasoft\Decima`) preservados na desinstalação
+- **Script de build** (`tool/installer/build_installer.sh`):
+  - Orquestra a bridge WSL→Windows: `rsync` → `flutter clean` → `flutter build windows --release` → runtime C++ → `ISCC.exe` → `dist/`
+  - Versão extraída do `pubspec.yaml` e injetada via `/DAppVersion`
+  - Flags `--no-clean` e `--skip-build` para iteração
+  - Configuração de máquina em `local.env` (não versionado), com `local.env.example` versionado
+- **Runtime C++ app-local**: DLLs do redist MSVC copiadas para junto do `decima.exe`, eliminando o pré-requisito "Visual C++ Redistributable"
+- **Documentação**: `docs/fundacao/empacotamento-windows.md` + seção de instalação no `README.md` (incluindo o aviso de SmartScreen)
+
+**Fora de escopo (documentado)**:
+
+- Assinatura de código (certificado OV exige token HSM pago) — SmartScreen exibirá aviso
+- Auto-update — sem mecanismo; atualização é reinstalar por cima
+- Publicação em winget / Microsoft Store
+
+**Testes**:
+
+- Verificação manual: instalar, abrir pelo Menu Iniciar, operar o app, desinstalar
+- Verificação manual: reinstalar por cima preserva o histórico em `%APPDATA%`
+
+**Entregável**: `dist/decima-<versão>-windows-x64-setup.exe` funcional, reprodutível por um comando, e Decima instalado na máquina de desenvolvimento para uso diário.
+
+---
+
+## Etapa 14.2 — Persistência ao fechar e memória da janela
+
+**Objetivo**: Corrigir dois atritos identificados no **uso diário do Decima instalado no Windows**: (1) fechar pelo `X` descarta o cálculo em andamento — hoje só `=` e `C` persistem no histórico; (2) a janela sempre reabre centralizada, ignorando onde o usuário a deixou.
+
+**Escopo**:
+
+- **A — Flush da sessão ao fechar** (multiplataforma):
+  - Estado atual: `CalculatorViewModel._saveOrUpdateSession()` é chamado apenas em `equals()`, `clear()` e `loadSession()`, e é **fire-and-forget** (o `Future` do repositório não é aguardado). Uma expressão digitada e nunca avaliada não existe em `_sessionLines` — não há o que gravar; e mesmo o `=` recém-pressionado pode ter a escrita interrompida pelo encerramento do processo
+  - Novo `Future<void> flushSession()` público no `CalculatorViewModel`:
+    - Avalia a expressão pendente quando ela é avaliável (contém ao menos um operador), auto-fechando parênteses — mesmo caminho do `equals()`, extraído para um helper compartilhado
+    - Número digitado sem operador **não** vira entrada de histórico (não há cálculo) — regra documentada
+    - Aguarda de fato a escrita: `_saveOrUpdateSession()` passa a devolver `Future<void>` e o `add` em voo (`_addInFlight`) é aguardado antes de retornar
+    - Idempotente — chamadas repetidas não duplicam linhas nem criam sessões novas
+  - **Desktop**: interceptar o fechamento com `windowManager.setPreventClose(true)` + `WindowListener.onWindowClose` → `flushSession()` → `windowManager.destroy()`. Cobre o `X` da `AppTitleBar`, `Alt+F4` e "Fechar janela" pela barra de tarefas
+  - **Mobile**: `AppLifecycleListener` (`onExitRequested` / `onHide` / `onPause`) no shell do app — o Android encerra o processo sem garantir `detached`, então o flush precisa acontecer já no `paused`/`hidden`
+  - Risco a mitigar: `setPreventClose(true)` sem um `destroy()` garantido deixa o app impossível de fechar — o `destroy()` fica em `finally`, com timeout no flush
+- **B — Memória da posição da janela** (desktop):
+  - `SettingsRepository` ganha `getWindowPosition()` / `setWindowPosition(x, y)` sobre `SharedPreferences` (chaves `window_x` / `window_y`), trafegando `double` — nada de `Offset`, para manter repositórios e ViewModels livres de import do Flutter
+  - `initDesktopWindow()` lê a posição salva: `center: true` só quando não há posição válida; caso contrário `setPosition` **antes** do `show()`, para não piscar no centro
+  - Validação contra os monitores atuais via `screen_retriever` (já presente como dependência transitiva do `window_manager`; declarar em `dependencies` se importado direto): posição fora de qualquer display — monitor desconectado, mudança de resolução ou de DPI — cai no centro. A regra fica em uma **função pura** testável sem plugin
+  - Gravação no fechamento, junto do flush da sessão (menos I/O que salvar a cada `onWindowMoved`); `onWindowMoved` com debounce fica documentado como alternativa caso encerramentos anormais se mostrem comuns
+- **Fora de escopo**: memória de tamanho da janela (o tamanho é fixo por design) e memória de qual monitor por índice (a validação por coordenada já resolve o caso comum)
+
+**Testes**:
+
+- Unit: `flushSession()` com expressão pendente avaliável, com número solto, com sessão já persistida (idempotência) e com escrita em voo
+- Unit: `SettingsRepository` — salvar/ler posição, ausência devolve `null`
+- Unit: função pura de validação de posição contra uma lista de displays (dentro, fora, parcialmente visível)
+- Widget: handler de fechamento chama o flush antes de destruir a janela
+- Verificação manual: digitar sem `=` → fechar pelo `X` → reabrir e conferir o histórico; mover a janela → fechar → reabrir no mesmo lugar; desconectar o monitor secundário → volta ao centro
+
+**Entregável**: nenhum cálculo perdido ao fechar o app, em qualquer plataforma, e janela desktop que reabre onde o usuário a deixou.
+
+---
+
+## Etapa 14.3 — CI/CD, fluxo de branches e distribuição
+
+**Objetivo**: Substituir o fluxo de qualidade local dos outros projetos (husky: `pre-commit`/`commit-msg`/`pre-push`) por um pipeline de CI/CD no GitHub Actions, proteger a `main` contra commits diretos e distribuir builds (dev e release) via Firebase App Distribution e GitHub Releases. Originalmente fora do plano — antecipado como mudança estrutural de processo.
+
+**Escopo**:
+
+- **Fluxo de branches**: `dev` como branch padrão de trabalho (commits diretos permitidos); `main` só recebe código via PR com checks verdes. Rulesets no GitHub: `main-protegida` (PR + 5 checks obrigatórios + bypass por deploy key para o bot de release) e `dev-integracao` (sem force-push/deleção)
+- **CI** (`.github/workflows/ci.yml`, em PRs para `dev`/`main` e pushes na `dev`):
+  - `commitlint` — Conventional Commits via `commitlint_cli` (Dart) + `commitlint.yaml` (mesmo padrão do runway/verbum/dosia)
+  - `analyze` — `dart format --set-exit-if-changed` + `flutter analyze` (zero warnings)
+  - `test` — `flutter test --coverage` com gate de cobertura mínima (85%; baseline 88,4%)
+  - `build-android` — APK release; push na `dev` gera versão `X.Y.Z-dev.<run>` e distribui ao grupo `dev` do Firebase
+  - `build-windows` — bundle + runtime MSVC app-local zipado (instalador Inno só no release: `VersionInfoVersion` exige versão numérica)
+- **Release** (`.github/workflows/release.yml`, em push na `main`): porta do hook `pre-push` D5/D6 — `tool/bump_version.dart` (copiado do runway com teste) decide o bump SemVer pelo range desde a última tag `v*`, commita `chore(release): vX.Y.Z+B` + tag via deploy key, builda APK assinado e instalador Windows, distribui no Firebase (grupo `stable`) e publica GitHub Release com `.sha256`
+- **Assinatura Android**: keystore de upload dedicado (fora do repo, em secrets no CI; `key.properties` git-ignorado com fallback para debug)
+- **Infra**: `.fvmrc` pinando Flutter 3.44.2 (fonte da versão no CI), remoção de `/.github/` do `.gitignore`, ação composta `setup-flutter`
+- **Firebase**: projeto `decima-wevasoft`, app `com.wevasoft.decima`, grupos de testers `dev` e `stable` — sem SDK Firebase no app
+
+**Testes**:
+
+- Unitários: `test/tool/bump_version_test.dart` (7 cenários — RESULT/NOOP, âncora de range, anti-loop)
+- Validação: pipeline verde no primeiro PR `dev` → `main`
+
+**Entregável**: `main` imutável fora de PRs, todo push validado por CI, releases automáticos versionados com changelog e builds distribuídos no Firebase (dev e stable) e GitHub Releases.
+
+---
+
 ## Etapa 15 — Suporte a Linux
 
 **Objetivo**: Habilitar o build para Linux reutilizando a infra de desktop da Etapa 14. Validar a title bar customizada e o tamanho fixo no ambiente Linux (GTK).
@@ -767,6 +866,15 @@ Etapa 13 (Teclado físico)
 Etapa 14 (Windows + infra desktop)
     │
     ▼
+Etapa 14.1 (Instalador Windows .exe)
+    │
+    ▼
+Etapa 14.2 (Persistência ao fechar + posição da janela)
+    │
+    ▼
+Etapa 14.3 (CI/CD + fluxo de branches)
+    │
+    ▼
 Etapa 15 (Linux)
     │
     ▼
@@ -787,7 +895,8 @@ Etapa 18 (Polimento e Revisão Final)
 | **Interface Visual e Comportamento** | 5, 6, 7, 8, 9 |
 | **Funcionalidades extras** | 10, 11 |
 | **Identidade visual e entrada** | 12, 13 |
-| **Multi-plataforma** | 14, 15, 16, 17 |
+| **Multi-plataforma** | 14, 14.1, 14.2, 15, 16, 17 |
+| **Processo e infraestrutura** | 14.3 |
 | **Polimento Final** | 18 |
 
 ## Estimativa de Complexidade por Etapa
@@ -809,6 +918,9 @@ Etapa 18 (Polimento e Revisão Final)
 | 12 — Logo customizado | Baixa-Média | ~3-5 (assets + widget) | ~2 |
 | 13 — Teclado físico | Média | ~1-2 | ~10 |
 | 14 — Windows + infra desktop | Média-Alta | ~4-5 (DesktopShell, AppTitleBar, config) | ~4 |
+| 14.1 — Instalador Windows | Baixa-Média | ~4 (iss, build script, docs) | manual |
+| 14.2 — Persistência ao fechar + posição da janela | Média | ~2-3 (close handler, posição) | ~12 |
+| 14.3 — CI/CD + fluxo de branches | Média | ~6 (workflows, motor, configs) | ~7 |
 | 15 — Linux | Baixa | ~0 (só nativo) | ~0 |
 | 16 — macOS | Baixa-Média | ~0-1 (ajuste do AppTitleBar) | ~1 |
 | 17 — iOS | Baixa | ~0 (só nativo) | ~0 |
