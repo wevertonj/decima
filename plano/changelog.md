@@ -1425,3 +1425,51 @@ Função pura, testada sem plugin. O critério é a **title bar** — é por ela
 | Reabrir | Abriu exatamente em `200,150` |
 | Adulterar para `9999,9999` (monitor inexistente) → reabrir | Voltou ao centro e regravou a posição válida |
 | Digitar `10 + 5` sem `=` → fechar pelo `WM_CLOSE` → conferir o banco | Linha `0.10 + 0.05 = 0.15` gravada (fecha também o pendente da parte A) |
+
+---
+
+## [Concluída] Etapa 14.3 — CI/CD, fluxo de branches e distribuição
+
+Mudança estrutural de processo: o padrão husky dos outros projetos (`pre-commit`/`commit-msg`/`pre-push`) foi portado para GitHub Actions, e a `main` deixou de aceitar commits diretos.
+
+### Fluxo de branches
+
+- Branch `dev` criada (herdando os 3 commits não pushados da `main`) e promovida a branch padrão
+- Rulesets: `main-protegida` (PR + checks `commitlint`/`analyze`/`test`/`build-android`/`build-windows` + bypass por deploy key) e `dev-integracao` (sem force-push/deleção)
+- `main` local resetada para `origin/main` — todo o trabalho pendente entra via PR
+
+### Tooling
+
+- `.fvmrc` — pin do Flutter `3.44.2` (o CI lê daqui via ação composta `setup-flutter`)
+- `commitlint.yaml` + `commitlint_cli ^0.8.1` — Conventional Commits validados no CI (o merge é ignorado pelo linter, confirmado)
+- `tool/bump_version.dart` + `test/tool/bump_version_test.dart` — motor D5/D6 copiado do runway (7 testes verdes); no decima é invocado pelo `release.yml`, não por hook
+- `/.github/` removido do `.gitignore` — a linha bloqueava o versionamento dos workflows
+- `dart format` aplicado ao repo (26 arquivos) — gate `--set-exit-if-changed` no CI
+- `build.gradle.kts` — `signingConfigs.release` lê `android/key.properties` (git-ignorado); keystore de upload em `~/.keystores/decima/decima-release.jks` e em secrets (base64). Sem o arquivo, fallback para debug (forks continuam buildando)
+
+### Workflows
+
+- `ci.yml` (PRs para `dev`/`main`; push na `dev`): commitlint por range, format + analyze, testes com gate de cobertura de 85% (baseline 88,4%), APK release (push na `dev` vira `X.Y.Z-dev.<run>` e distribui ao grupo `dev` do Firebase), bundle Windows zipado com runtime MSVC app-local
+- `release.yml` (push na `main`): motor decide o bump pelo range desde a última tag `v*` → commit `chore(release): vX.Y.Z+B` + tag via deploy key (bypass do ruleset) → APK assinado ao grupo `stable` do Firebase com notas do `CHANGELOG.md` → instalador Inno Setup + `.sha256` → GitHub Release. Range sem bump = NOOP (nada é publicado)
+- Segurança: `pull_request` (nunca `pull_request_target`), secrets ausentes em fork, `permissions: contents: read` no CI, credenciais só em `$RUNNER_TEMP`
+
+### Firebase
+
+- Projeto `decima-wevasoft` (app Android `com.wevasoft.decima` já registrado); grupos de testers `dev` e `stable` criados via CLI
+- Sem SDK Firebase no app — App Distribution usa apenas APK + App ID + service account
+
+### Pendências (ações manuais do dev)
+
+- Secret `FIREBASE_SERVICE_ACCOUNT` (gerar chave no console do Firebase)
+- Deploy key `release-bot` + secret `RELEASE_DEPLOY_KEY` (geração de chave SSH bloqueada no ambiente da IA)
+
+### Documentação
+
+- Novo `docs/fundacao/ci-cd.md` (fluxo, jobs, secrets, OWASP CI/CD, gotchas)
+- `README.md` com badges de CI/Release e seção "Contribuição e Release"; índice de `docs/` atualizado
+
+### Testes
+
+- `test/tool/bump_version_test.dart` — 7 cenários (RESULT minor/patch/major, NOOP interno, anti-loop de release, range vazio, âncora de fallback)
+- **Total: 690 testes — 100% verde**
+- `flutter analyze` — zero issues

@@ -695,6 +695,54 @@ Do checklist original:
 
 ---
 
+## Etapa 14.3 — CI/CD, fluxo de branches e distribuição
+
+### Fluxo de branches e governança
+
+- [x] Criar branch `dev` (contendo os commits ainda não pushados da `main`) e torná-la a branch padrão
+- [x] Ruleset `main-protegida`: PR obrigatório + checks `commitlint`/`analyze`/`test`/`build-android`/`build-windows`, sem force-push/deleção, bypass para deploy keys
+- [x] Ruleset `dev-integracao`: sem force-push/deleção (commits diretos permitidos)
+- [x] Resetar a `main` local para `origin/main` (os 3 commits não pushados entram via PR)
+
+### Tooling no repositório
+
+- [x] `.fvmrc` pinando Flutter `3.44.2` (fonte da versão do SDK no CI)
+- [x] Remover `/.github/` do `.gitignore` (bloqueava o versionamento dos workflows)
+- [x] `commitlint.yaml` + `commitlint_cli ^0.8.1` em dev_dependencies (padrão runway/verbum/dosia)
+- [x] Copiar `tool/bump_version.dart` (motor D5/D6 do runway) + `test/tool/bump_version_test.dart` — 7 testes verdes
+- [x] `dart format` aplicado ao repo inteiro (gate de formatação no CI)
+- [x] `signingConfigs.release` no `build.gradle.kts` lendo `android/key.properties` (fallback: debug)
+- [x] Keystore de upload gerado em `~/.keystores/decima/decima-release.jks` + `key.properties` local
+
+### Workflows
+
+- [x] `.github/actions/setup-flutter/action.yml` — ação composta (Flutter do `.fvmrc` + cache + pub get)
+- [x] `.github/workflows/ci.yml` — commitlint, format+analyze, test+coverage (gate 85%), build-android (+ Firebase grupo `dev` em push), build-windows (zip com runtime MSVC)
+- [x] `.github/workflows/release.yml` — bump SemVer + `CHANGELOG.md` + tag via deploy key, APK assinado → Firebase grupo `stable`, instalador Inno Setup + `.sha256`, GitHub Release
+
+### Firebase e secrets
+
+- [x] Grupos de testers `dev` e `stable` criados no projeto `decima-wevasoft` (tester inicial adicionado)
+- [x] Secrets: `ANDROID_KEYSTORE_BASE64`, `ANDROID_KEYSTORE_PASSWORD`, `ANDROID_KEY_PASSWORD`, `ANDROID_KEY_ALIAS`; variável `FIREBASE_ANDROID_APP_ID`
+- [ ] Secret `FIREBASE_SERVICE_ACCOUNT` (chave de service account gerada no console — ação manual)
+- [ ] Deploy key de escrita `release-bot` + secret `RELEASE_DEPLOY_KEY` (ação manual — bloqueada no ambiente da IA)
+
+### Documentação
+
+- [x] Criar `docs/fundacao/ci-cd.md` (fluxo, jobs, secrets, segurança, gotchas)
+- [x] Atualizar `docs/README.md` (índice) e `README.md` (badges + seção "Contribuição e Release")
+- [x] Registrar a etapa em `plano/plano.md`, `plano/tarefas.md` e `plano/changelog.md`
+
+### Validação
+
+- [x] `flutter test` — 100% verde (690 testes, incluindo os 7 do motor)
+- [x] `flutter analyze` — zero warnings
+- [x] `dart run commitlint_cli --from=origin/main --to=HEAD` — todos os commits válidos
+- [ ] Primeiro PR `dev` → `main` com pipeline 100% verde
+- [ ] Primeiro release automático publicado (Firebase `stable` + GitHub Release)
+
+---
+
 ## Etapa 15 — Suporte a Linux
 
 ### Habilitação da plataforma

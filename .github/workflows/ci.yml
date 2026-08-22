@@ -1,0 +1,236 @@
+# CI — validação contínua (substitui os hooks husky dos outros projetos).
+#
+# Gatilhos: PRs para `dev`/`main` e pushes diretos em `dev`.
+# PRs de fork rodam sem secrets (jobs de build caem na assinatura de debug e a
+# distribuição nunca roda aqui — só no push, que fork não dispara).
+name: CI
+
+on:
+  pull_request:
+    branches: [main, dev]
+  push:
+    branches: [dev]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  # Gate de cobertura de linhas (lcov) — ajuste consciente, nunca para "passar".
+  # Baseline na adoção (2026-08): 88,4%.
+  MIN_COVERAGE: '85'
+  HAS_KEYSTORE: ${{ secrets.ANDROID_KEYSTORE_BASE64 != '' }}
+  HAS_FIREBASE: ${{ secrets.FIREBASE_SERVICE_ACCOUNT != '' }}
+
+jobs:
+  commitlint:
+    name: commitlint
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: ./.github/actions/setup-flutter
+
+      - name: Validar mensagens de commit (Conventional Commits)
+        run: |
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            FROM="${{ github.event.pull_request.base.sha }}"
+            TO="${{ github.event.pull_request.head.sha }}"
+          else
+            FROM="${{ github.event.before }}"
+            TO="${{ github.sha }}"
+            # Branch nova (before = sha zero) ou histórico raso: valida só o topo.
+            if ! git cat-file -e "$FROM^{commit}" 2>/dev/null; then
+              FROM="$(git rev-parse "$TO~1" 2>/dev/null || true)"
+            fi
+          fi
+          if [ -z "$FROM" ]; then
+            echo "Sem base para range — validando apenas o commit atual."
+            FROM="$TO~1"
+          fi
+          dart run commitlint_cli --from="$FROM" --to="$TO"
+
+  analyze:
+    name: analyze
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: ./.github/actions/setup-flutter
+
+      - name: Formatação (dart format)
+        run: dart format --output=none --set-exit-if-changed .
+
+      - name: Análise estática (zero warnings)
+        run: flutter analyze
+
+  test:
+    name: test
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: ./.github/actions/setup-flutter
+
+      # sqflite_common_ffi (package sqlite3) abre libsqlite3.so no Linux.
+      - name: Instalar libsqlite3
+        run: sudo apt-get update -q && sudo apt-get install -y -q libsqlite3-dev
+
+      - name: Testes com cobertura
+        run: flutter test --coverage
+
+      - name: Gate de cobertura mínima
+        run: |
+          total=$(grep -h '^LF:' coverage/lcov.info | cut -d: -f2 | paste -sd+ - | bc)
+          hit=$(grep -h '^LH:' coverage/lcov.info | cut -d: -f2 | paste -sd+ - | bc)
+          pct=$(awk -v h="$hit" -v t="$total" 'BEGIN{printf "%.1f", (h / t) * 100}')
+          echo "### Cobertura de linhas: ${pct}% (mínimo: ${MIN_COVERAGE}%)" >> "$GITHUB_STEP_SUMMARY"
+          awk -v p="$pct" -v m="$MIN_COVERAGE" 'BEGIN{exit !(p + 0 >= m + 0)}' || {
+            echo "::error::Cobertura ${pct}% abaixo do mínimo ${MIN_COVERAGE}%"
+            exit 1
+          }
+
+      - name: Publicar lcov.info
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-lcov
+          path: coverage/lcov.info
+          retention-days: 14
+
+  build-android:
+    name: build-android
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    needs: [analyze, test]
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - uses: ./.github/actions/setup-flutter
+
+      # Sem os secrets (ex.: PR de fork) o Gradle cai na assinatura de debug.
+      - name: Materializar keystore de release
+        if: env.HAS_KEYSTORE == 'true'
+        env:
+          ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+        run: |
+          printf '%s' "$ANDROID_KEYSTORE_BASE64" | base64 -d > "$RUNNER_TEMP/release.jks"
+          {
+            echo "storePassword=$ANDROID_KEYSTORE_PASSWORD"
+            echo "keyPassword=$ANDROID_KEY_PASSWORD"
+            echo "keyAlias=$ANDROID_KEY_ALIAS"
+            echo "storeFile=$RUNNER_TEMP/release.jks"
+          } > android/key.properties
+
+      - name: Versão base
+        id: ver
+        run: echo "base=$(grep -m1 '^version:' pubspec.yaml | awk '{print $2}' | cut -d+ -f1)" >> "$GITHUB_OUTPUT"
+
+      - name: Build APK (dev)
+        if: github.event_name == 'push'
+        run: >
+          flutter build apk --release
+          --build-name=${{ steps.ver.outputs.base }}-dev.${{ github.run_number }}
+          --build-number=${{ github.run_number }}
+
+      - name: Build APK (validação de PR)
+        if: github.event_name != 'push'
+        run: flutter build apk --release
+
+      - name: Publicar APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: decima-android-apk
+          path: build/app/outputs/flutter-apk/app-release.apk
+          retention-days: 14
+
+      - name: Distribuir no Firebase (grupo dev)
+        if: github.event_name == 'push' && env.HAS_FIREBASE == 'true'
+        env:
+          FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+          FIREBASE_ANDROID_APP_ID: ${{ vars.FIREBASE_ANDROID_APP_ID }}
+        run: |
+          printf '%s' "$FIREBASE_SERVICE_ACCOUNT" > "$RUNNER_TEMP/firebase-sa.json"
+          export GOOGLE_APPLICATION_CREDENTIALS="$RUNNER_TEMP/firebase-sa.json"
+          {
+            echo "Build dev ${{ steps.ver.outputs.base }}-dev.${{ github.run_number }}"
+            echo "Commit: $(git log -1 --format='%s (%h)')"
+          } > "$RUNNER_TEMP/release-notes.txt"
+          npx -y firebase-tools@14 appdistribution:distribute \
+            build/app/outputs/flutter-apk/app-release.apk \
+            --app "$FIREBASE_ANDROID_APP_ID" \
+            --groups dev \
+            --release-notes-file "$RUNNER_TEMP/release-notes.txt"
+
+      - name: Aviso — Firebase não configurado
+        if: github.event_name == 'push' && env.HAS_FIREBASE != 'true'
+        run: echo "::warning::Secret FIREBASE_SERVICE_ACCOUNT ausente — distribuição para o Firebase pulada."
+
+  build-windows:
+    name: build-windows
+    runs-on: windows-latest
+    timeout-minutes: 45
+    needs: [analyze, test]
+    # Pushes em dev (artefato de teste) e PRs para main (gate de release).
+    if: github.event_name != 'pull_request' || github.base_ref == 'main'
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: ./.github/actions/setup-flutter
+
+      - name: Versão base
+        id: ver
+        shell: bash
+        run: echo "base=$(grep -m1 '^version:' pubspec.yaml | awk '{print $2}' | cut -d+ -f1)" >> "$GITHUB_OUTPUT"
+
+      - name: Build Windows (dev)
+        if: github.event_name == 'push'
+        shell: bash
+        run: >
+          flutter build windows --release
+          --build-name=${{ steps.ver.outputs.base }}-dev.${{ github.run_number }}
+          --build-number=${{ github.run_number }}
+
+      - name: Build Windows (validação de PR)
+        if: github.event_name != 'push'
+        shell: bash
+        run: flutter build windows --release
+
+      # Runtime C++ app-local: mesmo comportamento do build_installer.sh.
+      - name: Incluir runtime MSVC no bundle
+        shell: pwsh
+        run: |
+          $release = 'build/windows/x64/runner/Release'
+          $crt = Get-ChildItem -Path 'C:\Program Files\Microsoft Visual Studio\*\*\VC\Redist\MSVC\*\x64\Microsoft.VC*.CRT' -Directory -ErrorAction SilentlyContinue | Select-Object -First 1
+          if (-not $crt) { throw 'Redist do MSVC não encontrado no runner.' }
+          Copy-Item -Path (Join-Path $crt.FullName '*.dll') -Destination $release -Force
+          Get-ChildItem $release -Filter '*.dll' | Select-Object -ExpandProperty Name
+
+      - name: Empacotar bundle (zip)
+        shell: pwsh
+        run: |
+          $suffix = if ('${{ github.event_name }}' -eq 'push') { '${{ steps.ver.outputs.base }}-dev.${{ github.run_number }}' } else { '${{ steps.ver.outputs.base }}-pr' }
+          Compress-Archive -Path 'build/windows/x64/runner/Release/*' -DestinationPath "decima-$suffix-windows-x64.zip"
+
+      - name: Publicar bundle
+        uses: actions/upload-artifact@v4
+        with:
+          name: decima-windows-bundle
+          path: decima-*-windows-x64.zip
+          retention-days: 14

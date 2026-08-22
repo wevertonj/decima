@@ -11,7 +11,8 @@ docs/
 │   ├── arquitetura.md                 # Arquitetura e estrutura de pastas
 │   ├── padroes-codigo.md              # Convenções e padrões de código
 │   ├── tema-design-system.md          # Tema, cores, layout e animações
-│   └── empacotamento-windows.md       # Instalador .exe (Inno Setup) e bridge WSL→Windows
+│   ├── empacotamento-windows.md       # Instalador .exe (Inno Setup) e bridge WSL→Windows
+│   └── ci-cd.md                       # CI/CD (GitHub Actions), branches, release e distribuição
 ├── features/
 │   ├── calculadora.md                 # Calculadora (conceito Add2, timeline, keypad)
 │   ├── historico.md                   # Histórico de operações (SQLite)
