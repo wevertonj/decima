@@ -692,6 +692,7 @@ O projeto está dividido em **18 etapas** sequenciais. As **etapas 1-4** cobrem 
   - Remoção do `GtkHeaderBar`: com ele, `TitleBarStyle.hidden` só esconde o widget e mantém a decoração do lado do cliente, desalinhando `getPosition`/`setPosition`. Sem ele o plugin cai em `gtk_window_set_decorated(FALSE)` e a janela fica sem moldura em qualquer WM
   - Tamanho inicial `360x720` (era `1280x720`): **obrigatório**, não cosmético — `setResizable(false)` faz o GTK reescrever os geometry hints com o tamanho default e sobrescrever o `setSize` das `WindowOptions`
   - Título `Decima` (era `decima`)
+  - `set_application_icon()`: o template não define ícone de janela, e sem `_NET_WM_ICON` o ambiente cai no genérico. Usa o tema quando o `.desktop` está instalado e cai no `logo.png` do próprio bundle quando não está. Em Wayland o ícone depende do casamento `app_id` ↔ `.desktop`, que o GTK3 não consegue suprir por protocolo
 - **Ajustes específicos por plataforma no `lib/`** (dois desvios reais encontrados na validação, decididos por `PlatformInfo.isLinux`):
   - `setMaximizable(false)` não é chamado no Linux: o plugin implementa isso como `GDK_WINDOW_TYPE_HINT_DIALOG`, e a janela saía da barra de tarefas/alt-tab e deixava de minimizar. `setResizable(false)` já impede maximizar no GTK
   - `isWindowPositionStorable()` descarta a origem `(0,0)` no Linux: no Wayland `getPosition()` sempre devolve a origem, e gravá-la reabriria a janela encostada no canto em vez de centralizada

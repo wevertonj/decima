@@ -755,6 +755,7 @@ Do checklist original:
 - [x] Remover o `GtkHeaderBar` — mantinha decoração do lado do cliente e desalinhava `getPosition`/`setPosition`
 - [x] Tamanho inicial `360x720` (era `1280x720`) — `setResizable(false)` sobrescrevia o `setSize` das `WindowOptions` com o default do runner
 - [x] Título `Decima` (era `decima`) + remoção do `#include <gdk/gdkx.h>` órfão
+- [x] `set_application_icon()` — o template não define ícone; sem `_NET_WM_ICON` a janela ficava com o ícone genérico. Tema primeiro, fallback no `logo.png` do bundle
 
 ### Ajustes específicos (TDD Red → Green)
 
@@ -790,6 +791,7 @@ Do checklist original:
 - [x] Verificação manual (X11 e Wayland): janela fixa 360×720, title bar customizada, drag, minimizar, fechar
 - [x] Verificação manual: fechar pelo `X` grava a sessão (`decima.db`) e a posição (`shared_preferences.json`)
 - [x] Verificação manual: ícone resolvido pelo tema e entrada `.desktop` encontrada pelo GIO
+- [x] Verificação manual: `_NET_WM_ICON` publicado em X11, pelos dois caminhos (tema instalado e fallback do bundle com o tema removido)
 
 ---
 

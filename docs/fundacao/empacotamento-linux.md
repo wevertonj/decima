@@ -7,7 +7,7 @@
 | Arquivo | Papel |
 |---------|-------|
 | `linux/CMakeLists.txt` | `BINARY_NAME=decima`, `APPLICATION_ID=com.wevasoft.decima` (vira o `WM_CLASS` via `g_set_prgname`) |
-| `linux/runner/my_application.cc` | Runner GTK — título, tamanho inicial e ausência de `GtkHeaderBar` |
+| `linux/runner/my_application.cc` | Runner GTK — título, tamanho inicial, ícone da janela e ausência de `GtkHeaderBar` |
 | `linux/packaging/com.wevasoft.decima.desktop` | Entrada de menu (nome, ícone, categorias, `StartupWMClass`) |
 | `linux/packaging/icons/hicolor/<N>x<N>/apps/com.wevasoft.decima.png` | Ícone do tema, derivado do master pelo `tool/icon` |
 | `linux/packaging/install-desktop-entry.sh` | Instala/remove a entrada e os ícones em `~/.local/share` |
@@ -39,6 +39,7 @@
 | Sem `GtkHeaderBar` | `gtk_window_set_title(window, "Decima")` | O template cria um header bar quando o WM é o GNOME Shell. Com ele, `TitleBarStyle.hidden` só **esconde o widget** e mantém a decoração do lado do cliente (sombra + margem), o que desloca `getPosition`/`setPosition`. Sem ele, o plugin cai em `gtk_window_set_decorated(FALSE)` e a janela fica sem moldura em qualquer WM |
 | Título `Decima` | Era `decima` (nome do pacote) | Aparece no alt-tab e no dock antes de o `window_manager` aplicar as `WindowOptions` |
 | Tamanho inicial `360x720` | Era `1280x720` | Mesmo valor de `DesktopWindowConfig.windowSize`. **Obrigatório**, não cosmético: `setResizable(false)` faz o GTK reescrever os geometry hints com o tamanho default, sobrescrevendo o `setSize` das `WindowOptions` |
+| Ícone da janela definido | `set_application_icon()` | O template não define nenhum, e sem `_NET_WM_ICON` o ambiente cai no ícone genérico. Ver "Como o ícone chega à janela" |
 | `#include <gdk/gdkx.h>` removido | — | Só existia para a heurística de header bar em X11 |
 
 ## Ajustes de janela por plataforma
@@ -60,6 +61,17 @@ O `lib/` é o mesmo das demais plataformas desktop; os dois desvios abaixo são 
 | `Categories` | `Utility;Calculator;` | `Calculator` exige `Utility` junto, pela spec de menus da freedesktop |
 
 O `flutter_launcher_icons` **não tem suporte a Linux** — a chave `linux:` era ignorada em silêncio. A fonte do ícone é o master (`assets/icon/decima_icon_master.svg`, squircle com transparência), rasterizado pelo `tool/icon` em 16/24/32/48/64/128/256/512, porque os ambientes Linux não aplicam máscara própria — mesma razão do `.ico` do Windows.
+
+### Como o ícone chega à janela
+
+O template do Flutter não define ícone nenhum, então `set_application_icon()` no runner faz isso. São dois caminhos, e qual vale depende do backend gráfico:
+
+| Backend | Mecanismo | Requer `.desktop` instalado? |
+|---------|-----------|------------------------------|
+| X11 | `_NET_WM_ICON`, publicado pelo GTK a partir do tema (`gtk_window_set_default_icon_name`) ou, quando o tema não tem o ícone, do `logo.png` que já viaja no bundle | Não — o fallback do bundle cobre o app rodando solto |
+| Wayland | O compositor casa o `app_id` do `xdg_toplevel` (= `APPLICATION_ID`) com o `.desktop` de mesmo nome e lê o `Icon=` dali. O GTK3 não tem protocolo para enviar pixels de ícone | **Sim** |
+
+Por isso o nome do arquivo `com.wevasoft.decima.desktop` precisa ser exatamente o `APPLICATION_ID` — em Wayland é esse casamento, e só ele, que dá ícone à janela.
 
 ## Empacotamento (referência — não implementado)
 
@@ -104,4 +116,6 @@ O diretório vem de `getApplicationSupportDirectory()`: o `path_provider_linux` 
 | `flutter create --platforms=linux .` num projeto existente | Reescreve `.metadata` derrubando as outras plataformas da lista de migração e mexe no `pubspec.lock` | Conferir `git diff` depois e reverter o que não for do Linux |
 | `gtk-update-icon-cache: No theme index file` | Aviso ao instalar em `~/.local/share/icons/hicolor` (sem `index.theme` próprio) | Inofensivo — o GTK mescla o diretório do usuário com o tema do sistema; o script ignora a falha |
 | Ícone genérico no dock | `StartupWMClass` fora de sincronia com o `APPLICATION_ID` | Os dois precisam ser `com.wevasoft.decima`; conferir com `xprop -id <id> WM_CLASS` |
+| Ícone genérico em Wayland sem a entrada instalada | Não há como o GTK3 enviar o ícone pelo protocolo — só o casamento `app_id` ↔ `.desktop` resolve | Rodar `install-desktop-entry.sh` (ou empacotar em AppImage/Flatpak/Snap, que instalam a entrada) |
+| `WSLg` mostra o Tux no lugar do ícone | Sob Wayland o Weston do WSLg não faz o lookup `app_id` → `.desktop`; sob X11 ele **compõe** um selo do Tux sobre o ícone real | Em X11 o ícone aparece (com o selo, comportamento do WSLg); conferir o que a janela publica com `xprop -id <id> _NET_WM_ICON` antes de suspeitar do app |
 | `libEGL warning: DRI3 error` / `failed to get driver name` no WSL | Ruído no stderr, render cai para software | Esperado sem GPU passthrough; não ocorre em desktop com driver nativo |

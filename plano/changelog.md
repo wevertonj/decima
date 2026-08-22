@@ -1553,3 +1553,28 @@ Novo `PlatformInfo.isLinux` para os dois desvios — mesmo padrão testável do 
 - `test/unit/ui/core/desktop/window_position_test.dart` — 5 testes novos para `isWindowPositionStorable`
 - **Total: 700 testes — 100% verde**
 - `flutter analyze` — zero issues; `dart format --set-exit-if-changed .` sem alterações
+
+---
+
+## [Fix] Etapa 15 — Ícone da janela no Linux
+
+**Problema (reportado no uso real)**: a janela abria com o ícone genérico do Linux (Tux) em vez do ícone do Decima.
+
+**Causa**: o template do runner GTK **não define ícone de janela nenhum**. Sem `_NET_WM_ICON` o ambiente cai no fallback genérico — confirmado por `xprop -id <id> _NET_WM_ICON` → `not found`. O `.desktop` entregue na etapa resolvia apenas onde o ambiente casa a janela com a entrada pelo `StartupWMClass` (docks tipo GNOME Shell), o que não cobre o caso geral.
+
+**Correção**: `set_application_icon()` no runner, chamado antes de criar a janela, com dois caminhos:
+
+| Caminho | Quando | Como |
+|---------|--------|------|
+| Tema de ícones | `.desktop` instalado (`gtk_icon_theme_has_icon`) | `gtk_window_set_default_icon_name(APPLICATION_ID)` — respeita tema do usuário e HiDPI |
+| PNG do bundle | App rodando solto, sem entrada instalada | `data/flutter_assets/assets/branding/logo.png`, resolvido por `/proc/self/exe`, em 48/128/256 (o PNG fonte tem 1024² — publicar isso encheria a propriedade X com 4 MB de ARGB) |
+
+**Limite conhecido — Wayland**: o GTK3 não tem protocolo para enviar pixels de ícone ao compositor; lá o ícone vem do casamento `app_id` (= `APPLICATION_ID`) com o `.desktop` de mesmo nome. Funciona em GNOME/KDE com a entrada instalada, mas o Weston do WSLg não faz esse lookup e continua mostrando o Tux.
+
+**Validação**:
+
+| Cenário | `_NET_WM_ICON` | Ícone na barra do Windows |
+|---------|----------------|---------------------------|
+| X11, tema instalado | Presente (32² em diante, do tema) | Ícone do Decima (o WSLg compõe um selo do Tux por cima — comportamento dele) |
+| X11, tema removido | Presente (48/128/256, do bundle) | Ícone do Decima, idem |
+| Wayland | N/A (propriedade é do X11) | Tux — limitação do WSLg |
