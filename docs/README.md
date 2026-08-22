@@ -10,7 +10,8 @@ docs/
 ├── fundacao/
 │   ├── arquitetura.md                 # Arquitetura e estrutura de pastas
 │   ├── padroes-codigo.md              # Convenções e padrões de código
-│   └── tema-design-system.md          # Tema, cores, layout e animações
+│   ├── tema-design-system.md          # Tema, cores, layout e animações
+│   └── empacotamento-windows.md       # Instalador .exe (Inno Setup) e bridge WSL→Windows
 ├── features/
 │   ├── calculadora.md                 # Calculadora (conceito Add2, timeline, keypad)
 │   ├── historico.md                   # Histórico de operações (SQLite)

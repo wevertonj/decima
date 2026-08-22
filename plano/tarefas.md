@@ -553,6 +553,57 @@ Checklist detalhado de cada etapa. Marque `[x]` conforme concluir.
 
 ---
 
+## Etapa 14.1 — Instalador Windows (.exe) ✅
+
+### Script do instalador
+
+- [x] Criar `tool/installer/decima.iss` (Inno Setup 6.3+)
+  - `AppId` GUID fixo, versão injetada via `/DAppVersion`
+  - Instalação por usuário (`PrivilegesRequired=lowest`), sem UAC
+  - Wizard mínimo (sem Welcome/Ready/Group), pt-BR + inglês
+  - Menu Iniciar sempre; atalho de desktop como tarefa opcional
+  - `CloseApplications=yes` para upgrade in-place
+- [x] Preservar dados do usuário (`%APPDATA%\Wevasoft\Decima`) na desinstalação
+
+### Automação
+
+- [x] Criar `tool/installer/build_installer.sh` — sync → clean → build → runtime C++ → ISCC → `dist/`
+- [x] Flags `--no-clean` e `--skip-build`
+- [x] Criar `tool/installer/local.env.example` e ignorar `local.env` + `/dist/` no `.gitignore`
+- [x] Copiar DLLs do redist MSVC para o bundle (app-local, sem pré-requisito)
+
+### Documentação
+
+- [x] Criar `docs/fundacao/empacotamento-windows.md` (decisões, gotchas, segurança)
+- [x] Adicionar seção "Instalação (Windows)" no `README.md` com o aviso de SmartScreen
+- [x] Registrar no índice `docs/README.md`
+
+### Validação
+
+- [x] `dist/decima-<versão>-windows-x64-setup.exe` gerado — `decima-0.5.0-windows-x64-setup.exe`, 12 MB, compilado em 2,6 s, `.sha256` ao lado
+- [x] Smoke test automatizado: instalação silenciosa (`/VERYSILENT`) → bundle em `%LOCALAPPDATA%\Programs\Decima` + atalho no Menu Iniciar → `decima.exe` abre com janela "Decima" → desinstalação silenciosa remove programa e atalho e **preserva** `%APPDATA%\Wevasoft\Decima` (a máquina ficou limpa: app desinstalado ao final)
+- [x] Verificação manual: instalar → abrir pelo Menu Iniciar → operar → desinstalar
+- [x] Verificação manual: reinstalar por cima preserva o histórico
+
+### Ajustes — tempo de compilação do instalador ✅ (causa raiz encontrada)
+
+O diagnóstico anterior ("LZMA single-thread a 52 KB/s") estava **errado**: o processo nunca esteve comprimindo.
+
+**Causa raiz**: o Inno Setup **6.2.2** instalado no host crashava em **toda** compilação — access violation (`0xc0000005`) no **`ISPP.dll`**, sempre no offset `0x244a4` ("Runtime error 216"), antes de ler qualquer arquivo do `[Files]` (I/O do processo: **0 bytes** lidos/escritos, `dist/` nunca criado). O runtime Delphi exibe o erro num **diálogo modal invisível** para quem chama via interop do WSL (`MainWindowTitle: "Error"`, thread em `WaitReason: UserRequest`); preso no pipe do console interop, o mesmo estado degenerava em spin de 100% de CPU — lido nas sessões anteriores como "compressão CPU-bound lenta". Reproduzido até com um `.iss` mínimo usando `Compression=zip` e em console nativo (`Start-Process`), e confirmado pelo log de eventos do Windows (`Application Error`, 3 crashes em `ISPP.dll`).
+
+**Correção**: `winget upgrade JRSoftware.InnoSetup` → **6.7.3**. A mesma compilação passou a levar **2,6 s** (era "infinito").
+
+Do checklist original:
+
+- [x] `LZMANumBlockThreads=4` + `LZMAUseSeparateProcess=yes` no `[Setup]` — mantidos como boa prática (paralelismo real por blocos, compressão fora do processo 32-bit do compilador)
+- [x] `/Q` removido do `build_installer.sh` — o `Compressing: <arquivo>` é o que denuncia travamento; sem ele o silêncio pós-banner é indistinguível de compressão longa
+- [x] Volume do `[Files]` confirmado: 33 MB / 27 arquivos, apenas o Release
+- [x] Baseline da máquina: `xz -6 -T1` no WSL (mesmo CPU) = 33 MB em 13,9 s ≈ **2,4 MB/s** — a máquina nunca foi o gargalo
+- [x] ~~`LZMABlockSize`, `LZMAMatchFinder=HC`, `lzma2/fast`~~ — obsoletos com a causa raiz corrigida
+- [x] Extra: `ArchitecturesAllowed`/`ArchitecturesInstallIn64BitMode` migrados de `x64` (deprecado no Inno 6.3+) para `x64compatible` — cobre também Windows ARM64 com emulação x64
+
+---
+
 ## Etapa 15 — Suporte a Linux
 
 ### Habilitação da plataforma

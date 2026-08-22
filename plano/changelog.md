@@ -1165,3 +1165,124 @@ No `AnimatedInputDisplay`, os wrappers de animação (`_RollingChar`/`_PopInChar
 - Janela fixa 360×720, title bar customizada (drag, minimizar, fechar), ícone no `.exe`, tema escuro — tudo funcional no Windows
 - Teclado físico completo (fecha a pendência da Etapa 13) e colar validado com os dados de `plano/fixtures-colar.md`
 - **Etapa 14 concluída**
+
+## [Em andamento] Etapa 14.1 — Instalador Windows (.exe)
+
+> **Estado**: infraestrutura completa e sincronizada, **artefato ainda não gerado**. A compilação do Inno foi suspensa por lentidão (ver "Pendências" ao final). Nada foi instalado na máquina ainda.
+
+Antecipada por necessidade de dogfooding: o empacotamento estava marcado como "fora de escopo, apenas documentar" nas Etapas 14–17, mas usar o app no dia a dia exige instalá-lo de fato. Objetivo declarado: **o instalador que dê menos atrito para quem instala**, já mirando a publicação no GitHub Releases como projeto de portfólio.
+
+### Escolha da ferramenta
+
+| Opção | Veredito |
+|-------|----------|
+| **Inno Setup 6.2** | **Escolhida** — `.exe` único, já instalado no host, sem pré-requisito para o usuário final |
+| MSIX | Descartada para distribuição direta: sideload exige que o usuário instale o certificado autoassinado na Trusted Root — mais atrito que o aviso do SmartScreen. Só compensaria via Microsoft Store |
+
+### `tool/installer/decima.iss`
+
+- `AppId` GUID fixo — novas versões atualizam in-place em vez de instalar lado a lado
+- `PrivilegesRequired=lowest` → instala em `%LOCALAPPDATA%\Programs\Decima` **sem prompt de UAC**
+- `PrivilegesRequiredOverridesAllowed=commandline` (e não `dialog`): mantém `/ALLUSERS` disponível sem impor a tela de escolha de modo na abertura
+- Wizard mínimo — `DisableWelcomePage`, `DisableReadyPage`, `DisableProgramGroupPage`: idioma (só se o locale não casar) → tarefas → instalar → concluir
+- Idiomas `BrazilianPortuguese` + `Default` (inglês), seguindo o locale do sistema
+- Menu Iniciar sempre; atalho de desktop como tarefa opcional desmarcada
+- `CloseApplications=yes` — fecha o Decima aberto antes de sobrescrever os binários
+- Dados do usuário em `%APPDATA%\Wevasoft\Decima` **preservados** na desinstalação (reinstalar não perde histórico)
+- `ArchitecturesAllowed=x64`, `MinVersion=10.0` — `x64compatible` evitado por exigir Inno 6.3+
+
+### `tool/installer/build_installer.sh`
+
+- Pipeline completa da bridge WSL→Windows: `rsync` → `flutter clean` → `flutter build windows --release` → runtime C++ → `ISCC.exe` → `dist/`
+- Versão lida do `pubspec.yaml` e injetada via `/DAppVersion`
+- Flags `--no-clean` (pula o clean) e `--skip-build` (só reempacota o Release atual)
+- Gera `.sha256` junto do instalador — sem assinatura de código, o hash é a única verificação de integridade para quem baixa
+- Configuração de máquina em `local.env` (ignorado pelo git), com `local.env.example` versionado — nada de caminho de máquina no repositório público
+
+### Runtime C++ app-local
+
+As DLLs do redist do MSVC (`msvcp140*`, `vcruntime140*`) são copiadas para junto do `decima.exe`. Sem isso o instalador exigiria o "Visual C++ Redistributable" pré-instalado — o maior pré-requisito silencioso de apps Flutter no Windows.
+
+### Percalços na implementação
+
+| Problema | Diagnóstico | Correção |
+|----------|-------------|----------|
+| `ISCC.exe` "não é reconhecido como comando" | A interop do WSL reescreve aspas duplas ao repassar para o `cmd.exe`; o caminho do Inno tem espaços | Nenhuma aspa: o diretório entra no `PATH` da própria linha e o exe é chamado pelo nome |
+| Redist do MSVC não encontrado | `find` com `-maxdepth 6`; o caminho real tem 7 níveis | Glob direto em `Program Files*/Microsoft Visual Studio/*/*/VC/Redist/MSVC/*/x64/Microsoft.VC*.CRT` |
+| Alteração no `.iss` não surtia efeito | `--skip-build` pulava o `rsync` junto com o build — a cópia no Windows continuava com o `.iss` antigo | `rsync` movido para fora do bloco condicional: sincroniza sempre |
+| `ISCC.exe` aparentava estar travado (CPU 0,06s) | Leitura pontual enganosa — o processo estava compactando (chegou a 600s de CPU com `lzma2/max`) | `Compression=lzma2/normal`: alguns minutos em vez de mais de dez, com diferença de tamanho marginal |
+
+### Documentação
+
+- `docs/fundacao/empacotamento-windows.md` — artefatos, uso, configuração, decisões de instalação, conteúdo do bundle, seção de segurança (SmartScreen, DLL hijacking, menor privilégio) e gotchas
+- `README.md` — seção "Instalação (Windows)" com o aviso de SmartScreen e a orientação de conferir o SHA-256
+- `docs/README.md` — índice atualizado
+- `.gitignore` — `tool/installer/local.env` e `/dist/`
+
+### Fora de escopo (documentado)
+
+- **Assinatura de código** — certificado OV exige token HSM pago; o SmartScreen seguirá avisando
+- **Auto-update** — atualizar é reinstalar por cima
+- **winget / Microsoft Store**
+
+### Pendências (retomar amanhã)
+
+A compilação do instalador foi **suspensa** — o `.exe` nunca chegou a ser gerado. Duas rodadas foram interrompidas:
+
+| Rodada | Compressão | Resultado |
+|--------|-----------|-----------|
+| 1ª | `lzma2/max` | Interrompida com 606 s de CPU, sem terminar |
+| 2ª | `lzma2/normal` | Interrompida com ~690 s de CPU / 13m41s de relógio, sem terminar |
+
+**Medição do gargalo**: `ISCC.exe` com 647 s de relógio para 634 s de CPU = **1,00 núcleo, 98% CPU-bound**. Sem espera de I/O — Defender e disco descartados. Os ~8% no Gerenciador de Tarefas são uma thread saturada sobre o total de threads lógicas.
+
+Restam dois problemas independentes, detalhados em `plano/tarefas.md` (Etapa 14.1 → "Ajustes pendentes"):
+
+- **A — LZMA single-thread**: `LZMANumBlockThreads=4` é a única diretiva que dá paralelismo real no Inno (ganho esperado ~3×); `LZMAUseSeparateProcess=yes` e `LZMABlockSize` complementam. **GPU está descartado** — LZMA é sequencial e cheio de desvios, não existe caminho em GPU no Inno nem nas implementações de referência
+- **B — taxa absoluta anômala**: 33 MB / 634 s ≈ **52 KB/s**, uma a duas ordens de grandeza abaixo do esperado para LZMA2 normal (~2–5 MB/s). Multi-thread sozinho levaria a ~150 KB/s, ainda absurdo. Diagnóstico: rodar o ISCC **sem `/Q`** (imprime `Compressing: <arquivo>` e revela se está preso em um arquivo ou comendo mais do que os 33 MB esperados) e comparar com um baseline de 7-Zip no host
+
+**Estado dos artefatos**: `dist/` vazio nos dois lados (WSL e cópia Windows). O build Release do Windows está pronto e íntegro na cópia (`decima.exe` + 9 DLLs do runtime C++ já staged), então retomar é só rodar `tool/installer/build_installer.sh --skip-build` depois de aplicar os ajustes.
+
+## [Concluída] Etapa 14.1 — Instalador Windows: causa raiz da "lentidão" e artefato gerado
+
+> **Estado**: `dist/decima-0.5.0-windows-x64-setup.exe` (12 MB) gerado em **2,6 s** de compilação, smoke test de instalação/desinstalação passou. Falta só a verificação manual interativa do usuário.
+
+### A "lentidão" era um crash: o ISCC nunca esteve comprimindo
+
+O diagnóstico da sessão anterior — "LZMA single-thread a 52 KB/s" — estava errado. A investigação desta sessão, na ordem:
+
+| Passo | Evidência | Conclusão |
+|-------|-----------|-----------|
+| Baseline da máquina (`xz -6 -T1` no WSL, mesmo CPU) | 33 MB em 13,9 s ≈ **2,4 MB/s** | Ryzen 5 3600 nunca foi o gargalo; 52 KB/s seria ~46× abaixo do próprio hardware |
+| Volume do `[Files]` | 33 MB / 27 arquivos, só o Release | O glob não estava comprimindo nada além do esperado |
+| I/O do processo `ISCC.exe` durante o "trabalho" | CPU 15 s em 15 s de relógio com **0 bytes lidos e 0 escritos**; `dist/` nunca criado | O processo nunca tocou o payload — não é compressão lenta, é loop |
+| Saída redirecionada para arquivo (fora do pipe interop) | Banner e depois **0% de CPU**, thread em `WaitReason: UserRequest`, `MainWindowTitle: "Error"` | Há um **diálogo modal invisível** esperando clique |
+| Texto do diálogo via UI Automation | `Runtime error 216 at 02CE44A4` | GPF do runtime Delphi dentro do compilador |
+| Log de eventos do Windows (`Application Error`) | `0xc0000005` em **`ISPP.dll`**, offset fixo `0x244a4`, em todas as tentativas | Crash determinístico no pré-processador do Inno |
+| `.iss` mínimo (`Compression=zip`) em console nativo (`Start-Process`) | Mesmo crash | Não é o nosso script, não é LZMA, não é a interop — o **Inno Setup 6.2.2 estava quebrado nesta máquina** |
+
+O elo com o sintoma original: chamado via interop do WSL, o diálogo de erro não tem onde aparecer e o processo degenera em **spin de 100% de CPU em 1 núcleo** — exatamente o "647 s de relógio para 634 s de CPU" medido antes. As duas rodadas interrompidas (`lzma2/max` e `lzma2/normal`) nunca teriam terminado, com qualquer compressor.
+
+### Correção
+
+- `winget upgrade JRSoftware.InnoSetup` → **6.7.3** (o 6.2.2 veio de instalação antiga; o upgrade mantém `C:\Program Files (x86)\Inno Setup 6`, então o `local.env` não muda)
+- Compilação do instalador: de "infinito" para **2,6 s** (payload 33 MB → instalador 12 MB)
+
+### Ajustes aplicados (das anotações + modernização)
+
+- `LZMAUseSeparateProcess=yes` + `LZMANumBlockThreads=4` no `[Setup]` — compressão fora do processo 32-bit do compilador, em blocos paralelos; mantidos como boa prática ainda que a causa raiz fosse outra
+- `/Q` removido da chamada do ISCC no `build_installer.sh` — o `Compressing: <arquivo>` por item é o que distingue "comprimindo" de "travado"; o silêncio pós-banner do 6.2.2 teria sido denunciado na hora
+- `ArchitecturesAllowed`/`ArchitecturesInstallIn64BitMode`: `x64` → `x64compatible` (o 6.7 avisa deprecação de `x64`; `x64compatible` cobre também Windows ARM64 com emulação x64). Cabeçalho do `.iss` atualizado para "Inno Setup 6.3+"
+
+### Smoke test do artefato (automatizado, máquina limpa ao final)
+
+| Fase | Resultado |
+|------|-----------|
+| `/VERYSILENT /SUPPRESSMSGBOXES /NORESTART` | Bundle completo em `%LOCALAPPDATA%\Programs\Decima` + `Decima.lnk` no Menu Iniciar |
+| Abrir o exe instalado | Processo sobe com janela "Decima" — runtime C++ app-local validado fora da pasta de build |
+| `unins000.exe /VERYSILENT` | Pasta do programa e atalho removidos; `%APPDATA%\Wevasoft\Decima` (`decima.db` + `shared_preferences.json`) **preservado** |
+
+### Lição de diagnóstico registrada
+
+Processo Windows lançado via interop que "trava" consumindo CPU: antes de assumir trabalho pesado, checar **I/O do processo** (`Win32_Process.ReadTransferCount`) e **`MainWindowTitle`** — um diálogo modal invisível parece exatamente um loop CPU-bound. O texto do diálogo é legível via UI Automation sem interação.
+

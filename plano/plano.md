@@ -580,6 +580,43 @@ O projeto está dividido em **18 etapas** sequenciais. As **etapas 1-4** cobrem 
 
 ---
 
+## Etapa 14.1 — Instalador Windows (.exe)
+
+**Objetivo**: Empacotar o build Release do Windows em um instalador `.exe` distribuível, permitindo instalar o Decima na máquina para uso diário e publicar o artefato no GitHub Releases. Originalmente o empacotamento estava fora de escopo (apenas documentado) — antecipado por necessidade de dogfooding.
+
+**Escopo**:
+
+- **Ferramenta**: Inno Setup 6.3+ (`ISCC.exe`), escolhido sobre MSIX por não exigir certificado instalado pelo usuário final para sideload
+- **Script do instalador** (`tool/installer/decima.iss`):
+  - `AppId` fixo (GUID) para que novas versões atualizem in-place
+  - Instalação **por usuário** (`PrivilegesRequired=lowest`) → `%LOCALAPPDATA%\Programs\Decima`, sem prompt de UAC
+  - Wizard mínimo (sem Welcome/Ready/Group), pt-BR + inglês conforme locale do sistema
+  - Atalho no Menu Iniciar sempre; atalho de desktop como tarefa opcional
+  - `CloseApplications=yes` — fecha o app aberto antes de sobrescrever binários
+  - Dados do usuário (`%APPDATA%\Wevasoft\Decima`) preservados na desinstalação
+- **Script de build** (`tool/installer/build_installer.sh`):
+  - Orquestra a bridge WSL→Windows: `rsync` → `flutter clean` → `flutter build windows --release` → runtime C++ → `ISCC.exe` → `dist/`
+  - Versão extraída do `pubspec.yaml` e injetada via `/DAppVersion`
+  - Flags `--no-clean` e `--skip-build` para iteração
+  - Configuração de máquina em `local.env` (não versionado), com `local.env.example` versionado
+- **Runtime C++ app-local**: DLLs do redist MSVC copiadas para junto do `decima.exe`, eliminando o pré-requisito "Visual C++ Redistributable"
+- **Documentação**: `docs/fundacao/empacotamento-windows.md` + seção de instalação no `README.md` (incluindo o aviso de SmartScreen)
+
+**Fora de escopo (documentado)**:
+
+- Assinatura de código (certificado OV exige token HSM pago) — SmartScreen exibirá aviso
+- Auto-update — sem mecanismo; atualização é reinstalar por cima
+- Publicação em winget / Microsoft Store
+
+**Testes**:
+
+- Verificação manual: instalar, abrir pelo Menu Iniciar, operar o app, desinstalar
+- Verificação manual: reinstalar por cima preserva o histórico em `%APPDATA%`
+
+**Entregável**: `dist/decima-<versão>-windows-x64-setup.exe` funcional, reprodutível por um comando, e Decima instalado na máquina de desenvolvimento para uso diário.
+
+---
+
 ## Etapa 15 — Suporte a Linux
 
 **Objetivo**: Habilitar o build para Linux reutilizando a infra de desktop da Etapa 14. Validar a title bar customizada e o tamanho fixo no ambiente Linux (GTK).
@@ -767,6 +804,9 @@ Etapa 13 (Teclado físico)
 Etapa 14 (Windows + infra desktop)
     │
     ▼
+Etapa 14.1 (Instalador Windows .exe)
+    │
+    ▼
 Etapa 15 (Linux)
     │
     ▼
@@ -787,7 +827,7 @@ Etapa 18 (Polimento e Revisão Final)
 | **Interface Visual e Comportamento** | 5, 6, 7, 8, 9 |
 | **Funcionalidades extras** | 10, 11 |
 | **Identidade visual e entrada** | 12, 13 |
-| **Multi-plataforma** | 14, 15, 16, 17 |
+| **Multi-plataforma** | 14, 14.1, 15, 16, 17 |
 | **Polimento Final** | 18 |
 
 ## Estimativa de Complexidade por Etapa
@@ -809,6 +849,7 @@ Etapa 18 (Polimento e Revisão Final)
 | 12 — Logo customizado | Baixa-Média | ~3-5 (assets + widget) | ~2 |
 | 13 — Teclado físico | Média | ~1-2 | ~10 |
 | 14 — Windows + infra desktop | Média-Alta | ~4-5 (DesktopShell, AppTitleBar, config) | ~4 |
+| 14.1 — Instalador Windows | Baixa-Média | ~4 (iss, build script, docs) | manual |
 | 15 — Linux | Baixa | ~0 (só nativo) | ~0 |
 | 16 — macOS | Baixa-Média | ~0-1 (ajuste do AppTitleBar) | ~1 |
 | 17 — iOS | Baixa | ~0 (só nativo) | ~0 |

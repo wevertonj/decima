@@ -36,6 +36,18 @@ lib/
 └── utils/         # Extensions, formatters, l10n
 ```
 
+## Instalação (Windows)
+
+Baixe `decima-<versão>-windows-x64-setup.exe` em [Releases](https://github.com/wevertonj/decima/releases) e execute.
+
+- Instalação **por usuário** — sem prompt de administrador
+- O runtime C++ vai junto: **nenhum pré-requisito** para instalar
+- Requer Windows 10 ou superior (x64)
+
+> Por não ser assinado com certificado pago, o Windows exibe *"O Windows protegeu o seu PC"*. Clique em **Mais informações → Executar assim mesmo**. Confira o SHA-256 publicado no release antes de instalar.
+
+Para gerar o instalador localmente, veja [`docs/fundacao/empacotamento-windows.md`](docs/fundacao/empacotamento-windows.md).
+
 ## Desenvolvimento
 
 ```bash

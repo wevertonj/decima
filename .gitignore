@@ -1,6 +1,10 @@
 # Notas locais de ambiente (específicas da máquina — nunca versionar)
 plano/local/
 CLAUDE.local.md
+tool/installer/local.env
+
+# Artefatos de distribuição (instaladores gerados)
+/dist/
 
 # Miscellaneous
 *.class
