@@ -1474,3 +1474,13 @@ Mudança estrutural de processo: o padrão husky dos outros projetos (`pre-commi
 - `test/tool/bump_version_test.dart` — 7 cenários (RESULT minor/patch/major, NOOP interno, anti-loop de release, range vazio, âncora de fallback)
 - **Total: 690 testes — 100% verde**
 - `flutter analyze` — zero issues
+
+---
+
+## [Fix] Etapa 14.3 — versionCode monotônico entre dev e stable
+
+**Problema (dogfooding)**: o release v0.6.0 saiu com `versionCode 6` (o `+B` do pubspec) e o build dev seguinte com `versionCode 4` (`github.run_number` — contador **por workflow**). Instalar o dev sobre o stable era downgrade: o Android bloqueia e obriga a desinstalar, perdendo os dados.
+
+**Correção**: o `versionCode` de todo APK do CI (jobs `build-android` do `ci.yml` e `release-android` do `release.yml`) passa a ser `minutos desde a epoch Unix` (~29,9 mi hoje; teto do Android de 2,1 bi só no ano ~5960) — uma única sequência crescente, independente de branch/workflow. O `+B` do pubspec continua existindo apenas como contador humano de releases (nome do commit/tag), sem papel de `versionCode`.
+
+**Gotcha documentado**: build local usa o `+B` pequeno do pubspec — para instalar por cima de um APK do CI, passar `--build-number=$(( $(date +%s) / 60 ))`.

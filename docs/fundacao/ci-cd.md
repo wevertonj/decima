@@ -30,7 +30,7 @@
 | `build-android` | APK release (assinado quando há secrets); push em `dev` distribui ao grupo `dev` do Firebase | Gradle + `firebase-tools` |
 | `build-windows` | Bundle Windows + runtime MSVC app-local, zipado como artefato; roda em push na `dev` e PR para `main` | `flutter build windows` |
 
-- Builds dev usam `--build-name=<versão>-dev.<run> --build-number=<run>`
+- Builds dev usam `--build-name=<versão>-dev.<run>`; o `versionCode` de **todo** APK do CI (dev e stable) é `minutos desde a epoch Unix` — sequência monotônica única entre branches, sem downgrade ao alternar canal (teto do Android: 2,1 bi; esgota só no ano ~5960)
 - PRs de fork rodam **sem secrets**: assinatura cai na chave de debug e nenhuma distribuição acontece (só ocorre em `push`, que fork não dispara)
 
 ### Jobs do Release (`release.yml`)
@@ -104,6 +104,8 @@ Portado do hook `pre-push` (decisões D5/D6) dos projetos `runway`/`verbum`/`dos
 | `sqflite_common_ffi` abre `libsqlite3.so` | Testes quebram em runner Linux puro | Job `test` instala `libsqlite3-dev` via apt |
 | `MIN_COVERAGE` (85%) vs. baseline 88,4% | Gate reprova se a cobertura cair | Ajustar o valor apenas conscientemente, nunca para "passar" |
 | Sem secrets, release build assina com chave de debug | APK de fork/clone não serve para distribuição | Fallback intencional para manter forks buildáveis |
+| `versionCode` do CI = minutos da epoch; o `+B` do pubspec é só contador de releases | APK buildado **localmente** usa o `+B` (pequeno) — instalar por cima de um APK do CI é downgrade bloqueado | Para testar local sobre build do CI: `flutter build apk --release --build-number=$(( $(date +%s) / 60 ))` |
+| Duas sequências de build number (run_number × pubspec) causavam downgrade dev→stable | Tester precisava desinstalar (perdendo dados) ao trocar de canal | Corrigido com a fonte única por timestamp — não reintroduzir `run_number` como versionCode |
 | `path_provider_android` pinado `<2.3.0` | `flutter pub upgrade` cego quebra o build (jni/AGP) | Manter o pin — ver `plano/changelog.md` da migração Kotlin |
 | Versão do Flutter no CI vem do `.fvmrc` | Divergência local×CI se atualizar só um lado | Atualizar `.fvmrc` e testar localmente com o mesmo FVM |
 | Commit do release é do bot (`github-actions[bot]`) | `git pull` necessário na `dev` após release para receber `chore(release)` | Após merge na `main`: `git checkout dev && git merge main` (ou rebase) |
