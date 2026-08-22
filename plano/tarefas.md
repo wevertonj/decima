@@ -724,8 +724,8 @@ Do checklist original:
 
 - [x] Grupos de testers `dev` e `stable` criados no projeto `decima-wevasoft` (tester inicial adicionado)
 - [x] Secrets: `ANDROID_KEYSTORE_BASE64`, `ANDROID_KEYSTORE_PASSWORD`, `ANDROID_KEY_PASSWORD`, `ANDROID_KEY_ALIAS`; variável `FIREBASE_ANDROID_APP_ID`
-- [ ] Secret `FIREBASE_SERVICE_ACCOUNT` (chave de service account gerada no console — ação manual)
-- [ ] Deploy key de escrita `release-bot` + secret `RELEASE_DEPLOY_KEY` (ação manual — bloqueada no ambiente da IA)
+- [x] Secret `FIREBASE_SERVICE_ACCOUNT` (chave de service account gerada no console — ação manual)
+- [x] Deploy key de escrita `release-bot` + secret `RELEASE_DEPLOY_KEY` (ação manual — bloqueada no ambiente da IA)
 
 ### Documentação
 
@@ -738,8 +738,8 @@ Do checklist original:
 - [x] `flutter test` — 100% verde (690 testes, incluindo os 7 do motor)
 - [x] `flutter analyze` — zero warnings
 - [x] `dart run commitlint_cli --from=origin/main --to=HEAD` — todos os commits válidos
-- [ ] Primeiro PR `dev` → `main` com pipeline 100% verde
-- [ ] Primeiro release automático publicado (Firebase `stable` + GitHub Release)
+- [x] Primeiro PR `dev` → `main` com pipeline 100% verde (PR #1 — 5 checks, merge limpo)
+- [x] Primeiro release automático publicado — v0.6.0 (tag, CHANGELOG, APK no Firebase `stable`, instalador + `.sha256` no GitHub Release); run anti-loop confirmado em NOOP
 
 ---
 

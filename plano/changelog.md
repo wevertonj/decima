@@ -1458,10 +1458,11 @@ Mudança estrutural de processo: o padrão husky dos outros projetos (`pre-commi
 - Projeto `decima-wevasoft` (app Android `com.wevasoft.decima` já registrado); grupos de testers `dev` e `stable` criados via CLI
 - Sem SDK Firebase no app — App Distribution usa apenas APK + App ID + service account
 
-### Pendências (ações manuais do dev)
+### Primeiro release (validação de ponta a ponta)
 
-- Secret `FIREBASE_SERVICE_ACCOUNT` (gerar chave no console do Firebase)
-- Deploy key `release-bot` + secret `RELEASE_DEPLOY_KEY` (geração de chave SSH bloqueada no ambiente da IA)
+- Secrets manuais configuradas pelo dev (`FIREBASE_SERVICE_ACCOUNT`, deploy key `release-bot` + `RELEASE_DEPLOY_KEY`)
+- PR #1 (`dev` → `main`) mergeado com os 5 checks verdes → **v0.6.0** publicado automaticamente: `chore(release): v0.6.0+6` + tag + `CHANGELOG.md`, APK assinado no grupo `stable`, `decima-0.6.0-windows-x64-setup.exe` + `.sha256` no GitHub Release
+- Anti-loop validado: o push do commit de release re-disparou o workflow, que caiu em `NOOP` e pulou os jobs de publicação
 
 ### Documentação
 
