@@ -99,14 +99,18 @@ void main() {
           );
           await repository.add(
             HistoryEntry(
-              lines: [HistoryLine(expression: '100.00 × 2.00', result: '200.00')],
+              lines: [
+                HistoryLine(expression: '100.00 × 2.00', result: '200.00'),
+              ],
               result: '200.00',
               createdAt: HistoryFixtures.timestamp2,
             ),
           );
           await repository.add(
             HistoryEntry(
-              lines: [HistoryLine(expression: '50.00 − 25.00', result: '25.00')],
+              lines: [
+                HistoryLine(expression: '50.00 − 25.00', result: '25.00'),
+              ],
               result: '25.00',
               createdAt: HistoryFixtures.timestamp3,
             ),

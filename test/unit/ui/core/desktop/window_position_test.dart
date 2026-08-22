@@ -83,15 +83,18 @@ void main() {
       expect(result, isTrue);
     });
 
-    test('rejects a partially visible window with a title bar out of reach', () {
-      // Só 30 px de largura sobram — abaixo do mínimo para arrastar.
-      final result = isWindowPositionReachable(
-        position: const WindowPosition(x: 1890, y: 300),
-        displays: [primary],
-      );
+    test(
+      'rejects a partially visible window with a title bar out of reach',
+      () {
+        // Só 30 px de largura sobram — abaixo do mínimo para arrastar.
+        final result = isWindowPositionReachable(
+          position: const WindowPosition(x: 1890, y: 300),
+          displays: [primary],
+        );
 
-      expect(result, isFalse);
-    });
+        expect(result, isFalse);
+      },
+    );
 
     test('accepts a title bar partially above the top edge', () {
       // 30 dos 40 px da title bar continuam visíveis.
@@ -170,16 +173,19 @@ void main() {
       );
     });
 
-    test('falls back to the full size when the display omits the visible area', () {
-      const bare = Display(id: 'bare', size: Size(1920, 1080));
+    test(
+      'falls back to the full size when the display omits the visible area',
+      () {
+        const bare = Display(id: 'bare', size: Size(1920, 1080));
 
-      final result = isWindowPositionReachable(
-        position: const WindowPosition(x: 600, y: 200),
-        displays: const [bare],
-      );
+        final result = isWindowPositionReachable(
+          position: const WindowPosition(x: 600, y: 200),
+          displays: const [bare],
+        );
 
-      expect(result, isTrue);
-    });
+        expect(result, isTrue);
+      },
+    );
 
     test('honors a custom window size and title bar height', () {
       // Janela larga: 100 px visíveis passam a bastar em qualquer largura.

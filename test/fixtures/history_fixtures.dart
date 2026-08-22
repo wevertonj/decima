@@ -79,7 +79,9 @@ class HistoryFixtures {
   static List<HistoryEntry> get entries => [entry1, entry2, entry3];
 
   static String _encodeLine(String expression, String result) {
-    return jsonEncode([{'expression': expression, 'result': result}]);
+    return jsonEncode([
+      {'expression': expression, 'result': result},
+    ]);
   }
 
   static HistoryModel get model1 => HistoryModel(

@@ -78,9 +78,7 @@ class HistoryModel {
   }
 
   factory HistoryModel.fromEntity(HistoryEntry entity) {
-    final linesJson = jsonEncode(
-      entity.lines.map((l) => l.toJson()).toList(),
-    );
+    final linesJson = jsonEncode(entity.lines.map((l) => l.toJson()).toList());
 
     return HistoryModel(
       id: entity.id,

@@ -74,11 +74,7 @@ void main() {
 
   group('WindowCloseHandler', () {
     testWidgets('renders the child', (tester) async {
-      await pumpHandlerOn(
-        tester,
-        TargetPlatform.windows,
-        onFlush: () async {},
-      );
+      await pumpHandlerOn(tester, TargetPlatform.windows, onFlush: () async {});
 
       expect(find.text('content'), findsOneWidget);
     });
@@ -86,11 +82,7 @@ void main() {
     testWidgets('registers the listener and prevents close on desktop', (
       tester,
     ) async {
-      await pumpHandlerOn(
-        tester,
-        TargetPlatform.windows,
-        onFlush: () async {},
-      );
+      await pumpHandlerOn(tester, TargetPlatform.windows, onFlush: () async {});
 
       expect(bridge.listener, isNotNull);
       expect(bridge.preventClose, isTrue);
@@ -230,11 +222,7 @@ void main() {
     });
 
     testWidgets('unregisters the listener when disposed', (tester) async {
-      await pumpHandlerOn(
-        tester,
-        TargetPlatform.windows,
-        onFlush: () async {},
-      );
+      await pumpHandlerOn(tester, TargetPlatform.windows, onFlush: () async {});
 
       expect(bridge.listener, isNotNull);
 

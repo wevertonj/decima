@@ -149,9 +149,9 @@ class _HistoryPageState extends State<HistoryPage> {
           child: HistoryListItem(
             entry: entry,
             onLineTap: (lineIndex) {
-              Navigator.of(context).pop(
-                HistorySelection(entry: entry, lineIndex: lineIndex),
-              );
+              Navigator.of(
+                context,
+              ).pop(HistorySelection(entry: entry, lineIndex: lineIndex));
             },
             onToggleFavorite: () {
               if (entry.id != null) {
@@ -254,14 +254,13 @@ class _AnimatedListItemState extends State<_AnimatedListItem>
       end: Offset.zero,
     ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeOutCubic));
 
-    _fadeAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
-      CurvedAnimation(parent: _controller, curve: Curves.easeOutCubic),
-    );
+    _fadeAnimation = Tween<double>(
+      begin: 0.0,
+      end: 1.0,
+    ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeOutCubic));
 
     // Stagger: each item starts slightly after the previous one (max 10 items)
-    final delay = Duration(
-      milliseconds: (widget.index.clamp(0, 10)) * 40,
-    );
+    final delay = Duration(milliseconds: (widget.index.clamp(0, 10)) * 40);
     Future.delayed(delay, () {
       if (mounted) _controller.forward();
     });

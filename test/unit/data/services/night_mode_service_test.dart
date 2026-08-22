@@ -45,33 +45,27 @@ void main() {
       expect(lastCall?.arguments, {'dark': false});
     });
 
-    test(
-      'should resolve ThemeModeOption.system using platform brightness '
-      '(dark)',
-      () async {
-        final dispatcher = TestWidgetsFlutterBinding.instance.platformDispatcher;
-        dispatcher.platformBrightnessTestValue = Brightness.dark;
-        addTearDown(dispatcher.clearPlatformBrightnessTestValue);
+    test('should resolve ThemeModeOption.system using platform brightness '
+        '(dark)', () async {
+      final dispatcher = TestWidgetsFlutterBinding.instance.platformDispatcher;
+      dispatcher.platformBrightnessTestValue = Brightness.dark;
+      addTearDown(dispatcher.clearPlatformBrightnessTestValue);
 
-        await service.syncThemeMode(ThemeModeOption.system);
+      await service.syncThemeMode(ThemeModeOption.system);
 
-        expect(lastCall?.arguments, {'dark': true});
-      },
-    );
+      expect(lastCall?.arguments, {'dark': true});
+    });
 
-    test(
-      'should resolve ThemeModeOption.system using platform brightness '
-      '(light)',
-      () async {
-        final dispatcher = TestWidgetsFlutterBinding.instance.platformDispatcher;
-        dispatcher.platformBrightnessTestValue = Brightness.light;
-        addTearDown(dispatcher.clearPlatformBrightnessTestValue);
+    test('should resolve ThemeModeOption.system using platform brightness '
+        '(light)', () async {
+      final dispatcher = TestWidgetsFlutterBinding.instance.platformDispatcher;
+      dispatcher.platformBrightnessTestValue = Brightness.light;
+      addTearDown(dispatcher.clearPlatformBrightnessTestValue);
 
-        await service.syncThemeMode(ThemeModeOption.system);
+      await service.syncThemeMode(ThemeModeOption.system);
 
-        expect(lastCall?.arguments, {'dark': false});
-      },
-    );
+      expect(lastCall?.arguments, {'dark': false});
+    });
 
     test('should be a no-op on unsupported platforms', () async {
       debugDefaultTargetPlatformOverride = TargetPlatform.iOS;
@@ -88,20 +82,14 @@ void main() {
             throw PlatformException(code: 'error');
           });
 
-      await expectLater(
-        service.syncThemeMode(ThemeModeOption.dark),
-        completes,
-      );
+      await expectLater(service.syncThemeMode(ThemeModeOption.dark), completes);
     });
 
     test('should swallow MissingPluginException when unhandled', () async {
       TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
           .setMockMethodCallHandler(channel, null);
 
-      await expectLater(
-        service.syncThemeMode(ThemeModeOption.dark),
-        completes,
-      );
+      await expectLater(service.syncThemeMode(ThemeModeOption.dark), completes);
     });
   });
 }

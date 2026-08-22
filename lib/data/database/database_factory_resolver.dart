@@ -26,9 +26,7 @@ DatabaseFactory resolveDatabaseFactory({bool? isDesktop}) {
 /// diretório de suporte por usuário (ex: `%APPDATA%\Wevasoft\Decima`
 /// no Windows). Em mobile retorna null: o sqflite já usa o diretório de
 /// databases do próprio app.
-Future<String> Function()? resolveDatabaseDirectoryResolver({
-  bool? isDesktop,
-}) {
+Future<String> Function()? resolveDatabaseDirectoryResolver({bool? isDesktop}) {
   if (isDesktop ?? PlatformInfo.isDesktop) {
     return () async => (await getApplicationSupportDirectory()).path;
   }

@@ -60,10 +60,12 @@ class AppTitleBar extends StatelessWidget {
               onPressed: onMinimize ?? windowManager.minimize,
               idleIconColor: colorScheme.onSurface.withValues(alpha: 0.7),
               hoverIconColor: colorScheme.onSurface,
-              hoverBackgroundColor:
-                  colorScheme.onSurface.withValues(alpha: 0.08),
-              pressedBackgroundColor:
-                  colorScheme.onSurface.withValues(alpha: 0.12),
+              hoverBackgroundColor: colorScheme.onSurface.withValues(
+                alpha: 0.08,
+              ),
+              pressedBackgroundColor: colorScheme.onSurface.withValues(
+                alpha: 0.12,
+              ),
             ),
             _TitleBarButton(
               icon: Icons.close_rounded,

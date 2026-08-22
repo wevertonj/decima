@@ -650,20 +650,24 @@ void main() {
       }
 
       HistoryEntry capturedAdd() {
-        return verify(() => mockHistoryRepository.add(captureAny())).captured
-                .single
+        return verify(
+              () => mockHistoryRepository.add(captureAny()),
+            ).captured.single
             as HistoryEntry;
       }
 
-      test('should persist a pending expression that was never equalled', () async {
-        typePendingSum();
+      test(
+        'should persist a pending expression that was never equalled',
+        () async {
+          typePendingSum();
 
-        await viewModel.flushSession();
+          await viewModel.flushSession();
 
-        final entry = capturedAdd();
-        expect(entry.lines.single.expression, '10.00 + 5.00');
-        expect(entry.lines.single.result, '15.00');
-      });
+          final entry = capturedAdd();
+          expect(entry.lines.single.expression, '10.00 + 5.00');
+          expect(entry.lines.single.result, '15.00');
+        },
+      );
 
       test('should auto-close open parentheses before evaluating', () async {
         viewModel.inputParenthesis();
@@ -676,15 +680,18 @@ void main() {
         expect(entry.lines.single.result, '15.00');
       });
 
-      test('should not persist a bare number typed without an operator', () async {
-        viewModel.inputDigit('1');
-        viewModel.inputDigit('2');
+      test(
+        'should not persist a bare number typed without an operator',
+        () async {
+          viewModel.inputDigit('1');
+          viewModel.inputDigit('2');
 
-        await viewModel.flushSession();
+          await viewModel.flushSession();
 
-        expect(viewModel.timelineEntries, isEmpty);
-        verifyNever(() => mockHistoryRepository.add(any()));
-      });
+          expect(viewModel.timelineEntries, isEmpty);
+          verifyNever(() => mockHistoryRepository.add(any()));
+        },
+      );
 
       test('should be a no-op on an empty session', () async {
         await viewModel.flushSession();
@@ -694,16 +701,19 @@ void main() {
         verifyNever(() => mockHistoryRepository.update(any()));
       });
 
-      test('should not duplicate the line when called right after equals', () async {
-        typePendingSum();
-        viewModel.equals();
+      test(
+        'should not duplicate the line when called right after equals',
+        () async {
+          typePendingSum();
+          viewModel.equals();
 
-        await viewModel.flushSession();
+          await viewModel.flushSession();
 
-        expect(viewModel.timelineEntries, hasLength(1));
-        verify(() => mockHistoryRepository.add(any())).called(1);
-        verifyNever(() => mockHistoryRepository.update(any()));
-      });
+          expect(viewModel.timelineEntries, hasLength(1));
+          verify(() => mockHistoryRepository.add(any())).called(1);
+          verifyNever(() => mockHistoryRepository.update(any()));
+        },
+      );
 
       test('should be idempotent across repeated calls', () async {
         typePendingSum();
@@ -735,55 +745,62 @@ void main() {
         expect(landed, isTrue);
       });
 
-      test('should take the edit-mode path when the cursor is mid-expression', () async {
-        typePendingSum();
-        viewModel.moveCursorLeft();
+      test(
+        'should take the edit-mode path when the cursor is mid-expression',
+        () async {
+          typePendingSum();
+          viewModel.moveCursorLeft();
 
-        expect(viewModel.isEditingMidExpression, isTrue);
+          expect(viewModel.isEditingMidExpression, isTrue);
 
-        await viewModel.flushSession();
+          await viewModel.flushSession();
 
-        final entry = capturedAdd();
-        expect(entry.lines.single.expression, '10.00 + 5.00');
-        expect(viewModel.isEditingMidExpression, isFalse);
-      });
+          final entry = capturedAdd();
+          expect(entry.lines.single.expression, '10.00 + 5.00');
+          expect(viewModel.isEditingMidExpression, isFalse);
+        },
+      );
 
-      test('should update the same session when a line lands mid-add', () async {
-        final pendingAdd = Completer<HistoryEntry>();
-        when(
-          () => mockHistoryRepository.add(any()),
-        ).thenAnswer((_) => pendingAdd.future);
+      test(
+        'should update the same session when a line lands mid-add',
+        () async {
+          final pendingAdd = Completer<HistoryEntry>();
+          when(
+            () => mockHistoryRepository.add(any()),
+          ).thenAnswer((_) => pendingAdd.future);
 
-        typePendingSum();
-        viewModel.equals();
+          typePendingSum();
+          viewModel.equals();
 
-        // Segunda linha com o `add` da primeira ainda em voo — não pode
-        // virar uma segunda sessão.
-        viewModel.setOperator('+');
-        for (final d in ['1', '0', '0']) {
-          viewModel.inputDigit(d);
-        }
-        viewModel.equals();
+          // Segunda linha com o `add` da primeira ainda em voo — não pode
+          // virar uma segunda sessão.
+          viewModel.setOperator('+');
+          for (final d in ['1', '0', '0']) {
+            viewModel.inputDigit(d);
+          }
+          viewModel.equals();
 
-        pendingAdd.complete(
-          HistoryFixtures.singleLine(
-            id: 7,
-            expression: '10.00 + 5.00',
-            result: '15.00',
-            createdAt: HistoryFixtures.timestamp1,
-          ),
-        );
-        await viewModel.flushSession();
+          pendingAdd.complete(
+            HistoryFixtures.singleLine(
+              id: 7,
+              expression: '10.00 + 5.00',
+              result: '15.00',
+              createdAt: HistoryFixtures.timestamp1,
+            ),
+          );
+          await viewModel.flushSession();
 
-        verify(() => mockHistoryRepository.add(any())).called(1);
-        final updated =
-            verify(() => mockHistoryRepository.update(captureAny())).captured
-                    .single
-                as HistoryEntry;
-        expect(updated.id, 7);
-        expect(updated.lines, hasLength(2));
-        expect(updated.lines.last.expression, '15.00 + 1.00');
-      });
+          verify(() => mockHistoryRepository.add(any())).called(1);
+          final updated =
+              verify(
+                    () => mockHistoryRepository.update(captureAny()),
+                  ).captured.single
+                  as HistoryEntry;
+          expect(updated.id, 7);
+          expect(updated.lines, hasLength(2));
+          expect(updated.lines.last.expression, '15.00 + 1.00');
+        },
+      );
     });
 
     group('backspace', () {
@@ -1728,14 +1745,17 @@ void main() {
         expect(viewModel.fullDisplayText, isNot(contains(')')));
       });
 
-      test('should keep the cursor anchored to the same digit when opening', () {
-        typeAndEditMidNumber(2);
-        viewModel.inputParenthesis();
+      test(
+        'should keep the cursor anchored to the same digit when opening',
+        () {
+          typeAndEditMidNumber(2);
+          viewModel.inputParenthesis();
 
-        // Cursor was between `2` and `.` in `12.50`; after `( ` is prepended
-        // it stays between `2` and `.` in `( 12.50`.
-        expect(viewModel.cursorPosition, 4);
-      });
+          // Cursor was between `2` and `.` in `12.50`; after `( ` is prepended
+          // it stays between `2` and `.` in `( 12.50`.
+          expect(viewModel.cursorPosition, 4);
+        },
+      );
 
       test('should open the parenthesis before the block, not at the end', () {
         viewModel.inputDigit('1');
@@ -2094,24 +2114,30 @@ void main() {
         expect(viewModel.currentDisplayValue, '15.00');
       });
 
-      test('should start a fresh number when typing after a resolved line', () async {
-        clipboard('10 + 5 = 15');
+      test(
+        'should start a fresh number when typing after a resolved line',
+        () async {
+          clipboard('10 + 5 = 15');
 
-        await viewModel.pasteFromClipboard();
-        viewModel.inputDigit('7');
+          await viewModel.pasteFromClipboard();
+          viewModel.inputDigit('7');
 
-        expect(viewModel.currentDisplayValue, '0.07');
-      });
+          expect(viewModel.currentDisplayValue, '0.07');
+        },
+      );
 
-      test('should recalculate instead of trusting the pasted result', () async {
-        clipboard('10 + 5 = 99');
+      test(
+        'should recalculate instead of trusting the pasted result',
+        () async {
+          clipboard('10 + 5 = 99');
 
-        final ok = await viewModel.pasteFromClipboard();
+          final ok = await viewModel.pasteFromClipboard();
 
-        expect(ok, isTrue);
-        expect(viewModel.timelineEntries.first.result, '15.00');
-        expect(viewModel.currentDisplayValue, '15.00');
-      });
+          expect(ok, isTrue);
+          expect(viewModel.timelineEntries.first.result, '15.00');
+          expect(viewModel.currentDisplayValue, '15.00');
+        },
+      );
 
       test('should accept several resolved lines', () async {
         clipboard('10 + 5 = 15\n20 × 2 = 40');
@@ -2153,9 +2179,11 @@ void main() {
         viewModel.equals();
 
         await viewModel.copyHistory();
-        final copied = verify(
-          () => mockClipboardService.copyText(captureAny()),
-        ).captured.last as String;
+        final copied =
+            verify(
+                  () => mockClipboardService.copyText(captureAny()),
+                ).captured.last
+                as String;
 
         viewModel.clear();
         clipboard(copied);
@@ -2189,9 +2217,7 @@ void main() {
         viewModel.equals();
 
         final captured =
-            verify(
-                  () => mockHistoryRepository.add(captureAny()),
-                ).captured.last
+            verify(() => mockHistoryRepository.add(captureAny())).captured.last
                 as HistoryEntry;
 
         expect(captured.lines, hasLength(2));

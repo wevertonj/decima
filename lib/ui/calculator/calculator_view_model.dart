@@ -1209,9 +1209,7 @@ class CalculatorViewModel extends ChangeNotifier {
         pendingAdd.then<void>((id) async {
           if (id == null) return;
 
-          await _historyRepository.update(
-            _sessionEntry(id, lines, lastResult),
-          );
+          await _historyRepository.update(_sessionEntry(id, lines, lastResult));
         }),
       );
     }

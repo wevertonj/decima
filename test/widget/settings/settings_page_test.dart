@@ -32,23 +32,31 @@ void main() {
       () => mockNightModeService.syncThemeMode(any()),
     ).thenAnswer((_) async {});
 
-    when(() => mockSettingsRepository.getThemeMode())
-        .thenAnswer((_) async => ThemeModeOption.dark);
-    when(() => mockSettingsRepository.getSeedColorIndex())
-        .thenAnswer((_) async => 0);
-    when(() => mockSettingsRepository.getDecimalSeparator())
-        .thenAnswer((_) async => DecimalSeparator.dot);
-    when(() => mockSettingsRepository.getLocale())
-        .thenAnswer((_) async => null);
+    when(
+      () => mockSettingsRepository.getThemeMode(),
+    ).thenAnswer((_) async => ThemeModeOption.dark);
+    when(
+      () => mockSettingsRepository.getSeedColorIndex(),
+    ).thenAnswer((_) async => 0);
+    when(
+      () => mockSettingsRepository.getDecimalSeparator(),
+    ).thenAnswer((_) async => DecimalSeparator.dot);
+    when(
+      () => mockSettingsRepository.getLocale(),
+    ).thenAnswer((_) async => null);
 
-    when(() => mockSettingsRepository.setThemeMode(any()))
-        .thenAnswer((_) async {});
-    when(() => mockSettingsRepository.setSeedColorIndex(any()))
-        .thenAnswer((_) async {});
-    when(() => mockSettingsRepository.setDecimalSeparator(any()))
-        .thenAnswer((_) async {});
-    when(() => mockSettingsRepository.setLocale(any()))
-        .thenAnswer((_) async {});
+    when(
+      () => mockSettingsRepository.setThemeMode(any()),
+    ).thenAnswer((_) async {});
+    when(
+      () => mockSettingsRepository.setSeedColorIndex(any()),
+    ).thenAnswer((_) async {});
+    when(
+      () => mockSettingsRepository.setDecimalSeparator(any()),
+    ).thenAnswer((_) async {});
+    when(
+      () => mockSettingsRepository.setLocale(any()),
+    ).thenAnswer((_) async {});
 
     viewModel = SettingsViewModel(
       settingsRepository: mockSettingsRepository,
@@ -139,15 +147,14 @@ void main() {
         await tester.tap(find.text('Português'));
         await tester.pumpAndSettle();
 
-        verify(
-          () => mockSettingsRepository.setLocale('pt'),
-        ).called(1);
+        verify(() => mockSettingsRepository.setLocale('pt')).called(1);
       });
 
       testWidgets('should select system language', (tester) async {
         // Start with a specific language
-        when(() => mockSettingsRepository.getLocale())
-            .thenAnswer((_) async => 'en');
+        when(
+          () => mockSettingsRepository.getLocale(),
+        ).thenAnswer((_) async => 'en');
         viewModel = SettingsViewModel(
           settingsRepository: mockSettingsRepository,
           nightModeService: mockNightModeService,
@@ -165,9 +172,7 @@ void main() {
         );
         await tester.pumpAndSettle();
 
-        verify(
-          () => mockSettingsRepository.setLocale(null),
-        ).called(1);
+        verify(() => mockSettingsRepository.setLocale(null)).called(1);
       });
     });
   });

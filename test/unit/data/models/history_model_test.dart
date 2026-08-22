@@ -55,7 +55,9 @@ void main() {
 
       test('should convert to map without id when id is null', () {
         final model = HistoryModel(
-          linesJson: jsonEncode([{'expression': '12.50 + 3.00', 'result': '15.50'}]),
+          linesJson: jsonEncode([
+            {'expression': '12.50 + 3.00', 'result': '15.50'},
+          ]),
           result: '15.50',
           createdAt: HistoryFixtures.timestamp1.millisecondsSinceEpoch,
         );
@@ -160,7 +162,7 @@ void main() {
       test('should handle legacy plain-text expression format', () {
         final model = HistoryModel(
           id: 1,
-          linesJson: '12.50 + 3.00',  // Legacy format: not JSON
+          linesJson: '12.50 + 3.00', // Legacy format: not JSON
           result: '15.50',
           createdAt: HistoryFixtures.timestamp1.millisecondsSinceEpoch,
         );

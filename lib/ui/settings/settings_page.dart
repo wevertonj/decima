@@ -58,10 +58,7 @@ class _SettingsPageState extends State<SettingsPage> {
           // Theme mode
           _SectionTitle(title: l10n.theme),
           SizedBox(height: AppLayout.spacing.small),
-          ThemeModeSelector(
-            selected: vm.themeMode,
-            onChanged: vm.setThemeMode,
-          ),
+          ThemeModeSelector(selected: vm.themeMode, onChanged: vm.setThemeMode),
 
           SizedBox(height: AppLayout.spacing.xl),
 
@@ -88,10 +85,7 @@ class _SettingsPageState extends State<SettingsPage> {
           // Language
           _SectionTitle(title: l10n.language),
           SizedBox(height: AppLayout.spacing.small),
-          LanguageSelector(
-            selected: vm.locale,
-            onChanged: vm.setLocale,
-          ),
+          LanguageSelector(selected: vm.locale, onChanged: vm.setLocale),
 
           SizedBox(height: AppLayout.spacing.xl),
         ],
