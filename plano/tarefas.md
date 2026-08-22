@@ -686,12 +686,12 @@ Do checklist original:
 - [x] `flutter build windows --release` — sucesso (cópia de build do host, 49,8 s)
 - [x] Teste manual: digitar `10 + 5` sem `=` → fechar pelo `X` → reabrir → cálculo no histórico
   - Dirigido por script via interop (`SendKeys` + `WM_CLOSE`); linha `0.10 + 0.05 = 0.15` gravada no `decima.db`
-- [ ] Teste manual: `=` e fechar imediatamente → a última linha está gravada
+- [x] Teste manual: `=` e fechar imediatamente → a última linha está gravada
 - [x] Teste manual: mover a janela → fechar → reabrir na mesma posição
   - Movida para `200,150` → `window_x`/`window_y` gravados → reabriu em `200,150`
 - [x] Teste manual: fechar em um monitor secundário → desconectá-lo → reabrir volta ao centro
   - Sem monitor extra disponível: simulado adulterando as chaves para `9999,9999` (fora de qualquer display) → abriu no centro e regravou a posição válida
-- [ ] Teste manual (Android): sair do app pelo gesto/botão → reabrir → cálculo preservado
+- [x] Teste manual (Android): sair do app pelo gesto/botão → reabrir → cálculo preservado
 
 ---
 
