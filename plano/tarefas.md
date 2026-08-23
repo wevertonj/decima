@@ -882,7 +882,7 @@ Do checklist original:
 - [x] `ci.yml`: job `build-macos` em `macos-latest` (needs `analyze`+`test`; push na `dev` e PR para `main`; zip `-dev.N`/`-pr.N` como artefato de 14 dias)
 - [x] `ci.yml`: remover a distribuição Firebase do grupo `dev` (steps + env `HAS_FIREBASE`) — o CI deixa de distribuir qualquer coisa
 - [x] `release.yml`: job `release-macos` + artefato incluído no `publish`
-- [ ] Ruleset `main-protegida`: adicionar `build-macos` como 7º check obrigatório (via `gh api`, aprovado pelo usuário)
+- [x] Ruleset `main-protegida`: adicionar `build-macos` como 7º check obrigatório (via `gh api`, aprovado pelo usuário)
 
 ### Documentação
 
@@ -893,7 +893,8 @@ Do checklist original:
 
 ### Validação
 
-- [ ] CI `build-macos` verde no push da `dev` e no PR para `main`
+- [x] CI `build-macos` verde no push da `dev` — 4m49s; `Decima.app` 49,0 MB (assinatura ad-hoc verificada) → zip de 20 MB
+- [ ] CI `build-macos` verde no PR para `main`
 - [ ] Primeiro release com o zip publicado (`decima-<semver>-macos.zip` + `.sha256`)
 - [ ] Extrair o zip do release em outro Mac, liberar no Gatekeeper e abrir o app
 - [x] `flutter test` / `flutter analyze` / `dart format` — regressão intacta (sem código Dart novo)
