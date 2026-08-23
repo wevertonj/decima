@@ -144,7 +144,7 @@ Compartilhada entre Windows, Linux e macOS. Fica em `lib/ui/core/desktop/` (lóg
 | `WindowCloseHandler` | Intercepta o fechamento da janela para gravar a sessão e a posição antes de o processo terminar |
 | `isWindowPositionReachable()` | Função pura: valida a posição salva contra os monitores atuais (`window_position.dart`) |
 | `isWindowPositionStorable()` | Função pura: decide se a posição lida do plugin merece ser gravada (`window_position.dart`) |
-| `PlatformInfo.isDesktop` / `.isLinux` | Detecção de plataforma via `defaultTargetPlatform` (e não `Platform`), sobrescritível nos testes |
+| `PlatformInfo.isDesktop` / `.isLinux` / `.isWindows` / `.isMacOS` | Detecção de plataforma via `defaultTargetPlatform` (e não `Platform`), sobrescritível nos testes |
 
 ### Fechamento da janela
 
@@ -154,8 +154,24 @@ Compartilhada entre Windows, Linux e macOS. Fica em `lib/ui/core/desktop/` (lóg
 |----------|------|
 | A janela sempre fecha | `destroy()` fica no `finally`; exceção da gravação é engolida |
 | Gravação travada não prende o app | `onFlush().timeout(flushTimeout)` — 3 s por padrão |
+| A janela some da tela na hora | `WindowManagerCloseBridge.destroy()` desvia do `PostQuitMessage` no Windows — ver abaixo |
+| Um pedido de fechamento por vez | Trava `_closing`, ligada no primeiro `onWindowClose` e solta só se o `destroy()` falhar |
 | Testável sem method channel | Toda chamada ao plugin passa por `WindowCloseBridge`; os testes injetam uma ponte falsa |
 | Inerte em mobile | `initState` retorna antes de registrar qualquer coisa quando `!PlatformInfo.isDesktop` |
+
+#### `destroy()` por plataforma
+
+`windowManager.destroy()` não tem a mesma semântica nos três desktops:
+
+| Plataforma | O que o plugin faz | Efeito na janela |
+|------------|--------------------|------------------|
+| Linux | `_is_prevent_close = false` + `gtk_window_close()` | Some na hora |
+| macOS | `NSApp.terminate(nil)` | Some na hora |
+| Windows | `PostQuitMessage(0)` | **Continua na tela** durante todo o desligamento do engine |
+
+No Windows o `PostQuitMessage` só enfileira `WM_QUIT`: nenhuma janela é destruída, e o `X` fica sem resposta pelos segundos que o engine leva para encerrar. `WindowManagerCloseBridge.destroy()` troca esse caminho por `setPreventClose(false)` + `close()` — o novo `WM_CLOSE` chega ao `DefWindowProc`, que chama `DestroyWindow` e devolve o fechamento instantâneo do runner padrão.
+
+O preço é um eco: o plugin emite o evento `close` **antes** de consultar o `preventClose`, então esse `close()` reentra no handler como um novo `onWindowClose`. A trava `_closing` absorve o eco — e, de quebra, cliques repetidos no `X` enquanto as gravações rodam.
 
 O handler é montado no `MaterialApp.builder` do `_DecimaAppState`, acima do `DesktopShell`. Em mobile o papel equivalente é do `AppLifecycleListener` (`onHide` / `onPause` / `onExitRequested`) registrado no mesmo state.
 
@@ -207,3 +223,5 @@ A janela reabre onde o usuário a deixou. O caminho completo:
 | Plugin de janela não roda em `flutter test` | Method channels indisponíveis tornam o handler intestável | `WindowCloseBridge` abstrai o plugin; a regra de posição é função pura, testada sem plugin |
 | `windowManager.getPosition()` devolve pixels **lógicos** | Misturar com coordenadas físicas erra a posição em telas com DPI ≠ 100% | Gravar e restaurar sempre pelo `window_manager`, nunca por API nativa direta |
 | A mesma chamada do `window_manager` tem semântica diferente por plataforma | `setMaximizable(false)` vira `_NET_WM_WINDOW_TYPE_DIALOG` no GTK; `getPosition()` devolve `(0,0)` no Wayland | Desvios concentrados em `PlatformInfo.isLinux` e em funções puras testáveis — ver [`empacotamento-linux.md`](empacotamento-linux.md) |
+| `destroy()` no Windows é `PostQuitMessage(0)`, não `DestroyWindow` | Com `setPreventClose(true)` a janela fica na tela segundos após o clique no `X` — o app parece travado | `WindowManagerCloseBridge.destroy()` usa `setPreventClose(false)` + `close()` no Windows |
+| O `close()` do Windows reemite o evento `close` | Sem trava, o handler reentra em `_flushAndDestroy` durante o próprio fechamento | Trava `_closing` no `onWindowClose`, liberada só quando o `destroy()` falha |

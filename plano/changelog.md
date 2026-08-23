@@ -1802,3 +1802,40 @@ Novo `PlatformInfo.isLinux` para os dois desvios — mesmo padrão testável do 
 - Release **v0.9.0**: `decima-0.9.0-macos.zip` (20,2 MB) + `.sha256` publicados junto do APK, do instalador Windows e do `.deb`
 - Zip conferido fora do runner: `sha256sum -c` OK, `Decima.app/` com 88 arquivos (49,0 MB) e `_CodeSignature` preservado, binário **universal** (x86_64 + arm64), `CFBundleShortVersionString = 0.9.0`
 - Abrir o zip do release em outro Mac (Gatekeeper) — **pendente de verificação do usuário**
+
+---
+
+## [Fix] Etapa 14.2 — Fechamento lento da janela no Windows
+
+**Problema (reportado no uso real)**: no Windows, clicar no `X` deixava a janela na tela por alguns segundos antes de ela sumir — regressão introduzida junto com o flush da sessão ao fechar (Etapa 14.2 A). Linux e macOS não apresentavam o atraso.
+
+**Causa**: `windowManager.destroy()` não tem a mesma semântica nos três desktops.
+
+| Plataforma | O que o plugin faz (`window_manager` 0.5.2) | Efeito na janela |
+|------------|---------------------------------------------|------------------|
+| Linux | `_is_prevent_close = false` + `gtk_window_close()` | Some na hora |
+| macOS | `NSApp.terminate(nil)` | Some na hora |
+| Windows | `PostQuitMessage(0)` | **Continua na tela** durante todo o desligamento do engine |
+
+No Windows, `PostQuitMessage(0)` apenas enfileira `WM_QUIT`: nenhuma janela é destruída. Antes do `setPreventClose(true)` o `WM_CLOSE` seguia para o `DefWindowProc`, que chama `DestroyWindow` — a janela sumia no ato e o encerramento do engine acontecia com ela já fora da tela. Com a interceptação, esse caminho deixou de existir e o custo de shutdown virou tempo de tela.
+
+**Correção**: `WindowManagerCloseBridge.destroy()` desvia só no Windows para `setPreventClose(false)` + `close()`. O novo `WM_CLOSE` chega ao `DefWindowProc` sem ser interceptado, `DestroyWindow` roda e o fechamento volta a ser instantâneo. Linux e macOS seguem no `destroy()` direto.
+
+O desvio tem um eco: o plugin emite o evento `close` **antes** de consultar o `preventClose`, então esse `close()` reentra no handler como um novo `onWindowClose`. Trava `_closing` no `_WindowCloseHandlerState` absorve o eco — e, de quebra, cliques repetidos no `X` enquanto as gravações rodam, que antes disparavam um flush por clique. A trava só é liberada se o próprio `destroy()` falhar, para o app nunca ficar impossível de fechar.
+
+**Arquivos**:
+
+| Arquivo | Mudança |
+|---------|---------|
+| `lib/ui/core/desktop/window_close_handler.dart` | Desvio de plataforma no `destroy()` da ponte real; trava `_closing`; `destroy()` do `finally` protegido por `try` |
+| `lib/utils/platform_info.dart` | `PlatformInfo.isWindows` |
+
+**Testes**:
+
+- `test/unit/ui/core/desktop/window_manager_close_bridge_test.dart` (novo) — 3 testes espionando o canal `window_manager`: Windows emite `setPreventClose(false)` + `close`; Linux e macOS emitem `destroy`
+- `test/widget/core/desktop/window_close_handler_test.dart` — 3 testes novos (clique repetido durante o flush, eco do `close` após o `destroy`, trava liberada quando o `destroy` falha)
+- **Total: 715 testes — 100% verde**; `flutter analyze` zero issues
+
+**Documentação**: `docs/fundacao/arquitetura.md` — subseção "`destroy()` por plataforma", 2 garantias novas na tabela do fechamento e 2 gotchas
+
+**Validação manual (Windows)**: pendente — fechar pelo `X`, por `Alt+F4` e pela barra de tarefas, conferindo que a janela some no ato e que o cálculo em andamento continua no histórico ao reabrir
