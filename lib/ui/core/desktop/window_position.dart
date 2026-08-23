@@ -49,6 +49,26 @@ bool isWindowPositionReachable({
   return false;
 }
 
+/// True quando [position] merece ser gravada como a última posição da janela.
+///
+/// No Wayland o cliente não conhece a própria posição — o protocolo não expõe
+/// coordenadas globais, e `getPosition()` devolve sempre a origem. Gravar isso
+/// faria a janela reabrir encostada no canto superior esquerdo em vez de
+/// centralizada, ou seja, pior do que não lembrar nada. Em Linux a origem
+/// exata é então tratada como "desconhecida"; o custo do falso negativo no X11
+/// (janela realmente encostada no canto) é abrir centralizada na próxima vez.
+///
+/// [isLinux] é injetado — ver `PlatformInfo.isLinux`.
+bool isWindowPositionStorable({
+  required WindowPosition position,
+  required bool isLinux,
+}) {
+  if (!position.isFinite) return false;
+  if (isLinux && position.x == 0 && position.y == 0) return false;
+
+  return true;
+}
+
 /// Área útil do monitor (sem a barra de tarefas), em coordenadas do desktop
 /// virtual. Nem toda plataforma preenche `visiblePosition`/`visibleSize` —
 /// o fallback é o display inteiro na origem.

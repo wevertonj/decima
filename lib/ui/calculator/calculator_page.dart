@@ -84,6 +84,14 @@ class _CalculatorPageState extends State<CalculatorPage> {
     );
   }
 
+  void _openContextMenu(CalculatorViewModel viewModel, Offset position) {
+    CalculatorContextMenu.show(
+      context: context,
+      viewModel: viewModel,
+      position: position,
+    );
+  }
+
   void _showSnack(String message) {
     final messenger = ScaffoldMessenger.maybeOf(context);
     if (messenger == null) return;
@@ -106,11 +114,12 @@ class _CalculatorPageState extends State<CalculatorPage> {
             Expanded(
               child: GestureDetector(
                 behavior: HitTestBehavior.opaque,
-                onLongPressStart: (details) => CalculatorContextMenu.show(
-                  context: context,
-                  viewModel: vm,
-                  position: details.globalPosition,
-                ),
+                // Toque longo cobre o mobile; clique com o botão direito é o
+                // gesto natural para o mesmo menu no desktop.
+                onLongPressStart: (details) =>
+                    _openContextMenu(vm, details.globalPosition),
+                onSecondaryTapUp: (details) =>
+                    _openContextMenu(vm, details.globalPosition),
                 child: TimelineDisplay(
                   entries: vm.visibleTimelineEntries,
                   displayText: vm.fullDisplayText,

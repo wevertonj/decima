@@ -686,24 +686,31 @@ O projeto está dividido em **18 etapas** sequenciais. As **etapas 1-4** cobrem 
 **Escopo**:
 
 - **Habilitação da plataforma**:
-  - Rodar `flutter create --platforms=linux .` para gerar o runner GTK
-  - Garantir que `window_manager` funciona corretamente no Linux (depende do compositor)
-- **Ajustes específicos**:
-  - Validar `TitleBarStyle.hidden` no GTK — alguns compositores Wayland exigem configuração adicional
-  - Conferir cursor de drag e botões de janela funcionais
-  - Verificar integração do ícone do app no `.desktop` (criar se necessário em `linux/`)
-- **Empacotamento (opcional, documentado)**:
-  - Documentar como gerar AppImage ou pacote Flatpak/Snap (sem implementar, apenas referência)
+  - `flutter create --platforms=linux .` — o runner GTK já existia do `create` original e ficou inalterado pelo comando; o efeito colateral em `.metadata`/`pubspec.lock` foi revertido
+  - `window_manager` validado no GTK sob X11 e Wayland
+- **Runner GTK** (`linux/runner/my_application.cc`) — três desvios do template:
+  - Remoção do `GtkHeaderBar`: com ele, `TitleBarStyle.hidden` só esconde o widget e mantém a decoração do lado do cliente, desalinhando `getPosition`/`setPosition`. Sem ele o plugin cai em `gtk_window_set_decorated(FALSE)` e a janela fica sem moldura em qualquer WM
+  - Tamanho inicial `360x720` (era `1280x720`): **obrigatório**, não cosmético — `setResizable(false)` faz o GTK reescrever os geometry hints com o tamanho default e sobrescrever o `setSize` das `WindowOptions`
+  - Título `Decima` (era `decima`)
+  - `set_application_icon()`: o template não define ícone de janela, e sem `_NET_WM_ICON` o ambiente cai no genérico. Usa o tema quando o `.desktop` está instalado e cai no `logo.png` do próprio bundle quando não está. Em Wayland o ícone depende do casamento `app_id` ↔ `.desktop`, que o GTK3 não consegue suprir por protocolo
+- **Ajustes específicos por plataforma no `lib/`** (dois desvios reais encontrados na validação, decididos por `PlatformInfo.isLinux`):
+  - `setMaximizable(false)` não é chamado no Linux: o plugin implementa isso como `GDK_WINDOW_TYPE_HINT_DIALOG`, e a janela saía da barra de tarefas/alt-tab e deixava de minimizar. `setResizable(false)` já impede maximizar no GTK
+  - `isWindowPositionStorable()` descarta a origem `(0,0)` no Linux: no Wayland `getPosition()` sempre devolve a origem, e gravá-la reabriria a janela encostada no canto em vez de centralizada
+- **Integração com o desktop** (`linux/packaging/`):
+  - `com.wevasoft.decima.desktop` com `StartupWMClass` casando o `WM_CLASS` da janela
+  - Ícone do tema `hicolor` em 8 tamanhos, derivado do master pelo `tool/icon` — o `flutter_launcher_icons` **não** tem suporte a Linux (a chave `linux:` era ignorada em silêncio e foi removida)
+  - `install-desktop-entry.sh` — publica/remove no menu do usuário, sem `sudo`
+- **Empacotamento (documentado, não implementado)**:
+  - AppImage, Flatpak, Snap e `.deb`/`.rpm` em `docs/fundacao/empacotamento-linux.md`
 - **Reutilização**:
-  - Nenhum código novo na pasta `lib/` — apenas configuração nativa em `linux/`
   - `DesktopShell` e `AppTitleBar` da Etapa 14 funcionam sem alterações
 
 **Testes**:
 
-- Verificação manual: app abre em janela fixa no Linux com title bar customizada
-- Verificação manual: drag, minimizar e fechar funcionam
-- `flutter build linux` — sucesso
-- Regressão: testes existentes continuam verdes
+- Unit: `PlatformInfo.isLinux` (novo arquivo, cobre também `isDesktop`) e `isWindowPositionStorable` — 10 cenários
+- Verificação manual (X11 e Wayland, via WSLg): janela fixa 360×720, title bar customizada, drag, minimizar, fechar com flush da sessão e gravação da posição
+- `flutter build linux --release` — sucesso
+- Regressão: suíte existente verde, `flutter analyze` sem warnings
 
 **Entregável**: Decima rodando no Linux com a mesma experiência do Windows.
 

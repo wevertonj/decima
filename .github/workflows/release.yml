@@ -116,8 +116,11 @@ jobs:
             echo "storeFile=$RUNNER_TEMP/release.jks"
           } > android/key.properties
 
+      # O build number do pubspec (+B) é só o contador humano de releases; o
+      # versionCode real vem dos minutos da epoch, na mesma linha do tempo dos
+      # builds dev — instalar stable sobre dev (e vice-versa) nunca é downgrade.
       - name: Build APK assinado
-        run: flutter build apk --release
+        run: flutter build apk --release --build-number=$(( $(date +%s) / 60 ))
 
       - name: Renomear APK com a versão
         run: cp build/app/outputs/flutter-apk/app-release.apk "decima-${{ needs.bump.outputs.semver }}-android.apk"

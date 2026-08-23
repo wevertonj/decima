@@ -1,3 +1,4 @@
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
@@ -59,6 +60,15 @@ void main() {
 
   Future<void> longPressDisplay(WidgetTester tester) async {
     await tester.longPress(find.byType(TimelineDisplay));
+    await tester.pumpAndSettle();
+  }
+
+  Future<void> secondaryTapDisplay(WidgetTester tester) async {
+    await tester.tap(
+      find.byType(TimelineDisplay),
+      buttons: kSecondaryButton,
+      kind: PointerDeviceKind.mouse,
+    );
     await tester.pumpAndSettle();
   }
 
@@ -141,6 +151,37 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(viewModel.currentDisplayValue, '1,250.00');
+    });
+
+    testWidgets('should open the menu on right click', (tester) async {
+      await tester.pumpApp(CalculatorPage(viewModel: viewModel));
+      await tester.tap(find.text('5'));
+      await tester.pumpAndSettle();
+
+      await secondaryTapDisplay(tester);
+
+      final l10n = await AppLocalizations.delegate.load(const Locale('en'));
+      expect(find.text(l10n.copyExpression), findsOneWidget);
+      expect(find.text(l10n.paste), findsOneWidget);
+    });
+
+    testWidgets('should copy expression selected from the right click menu', (
+      tester,
+    ) async {
+      await tester.pumpApp(CalculatorPage(viewModel: viewModel));
+      await tester.tap(find.text('1'));
+      await tester.tap(find.text('2'));
+      await tester.tap(find.text('5'));
+      await tester.tap(find.text('0'));
+      await tester.pumpAndSettle();
+
+      await secondaryTapDisplay(tester);
+      final l10n = await AppLocalizations.delegate.load(const Locale('en'));
+      await tester.tap(find.text(l10n.copyExpression));
+      await tester.pumpAndSettle();
+
+      verify(() => mockClipboardService.copyText('12.50')).called(1);
+      expect(find.text(l10n.copyExpression), findsNothing);
     });
   });
 }

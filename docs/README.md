@@ -12,6 +12,7 @@ docs/
 │   ├── padroes-codigo.md              # Convenções e padrões de código
 │   ├── tema-design-system.md          # Tema, cores, layout e animações
 │   ├── empacotamento-windows.md       # Instalador .exe (Inno Setup) e bridge WSL→Windows
+│   ├── empacotamento-linux.md         # Runner GTK, .desktop + ícone hicolor e AppImage/Flatpak/Snap
 │   └── ci-cd.md                       # CI/CD (GitHub Actions), branches, release e distribuição
 ├── features/
 │   ├── calculadora.md                 # Calculadora (conceito Add2, timeline, keypad)

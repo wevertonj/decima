@@ -686,12 +686,12 @@ Do checklist original:
 - [x] `flutter build windows --release` — sucesso (cópia de build do host, 49,8 s)
 - [x] Teste manual: digitar `10 + 5` sem `=` → fechar pelo `X` → reabrir → cálculo no histórico
   - Dirigido por script via interop (`SendKeys` + `WM_CLOSE`); linha `0.10 + 0.05 = 0.15` gravada no `decima.db`
-- [ ] Teste manual: `=` e fechar imediatamente → a última linha está gravada
+- [x] Teste manual: `=` e fechar imediatamente → a última linha está gravada
 - [x] Teste manual: mover a janela → fechar → reabrir na mesma posição
   - Movida para `200,150` → `window_x`/`window_y` gravados → reabriu em `200,150`
 - [x] Teste manual: fechar em um monitor secundário → desconectá-lo → reabrir volta ao centro
   - Sem monitor extra disponível: simulado adulterando as chaves para `9999,9999` (fora de qualquer display) → abriu no centro e regravou a posição válida
-- [ ] Teste manual (Android): sair do app pelo gesto/botão → reabrir → cálculo preservado
+- [x] Teste manual (Android): sair do app pelo gesto/botão → reabrir → cálculo preservado
 
 ---
 
@@ -724,8 +724,8 @@ Do checklist original:
 
 - [x] Grupos de testers `dev` e `stable` criados no projeto `decima-wevasoft` (tester inicial adicionado)
 - [x] Secrets: `ANDROID_KEYSTORE_BASE64`, `ANDROID_KEYSTORE_PASSWORD`, `ANDROID_KEY_PASSWORD`, `ANDROID_KEY_ALIAS`; variável `FIREBASE_ANDROID_APP_ID`
-- [ ] Secret `FIREBASE_SERVICE_ACCOUNT` (chave de service account gerada no console — ação manual)
-- [ ] Deploy key de escrita `release-bot` + secret `RELEASE_DEPLOY_KEY` (ação manual — bloqueada no ambiente da IA)
+- [x] Secret `FIREBASE_SERVICE_ACCOUNT` (chave de service account gerada no console — ação manual)
+- [x] Deploy key de escrita `release-bot` + secret `RELEASE_DEPLOY_KEY` (ação manual — bloqueada no ambiente da IA)
 
 ### Documentação
 
@@ -738,31 +738,60 @@ Do checklist original:
 - [x] `flutter test` — 100% verde (690 testes, incluindo os 7 do motor)
 - [x] `flutter analyze` — zero warnings
 - [x] `dart run commitlint_cli --from=origin/main --to=HEAD` — todos os commits válidos
-- [ ] Primeiro PR `dev` → `main` com pipeline 100% verde
-- [ ] Primeiro release automático publicado (Firebase `stable` + GitHub Release)
+- [x] Primeiro PR `dev` → `main` com pipeline 100% verde (PR #1 — 5 checks, merge limpo)
+- [x] Primeiro release automático publicado — v0.6.0 (tag, CHANGELOG, APK no Firebase `stable`, instalador + `.sha256` no GitHub Release); run anti-loop confirmado em NOOP
 
 ---
 
-## Etapa 15 — Suporte a Linux
+## Etapa 15 — Suporte a Linux ✅
 
 ### Habilitação da plataforma
 
-- [ ] Rodar `flutter create --platforms=linux .`
-- [ ] Conferir compatibilidade do `window_manager` no compositor alvo (X11/Wayland)
+- [x] Rodar `flutter create --platforms=linux .` — runner GTK já existia e não mudou; reverter o efeito colateral em `.metadata` (derrubava as outras plataformas) e `pubspec.lock`
+- [x] Conferir compatibilidade do `window_manager` no compositor alvo (X11/Wayland)
 
-### Ajustes específicos
+### Runner GTK (`linux/runner/my_application.cc`)
 
-- [ ] Validar `TitleBarStyle.hidden` no GTK (X11 e, se possível, Wayland)
-- [ ] Conferir cursor de drag e botões da title bar customizada
-- [ ] Configurar `.desktop` em `linux/` (nome, ícone, categoria) se necessário
-- [ ] Documentar opções de empacotamento (AppImage/Flatpak/Snap) — sem implementar
+- [x] Remover o `GtkHeaderBar` — mantinha decoração do lado do cliente e desalinhava `getPosition`/`setPosition`
+- [x] Tamanho inicial `360x720` (era `1280x720`) — `setResizable(false)` sobrescrevia o `setSize` das `WindowOptions` com o default do runner
+- [x] Título `Decima` (era `decima`) + remoção do `#include <gdk/gdkx.h>` órfão
+- [x] `set_application_icon()` — o template não define ícone; sem `_NET_WM_ICON` a janela ficava com o ícone genérico. Tema primeiro, fallback no `logo.png` do bundle
+
+### Ajustes específicos (TDD Red → Green)
+
+- [x] Teste: `PlatformInfo.isLinux` (novo `test/unit/utils/platform_info_test.dart`, cobre também `isDesktop`)
+- [x] Implementar `PlatformInfo.isLinux`
+- [x] Teste: `isWindowPositionStorable` — origem rejeitada só em Linux, `NaN`/infinito rejeitados sempre
+- [x] Implementar `isWindowPositionStorable` e ligá-la ao `_saveWindowPosition` do `main.dart`
+- [x] Pular `setMaximizable(false)` no Linux — vira `GDK_WINDOW_TYPE_HINT_DIALOG` (sem barra de tarefas, alt-tab nem minimizar)
+- [x] Validar `TitleBarStyle.hidden` no GTK (X11 **e** Wayland) — `_MOTIF_WM_HINTS` com decoração zerada
+- [x] Conferir cursor de drag e botões da title bar customizada
+
+### Integração com o desktop (`linux/packaging/`)
+
+- [x] `com.wevasoft.decima.desktop` — `Icon`, `Categories`, `StartupWMClass` casando o `WM_CLASS` da janela
+- [x] Ícones do tema `hicolor` (16/24/32/48/64/128/256/512) derivados do master no `tool/icon/render.mjs`
+- [x] Remover a chave `linux:` do `flutter_launcher_icons.yaml` — sem suporte no pacote, era ignorada em silêncio
+- [x] `install-desktop-entry.sh` — publica/remove no menu do usuário sem `sudo`
+- [x] Documentar opções de empacotamento (AppImage/Flatpak/Snap/`.deb`) — sem implementar
+
+### Documentação
+
+- [x] Criar `docs/fundacao/empacotamento-linux.md` (runner, ajustes de janela, `.desktop`, empacotamento, segurança, gotchas)
+- [x] Atualizar `docs/fundacao/arquitetura.md` (infra de desktop, regra de gravação da posição, gotchas)
+- [x] Atualizar `docs/README.md` (índice) e `README.md` (seção "Instalação (Linux)")
+- [x] Registrar a etapa em `plano/plano.md`, `plano/tarefas.md` e `plano/changelog.md`
 
 ### Validação
 
-- [ ] `flutter build linux` — sucesso
-- [ ] `flutter test` — 100% verde (regressão)
-- [ ] `flutter analyze` — zero warnings
-- [ ] Verificação manual: janela fixa, title bar customizada, drag/minimizar/fechar funcionais
+- [x] `flutter build linux --release` — sucesso
+- [x] `flutter test` — 100% verde (700 testes, 10 novos)
+- [x] `flutter analyze` — zero warnings
+- [x] `dart format --set-exit-if-changed .` — sem alterações
+- [x] Verificação manual (X11 e Wayland): janela fixa 360×720, title bar customizada, drag, minimizar, fechar
+- [x] Verificação manual: fechar pelo `X` grava a sessão (`decima.db`) e a posição (`shared_preferences.json`)
+- [x] Verificação manual: ícone resolvido pelo tema e entrada `.desktop` encontrada pelo GIO
+- [x] Verificação manual: `_NET_WM_ICON` publicado em X11, pelos dois caminhos (tema instalado e fallback do bundle com o tema removido)
 
 ---
 

@@ -51,6 +51,25 @@ Baixe `decima-<versão>-windows-x64-setup.exe` em [Releases](https://github.com/
 
 Para gerar o instalador localmente, veja [`docs/fundacao/empacotamento-windows.md`](docs/fundacao/empacotamento-windows.md).
 
+## Instalação (Linux)
+
+Ainda não há artefato publicado — compile o bundle e publique no menu:
+
+```bash
+flutter build linux --release
+linux/packaging/install-desktop-entry.sh
+```
+
+- Exige `clang`, `cmake`, `ninja-build`, `pkg-config` e `libgtk-3-dev`
+- A entrada e os ícones vão para `~/.local/share` — **sem `sudo`**
+- Remover com `linux/packaging/install-desktop-entry.sh --uninstall`
+
+> Em Wayland, instalar a entrada é o que dá ícone à janela: o GTK3 não tem como enviar o ícone pelo protocolo, e o compositor o resolve casando o `app_id` com o `.desktop`. Em X11 o ícone funciona mesmo rodando o bundle solto.
+
+> Ainda em Wayland, a janela não reabre na última posição usada: o protocolo não permite que o app saiba onde está. Em X11 a posição é lembrada normalmente.
+
+Detalhes e opções de empacotamento (AppImage/Flatpak/Snap) em [`docs/fundacao/empacotamento-linux.md`](docs/fundacao/empacotamento-linux.md).
+
 ## Desenvolvimento
 
 ```bash

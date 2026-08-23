@@ -49,43 +49,49 @@ class _HistoryListItemState extends State<HistoryListItem> {
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(AppLayout.radius.medium),
       ),
-      child: InkWell(
-        borderRadius: BorderRadius.circular(AppLayout.radius.medium),
-        onTap: () {
-          if (entry.lineCount == 1) {
-            // Single-line session: tap goes straight to calculator.
-            widget.onLineTap(0);
-          } else {
-            setState(() => _expanded = !_expanded);
-          }
-        },
-        onLongPress: () => _showRenameDialog(context),
-        child: AnimatedSize(
-          duration: const Duration(milliseconds: 350),
-          curve: Curves.easeOutCubic,
-          alignment: Alignment.topCenter,
-          child: Padding(
-            padding: EdgeInsets.all(AppLayout.padding.medium),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // Header: name, preview, favorite star
-                _buildHeader(colors, textTheme, entry),
-                // Collapsed: final result
-                if (!_expanded) ...[
-                  SizedBox(height: AppLayout.spacing.small),
-                  _buildFinalResult(colors, textTheme, entry),
-                  SizedBox(height: AppLayout.spacing.xs),
-                  _buildFooter(colors, textTheme, entry),
+      // O toque longo atende o mobile; o clique com o botão direito é o
+      // equivalente esperado no desktop. `InkWell` só reconhece o botão
+      // primário, então o botão secundário vem deste `GestureDetector`.
+      child: GestureDetector(
+        onSecondaryTap: () => _showRenameDialog(context),
+        child: InkWell(
+          borderRadius: BorderRadius.circular(AppLayout.radius.medium),
+          onTap: () {
+            if (entry.lineCount == 1) {
+              // Single-line session: tap goes straight to calculator.
+              widget.onLineTap(0);
+            } else {
+              setState(() => _expanded = !_expanded);
+            }
+          },
+          onLongPress: () => _showRenameDialog(context),
+          child: AnimatedSize(
+            duration: const Duration(milliseconds: 350),
+            curve: Curves.easeOutCubic,
+            alignment: Alignment.topCenter,
+            child: Padding(
+              padding: EdgeInsets.all(AppLayout.padding.medium),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Header: name, preview, favorite star
+                  _buildHeader(colors, textTheme, entry),
+                  // Collapsed: final result
+                  if (!_expanded) ...[
+                    SizedBox(height: AppLayout.spacing.small),
+                    _buildFinalResult(colors, textTheme, entry),
+                    SizedBox(height: AppLayout.spacing.xs),
+                    _buildFooter(colors, textTheme, entry),
+                  ],
+                  // Expanded: all lines
+                  if (_expanded) ...[
+                    SizedBox(height: AppLayout.spacing.small),
+                    _buildExpandedLines(colors, textTheme, entry),
+                    SizedBox(height: AppLayout.spacing.xs),
+                    _buildFooter(colors, textTheme, entry),
+                  ],
                 ],
-                // Expanded: all lines
-                if (_expanded) ...[
-                  SizedBox(height: AppLayout.spacing.small),
-                  _buildExpandedLines(colors, textTheme, entry),
-                  SizedBox(height: AppLayout.spacing.xs),
-                  _buildFooter(colors, textTheme, entry),
-                ],
-              ],
+              ),
             ),
           ),
         ),

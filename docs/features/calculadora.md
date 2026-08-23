@@ -112,12 +112,21 @@ Todo toque em qualquer botão é enfileirado e processado em ordem, mesmo durant
 
 ## Copiar e Colar
 
-O display da calculadora suporta copiar e colar via menu de contexto, ativado por **toque longo** sobre a área da timeline. As opções aparecem condicionalmente conforme o estado atual:
+O display da calculadora suporta copiar e colar via menu de contexto sobre a área da timeline. As opções aparecem condicionalmente conforme o estado atual:
 
 - **Copiar cálculo**: visível quando há expressão na entrada atual; copia o texto completo do display (ex: `1000.00 + 10.00%`)
 - **Copiar resultado**: visível quando há prévia ou resultado pós-`=`; copia o valor numérico
 - **Copiar histórico**: visível quando a timeline da sessão tem entradas; copia todas no formato `<expressão> = <resultado>` (uma por linha)
 - **Colar**: sempre visível; desabilitado quando a área de transferência está vazia
+
+### Gestos de abertura
+
+| Gesto | Handler | Contexto |
+|-------|---------|----------|
+| Toque longo | `onLongPressStart` | Touch (mobile e telas sensíveis ao toque no desktop) |
+| Clique com o botão direito | `onSecondaryTapUp` | Mouse/trackpad — dispensa manter o botão esquerdo pressionado no desktop |
+
+Ambos abrem o mesmo menu, ancorado na posição global do ponteiro (`details.globalPosition` → `_openContextMenu`). Nenhum é condicionado à plataforma: um dispositivo híbrido responde aos dois.
 
 ### Validação e Normalização do Colar
 
@@ -161,7 +170,7 @@ Regras:
 - `ClipboardService` (interface em `lib/data/services/`) abstrai o `Clipboard` do Flutter, permitindo mock nos testes
 - `PasteInputParser` (em `lib/utils/`) converte texto bruto em tokens normalizados (`x.yy`, operadores, parênteses, `%`)
 - `CalculatorViewModel` expõe `copyExpression()`, `copyResult()`, `copyHistory()`, `pasteFromClipboard()` e os getters `hasExpression`, `hasResult`, `hasHistory` para a UI
-- `CalculatorContextMenu` (widget) renderiza o menu via `showMenu`, ancorado na posição global do toque longo
+- `CalculatorContextMenu` (widget) renderiza o menu via `showMenu`, ancorado na posição global do gesto que o abriu
 
 ## Cursor Editável
 
@@ -232,7 +241,7 @@ A calculadora é totalmente operável por teclado físico. Cada tecla chama o **
 | `.` e `,` → `00` | Add2 não tem ponto literal (o separador decimal é implícito). Completar os centavos é o uso natural dessas teclas (`1` + `.` → `1.00`) |
 | `000` sem tecla dedicada | Não há tecla física convencional para o atalho; use `00` seguido de `0` |
 | `x` e `X` → `×` | Convenção de calculadoras; `Ctrl+X` continua sendo ignorado (não é interpretado como multiplicação) |
-| `Ctrl/Cmd+C` copia o **resultado** | A expressão completa e o histórico da sessão continuam disponíveis no menu de contexto (toque longo) |
+| `Ctrl/Cmd+C` copia o **resultado** | A expressão completa e o histórico da sessão continuam disponíveis no menu de contexto (toque longo ou clique direito) |
 | `Backspace` fica sem glow | O botão `⌫` está na barra de ícones, não no keypad — não existe `CalculatorButton` correspondente para acender |
 
 ### Resolução das teclas
@@ -283,3 +292,5 @@ O caractere é a fonte **primária** da camada 3 porque teclas como `%`, `*`, `(
 | `_saveOrUpdateSession()` era fire-and-forget | O processo podia morrer no meio da escrita, perdendo o `=` recém-pressionado | Devolve `Future<void>` e encadeia toda escrita em `_pendingWrite`, que `flushSession()` aguarda |
 | `add` em voo quando chega a 2ª linha da sessão | A linha era marcada como persistida sem nunca ser gravada (`_addInFlight` só bumpava o contador) | O `update` é encadeado no `Future` do `add` e usa o id que ele devolve |
 | `clear`/`loadSession`/paste com `add` em voo | O id da sessão antiga era adotado pela sessão nova | `_resetSessionTracking()` incrementa `_sessionGeneration`; o `add` só adota o id se a geração não mudou |
+| `InkWell` e `IconButton` ignoram o botão secundário do mouse | Um `onSecondaryTap` colocado neles nunca dispara | Envolver com `GestureDetector`; no display o `GestureDetector` que já trata o toque longo recebe `onSecondaryTapUp` |
+| `WidgetTester.tap` usa `kPrimaryButton` e `PointerDeviceKind.touch` por padrão | Um teste de clique direito passaria como toque comum | Passar `buttons: kSecondaryButton` e `kind: PointerDeviceKind.mouse` (import `package:flutter/gestures.dart`) |

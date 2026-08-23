@@ -199,4 +199,73 @@ void main() {
       expect(result, isTrue);
     });
   });
+
+  group('isWindowPositionStorable', () {
+    test('accepts an ordinary position on any platform', () {
+      for (final isLinux in [true, false]) {
+        expect(
+          isWindowPositionStorable(
+            position: const WindowPosition(x: 400, y: 250),
+            isLinux: isLinux,
+          ),
+          isTrue,
+          reason: 'isLinux: $isLinux',
+        );
+      }
+    });
+
+    test('rejects the origin on Linux (Wayland cannot report a position)', () {
+      expect(
+        isWindowPositionStorable(
+          position: const WindowPosition(x: 0, y: 0),
+          isLinux: true,
+        ),
+        isFalse,
+      );
+    });
+
+    test('accepts the origin off Linux — there it is a real position', () {
+      expect(
+        isWindowPositionStorable(
+          position: const WindowPosition(x: 0, y: 0),
+          isLinux: false,
+        ),
+        isTrue,
+      );
+    });
+
+    test('rejects the origin on Linux only when both axes are zero', () {
+      expect(
+        isWindowPositionStorable(
+          position: const WindowPosition(x: 0, y: 250),
+          isLinux: true,
+        ),
+        isTrue,
+      );
+      expect(
+        isWindowPositionStorable(
+          position: const WindowPosition(x: 400, y: 0),
+          isLinux: true,
+        ),
+        isTrue,
+      );
+    });
+
+    test('rejects a corrupt position', () {
+      expect(
+        isWindowPositionStorable(
+          position: const WindowPosition(x: double.nan, y: 250),
+          isLinux: false,
+        ),
+        isFalse,
+      );
+      expect(
+        isWindowPositionStorable(
+          position: const WindowPosition(x: 400, y: double.infinity),
+          isLinux: false,
+        ),
+        isFalse,
+      );
+    });
+  });
 }

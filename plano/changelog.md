@@ -1458,10 +1458,11 @@ Mudança estrutural de processo: o padrão husky dos outros projetos (`pre-commi
 - Projeto `decima-wevasoft` (app Android `com.wevasoft.decima` já registrado); grupos de testers `dev` e `stable` criados via CLI
 - Sem SDK Firebase no app — App Distribution usa apenas APK + App ID + service account
 
-### Pendências (ações manuais do dev)
+### Primeiro release (validação de ponta a ponta)
 
-- Secret `FIREBASE_SERVICE_ACCOUNT` (gerar chave no console do Firebase)
-- Deploy key `release-bot` + secret `RELEASE_DEPLOY_KEY` (geração de chave SSH bloqueada no ambiente da IA)
+- Secrets manuais configuradas pelo dev (`FIREBASE_SERVICE_ACCOUNT`, deploy key `release-bot` + `RELEASE_DEPLOY_KEY`)
+- PR #1 (`dev` → `main`) mergeado com os 5 checks verdes → **v0.6.0** publicado automaticamente: `chore(release): v0.6.0+6` + tag + `CHANGELOG.md`, APK assinado no grupo `stable`, `decima-0.6.0-windows-x64-setup.exe` + `.sha256` no GitHub Release
+- Anti-loop validado: o push do commit de release re-disparou o workflow, que caiu em `NOOP` e pulou os jobs de publicação
 
 ### Documentação
 
@@ -1473,3 +1474,133 @@ Mudança estrutural de processo: o padrão husky dos outros projetos (`pre-commi
 - `test/tool/bump_version_test.dart` — 7 cenários (RESULT minor/patch/major, NOOP interno, anti-loop de release, range vazio, âncora de fallback)
 - **Total: 690 testes — 100% verde**
 - `flutter analyze` — zero issues
+
+---
+
+## [Fix] Etapa 14.3 — versionCode monotônico entre dev e stable
+
+**Problema (dogfooding)**: o release v0.6.0 saiu com `versionCode 6` (o `+B` do pubspec) e o build dev seguinte com `versionCode 4` (`github.run_number` — contador **por workflow**). Instalar o dev sobre o stable era downgrade: o Android bloqueia e obriga a desinstalar, perdendo os dados.
+
+**Correção**: o `versionCode` de todo APK do CI (jobs `build-android` do `ci.yml` e `release-android` do `release.yml`) passa a ser `minutos desde a epoch Unix` (~29,9 mi hoje; teto do Android de 2,1 bi só no ano ~5960) — uma única sequência crescente, independente de branch/workflow. O `+B` do pubspec continua existindo apenas como contador humano de releases (nome do commit/tag), sem papel de `versionCode`.
+
+**Gotcha documentado**: build local usa o `+B` pequeno do pubspec — para instalar por cima de um APK do CI, passar `--build-number=$(( $(date +%s) / 60 ))`.
+
+---
+
+## [Concluída] Etapa 15 — Suporte a Linux
+
+O alvo Linux já vinha do `flutter create` original — `flutter create --platforms=linux .` não alterou nada em `linux/` (só reescreveu `.metadata`, derrubando as outras plataformas da lista de migração, e mexeu no `pubspec.lock`; ambos revertidos). O trabalho real foi o runner GTK e dois desvios de comportamento do `window_manager` que só aparecem no Linux.
+
+### Runner GTK (`linux/runner/my_application.cc`)
+
+| Desvio do template | Motivo |
+|--------------------|--------|
+| `GtkHeaderBar` removido | O template cria um quando o WM é o GNOME Shell. Com ele, `TitleBarStyle.hidden` apenas **esconde o widget** e mantém a decoração do lado do cliente (sombra + margem), o que desloca `getPosition`/`setPosition`. Sem ele, o plugin cai em `gtk_window_set_decorated(FALSE)` e a janela fica sem moldura em qualquer WM |
+| Tamanho inicial `360x720` (era `1280x720`) | **Obrigatório, não cosmético**: `setResizable(false)` faz o GTK reescrever os geometry hints com o tamanho default da janela, sobrescrevendo o `setSize` das `WindowOptions`. Com o default do template, a janela abria e travava em 1280×720 |
+| Título `Decima` (era `decima`) | Aparece no alt-tab e no dock antes de o `window_manager` aplicar as `WindowOptions` |
+| `#include <gdk/gdkx.h>` removido | Só existia para a heurística de header bar em X11 |
+
+### Ajustes de plataforma no `lib/` (dois bugs reais encontrados na validação)
+
+**`setMaximizable(false)` vira `_NET_WM_WINDOW_TYPE_DIALOG` no GTK.** Confirmado por `xprop`: a janela era anunciada como diálogo, saindo da barra de tarefas e do alt-tab e deixando de ser minimizável em vários WMs. Como `setResizable(false)` já impede maximizar no GTK, a chamada só trazia o efeito colateral — agora é pulada quando `PlatformInfo.isLinux`.
+
+**`getPosition()` devolve `(0,0)` no Wayland.** O protocolo não expõe coordenadas globais ao cliente. Gravar isso fazia a memória de posição (Etapa 14.2) reabrir a janela encostada no canto superior esquerdo — pior do que não lembrar nada. `isWindowPositionStorable()` (função pura, ao lado de `isWindowPositionReachable`) descarta a origem exata em Linux e `NaN`/infinito em qualquer plataforma. O falso negativo em X11 (janela realmente no canto) custa abrir centralizada da próxima vez.
+
+Novo `PlatformInfo.isLinux` para os dois desvios — mesmo padrão testável do `isDesktop` (`defaultTargetPlatform`, não `Platform`).
+
+### Integração com o desktop (`linux/packaging/`)
+
+- `com.wevasoft.decima.desktop` — `Icon=com.wevasoft.decima` (nome lógico do tema, não caminho) e `StartupWMClass` casando o `WM_CLASS` da janela, que vem do `APPLICATION_ID` via `g_set_prgname`. Sem esse casamento o dock mostra ícone genérico e abre uma segunda entrada
+- Ícones do tema `hicolor` em 16/24/32/48/64/128/256/512, gerados pelo `tool/icon/render.mjs` a partir do master (squircle com transparência — Linux não aplica máscara, mesma razão do `.ico` do Windows)
+- **`flutter_launcher_icons` não tem suporte a Linux**: a chave `linux: generate: true` do `flutter_launcher_icons.yaml` era ignorada em silêncio desde a Etapa 12. Removida, com comentário apontando para o pipeline real
+- `install-desktop-entry.sh` — publica no menu do usuário reescrevendo o `Exec` para o caminho absoluto do bundle; só escreve em `$XDG_DATA_HOME`, sem `sudo`. `--uninstall` desfaz
+
+### Validação manual (X11 e Wayland, via WSLg)
+
+| Cenário | Resultado |
+|---------|-----------|
+| Abertura, X11 | `360x720+780+180` (centralizada), `_MOTIF_WM_HINTS` com decoração zerada, `_NET_WM_WINDOW_TYPE_NORMAL` |
+| Abertura, Wayland | Mesma aparência — title bar customizada, sem moldura do sistema |
+| Antes da correção do tamanho | `WM_NORMAL_HINTS` min=max=`1280x720` — o `setSize` era sobrescrito |
+| Antes da correção do maximizable | `_NET_WM_WINDOW_TYPE_DIALOG` |
+| Keypad (`7`, `5`) | Display `0.75` — Add2 correto |
+| Drag pela title bar, Wayland | Janela moveu exatamente o delta arrastado (160,100), tamanho preservado |
+| Minimizar | `IsIconic: True`, processo vivo |
+| Fechar pelo `X`, com `0.07 + 0.03` pendente | Processo encerrado; `decima.db` com `0.07 + 0.03 = 0.10`; posição gravada |
+| Fechar no Wayland | Posição **não** gravada (origem descartada) — a janela volta a centralizar |
+| Fechar no X11, janela em `500,300` | `window_x: 462.0`, `window_y: 241.0` gravados |
+| Ícone e `.desktop` | `gtk_icon_theme_has_icon` resolve os 8 tamanhos; GIO acha a entrada com `Name=Decima` e o `Exec` absoluto |
+
+### Limitações do ambiente WSLg (não são do app)
+
+- **`_NET_WM_MOVERESIZE` não move janela sob XWayland/Weston**: o drag parecia quebrado com `GDK_BACKEND=x11`. Isolado com um GTK puro chamando `gtk_window_begin_move_drag` — falha igual, inclusive com o timestamp real do evento. Com `GDK_BACKEND=wayland` o drag funciona perfeitamente
+- **`_NET_FRAME_EXTENTS` não-zero para janela sem decoração**: Weston reporta `38,38,59,38`, então a posição salva "anda" ~(38,59) a cada ciclo fechar-abrir. WMs conformes (mutter/kwin) zeram os extents quando `_MOTIF_WM_HINTS` desliga a decoração
+
+### Documentação
+
+- Novo `docs/fundacao/empacotamento-linux.md` — artefatos, dependências de build, desvios do runner, ajustes por plataforma, `.desktop`/ícone, referência de AppImage/Flatpak/Snap/`.deb`, dados em runtime, OWASP e gotchas
+- `docs/fundacao/arquitetura.md` — infra de desktop, regra de gravação da posição e gotcha de semântica divergente por plataforma
+- `README.md` com seção "Instalação (Linux)"; índice de `docs/` atualizado
+
+### Fora de escopo (deliberado)
+
+- Job `build-linux` no CI: exigiria um 6º check obrigatório no ruleset `main-protegida` (ação manual no GitHub) e não está na Etapa 15
+- Empacotamento em si (AppImage/Flatpak/Snap) — documentado como referência, conforme o plano
+
+### Testes
+
+- `test/unit/utils/platform_info_test.dart` — 5 testes (novo arquivo; cobre `isDesktop` nas 6 `TargetPlatform` e `isLinux`)
+- `test/unit/ui/core/desktop/window_position_test.dart` — 5 testes novos para `isWindowPositionStorable`
+- **Total: 700 testes — 100% verde**
+- `flutter analyze` — zero issues; `dart format --set-exit-if-changed .` sem alterações
+
+---
+
+## [Fix] Etapa 15 — Ícone da janela no Linux
+
+**Problema (reportado no uso real)**: a janela abria com o ícone genérico do Linux (Tux) em vez do ícone do Decima.
+
+**Causa**: o template do runner GTK **não define ícone de janela nenhum**. Sem `_NET_WM_ICON` o ambiente cai no fallback genérico — confirmado por `xprop -id <id> _NET_WM_ICON` → `not found`. O `.desktop` entregue na etapa resolvia apenas onde o ambiente casa a janela com a entrada pelo `StartupWMClass` (docks tipo GNOME Shell), o que não cobre o caso geral.
+
+**Correção**: `set_application_icon()` no runner, chamado antes de criar a janela, com dois caminhos:
+
+| Caminho | Quando | Como |
+|---------|--------|------|
+| Tema de ícones | `.desktop` instalado (`gtk_icon_theme_has_icon`) | `gtk_window_set_default_icon_name(APPLICATION_ID)` — respeita tema do usuário e HiDPI |
+| PNG do bundle | App rodando solto, sem entrada instalada | `data/flutter_assets/assets/branding/logo.png`, resolvido por `/proc/self/exe`, em 48/128/256 (o PNG fonte tem 1024² — publicar isso encheria a propriedade X com 4 MB de ARGB) |
+
+**Limite conhecido — Wayland**: o GTK3 não tem protocolo para enviar pixels de ícone ao compositor; lá o ícone vem do casamento `app_id` (= `APPLICATION_ID`) com o `.desktop` de mesmo nome. Funciona em GNOME/KDE com a entrada instalada, mas o Weston do WSLg não faz esse lookup e continua mostrando o Tux.
+
+**Validação**:
+
+| Cenário | `_NET_WM_ICON` | Ícone na barra do Windows |
+|---------|----------------|---------------------------|
+| X11, tema instalado | Presente (32² em diante, do tema) | Ícone do Decima (o WSLg compõe um selo do Tux por cima — comportamento dele) |
+| X11, tema removido | Presente (48/128/256, do bundle) | Ícone do Decima, idem |
+| Wayland | N/A (propriedade é do X11) | Tux — limitação do WSLg |
+
+---
+
+## [Ajuste] UX de desktop — menu de contexto no clique direito
+
+**Motivação (reportada no uso real)**: no desktop, abrir o menu de contexto exigia manter o botão esquerdo pressionado (toque longo). O gesto natural com mouse é o clique com o botão direito.
+
+**Mudança**: o botão secundário passa a abrir os mesmos menus que o toque longo, sem substituí-lo — dispositivos híbridos (Windows/Linux com tela sensível ao toque) respondem aos dois gestos, e nenhum é condicionado à plataforma.
+
+| Tela | Gesto adicionado | Handler | Abre |
+|------|------------------|---------|------|
+| Calculadora (display) | Clique direito | `onSecondaryTapUp` no `GestureDetector` existente | `CalculatorContextMenu` (copiar cálculo/resultado/histórico, colar) |
+| Histórico (item) | Clique direito | `GestureDetector.onSecondaryTap` envolvendo o `InkWell` | `AlertDialog` de renomear |
+
+**Implementação**:
+
+- `lib/ui/calculator/calculator_page.dart` — `_openContextMenu(viewModel, position)` extraído; `onLongPressStart` e `onSecondaryTapUp` apontam para ele com `details.globalPosition`, mantendo a âncora do menu no ponteiro
+- `lib/ui/history/widgets/history_list_item.dart` — `GestureDetector(onSecondaryTap:)` envolve o `InkWell` do `Card`, porque `InkWell` só reconhece o botão primário
+
+**Testes**:
+
+- `test/widget/calculator/calculator_context_menu_test.dart` — 2 testes novos (menu abre no clique direito; copiar pelo item selecionado nele)
+- `test/widget/history/history_page_test.dart` — 1 teste novo (dialog de renomear no clique direito)
+- **Total: 703 testes — 100% verde**; `flutter analyze` zero issues
+
+**Documentação**: `docs/features/calculadora.md` (tabela "Gestos de abertura" + 2 gotchas), `docs/features/historico.md`

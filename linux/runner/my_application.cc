@@ -1,9 +1,6 @@
 #include "my_application.h"
 
 #include <flutter_linux/flutter_linux.h>
-#ifdef GDK_WINDOWING_X11
-#include <gdk/gdkx.h>
-#endif
 
 #include "flutter/generated_plugin_registrant.h"
 
@@ -19,40 +16,81 @@ static void first_frame_cb(MyApplication* self, FlView* view) {
   gtk_widget_show(gtk_widget_get_toplevel(GTK_WIDGET(view)));
 }
 
+// Tamanhos publicados em _NET_WM_ICON quando o ícone vem do bundle. O PNG
+// fonte tem 1024²; publicar esse tamanho encheria a propriedade X com 4 MB
+// de ARGB para nada.
+static const gint kBundledIconSizes[] = {48, 128, 256};
+
+// Define o ícone da janela.
+//
+// O template do Flutter não define nenhum, e sem `_NET_WM_ICON` o ambiente
+// cai no ícone genérico — o `.desktop` sozinho só resolve em ambientes que
+// casam a janela com a entrada pelo `StartupWMClass`.
+//
+// Prefere o tema de ícones (respeita tema do usuário e HiDPI, quando a
+// entrada foi instalada por `linux/packaging/install-desktop-entry.sh`) e
+// cai no PNG que já viaja no bundle quando o app roda solto.
+static void set_application_icon() {
+  if (gtk_icon_theme_has_icon(gtk_icon_theme_get_default(), APPLICATION_ID)) {
+    gtk_window_set_default_icon_name(APPLICATION_ID);
+    return;
+  }
+
+  g_autofree gchar* executable = g_file_read_link("/proc/self/exe", nullptr);
+  if (executable == nullptr) {
+    return;
+  }
+
+  g_autofree gchar* bundle_dir = g_path_get_dirname(executable);
+  g_autofree gchar* icon_path =
+      g_build_filename(bundle_dir, "data", "flutter_assets", "assets",
+                       "branding", "logo.png", nullptr);
+
+  GList* icons = nullptr;
+  for (gsize i = 0; i < G_N_ELEMENTS(kBundledIconSizes); i++) {
+    g_autoptr(GError) error = nullptr;
+    GdkPixbuf* icon = gdk_pixbuf_new_from_file_at_size(
+        icon_path, kBundledIconSizes[i], kBundledIconSizes[i], &error);
+    if (icon == nullptr) {
+      g_warning("Ícone da janela indisponível (%s): %s", icon_path,
+                error->message);
+      break;
+    }
+    icons = g_list_append(icons, icon);
+  }
+
+  if (icons != nullptr) {
+    gtk_window_set_default_icon_list(icons);
+    g_list_free_full(icons, g_object_unref);
+  }
+}
+
 // Implements GApplication::activate.
 static void my_application_activate(GApplication* application) {
   MyApplication* self = MY_APPLICATION(application);
+
+  // Antes de criar a janela: o default vale para toda janela criada depois.
+  set_application_icon();
+
   GtkWindow* window =
       GTK_WINDOW(gtk_application_window_new(GTK_APPLICATION(application)));
 
-  // Use a header bar when running in GNOME as this is the common style used
-  // by applications and is the setup most users will be using (e.g. Ubuntu
-  // desktop).
-  // If running on X and not using GNOME then just use a traditional title bar
-  // in case the window manager does more exotic layout, e.g. tiling.
-  // If running on Wayland assume the header bar will work (may need changing
-  // if future cases occur).
-  gboolean use_header_bar = TRUE;
-#ifdef GDK_WINDOWING_X11
-  GdkScreen* screen = gtk_window_get_screen(window);
-  if (GDK_IS_X11_SCREEN(screen)) {
-    const gchar* wm_name = gdk_x11_screen_get_window_manager_name(screen);
-    if (g_strcmp0(wm_name, "GNOME Shell") != 0) {
-      use_header_bar = FALSE;
-    }
-  }
-#endif
-  if (use_header_bar) {
-    GtkHeaderBar* header_bar = GTK_HEADER_BAR(gtk_header_bar_new());
-    gtk_widget_show(GTK_WIDGET(header_bar));
-    gtk_header_bar_set_title(header_bar, "decima");
-    gtk_header_bar_set_show_close_button(header_bar, TRUE);
-    gtk_window_set_titlebar(window, GTK_WIDGET(header_bar));
-  } else {
-    gtk_window_set_title(window, "decima");
-  }
+  // Sem GtkHeaderBar (o template do Flutter cria um quando o WM é o GNOME
+  // Shell): a barra de título do sistema é sempre substituída pela AppTitleBar,
+  // e o header bar mudaria o caminho que o `window_manager` toma em
+  // `TitleBarStyle.hidden` — com ele, o plugin apenas esconde o widget e mantém
+  // a decoração do lado do cliente (sombra + margem), o que desalinha o
+  // `getPosition`/`setPosition` da memória de posição da janela. Com um título
+  // simples, o plugin cai em `gtk_window_set_decorated(FALSE)` e a janela fica
+  // sem moldura em qualquer WM.
+  gtk_window_set_title(window, "Decima");
 
-  gtk_window_set_default_size(window, 1280, 720);
+  // Mesmo tamanho de DesktopWindowConfig.windowSize — evita flash de
+  // redimensionamento antes do window_manager aplicar as WindowOptions.
+  // No GTK isso é obrigatório, e não só cosmético: `setResizable(false)` faz o
+  // GTK reescrever os geometry hints com o tamanho default da janela,
+  // sobrescrevendo o `setSize` das WindowOptions.
+  gtk_window_set_default_size(window, 360, 720);
 
   g_autoptr(FlDartProject) project = fl_dart_project_new();
   fl_dart_project_set_dart_entrypoint_arguments(

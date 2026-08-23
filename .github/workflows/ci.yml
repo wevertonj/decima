@@ -138,16 +138,20 @@ jobs:
             echo "storeFile=$RUNNER_TEMP/release.jks"
           } > android/key.properties
 
+      # versionCode = minutos desde a epoch Unix: cresce a cada build, em
+      # qualquer branch/workflow — sem downgrade entre dev e stable no Android.
       - name: Versão base
         id: ver
-        run: echo "base=$(grep -m1 '^version:' pubspec.yaml | awk '{print $2}' | cut -d+ -f1)" >> "$GITHUB_OUTPUT"
+        run: |
+          echo "base=$(grep -m1 '^version:' pubspec.yaml | awk '{print $2}' | cut -d+ -f1)" >> "$GITHUB_OUTPUT"
+          echo "code=$(( $(date +%s) / 60 ))" >> "$GITHUB_OUTPUT"
 
       - name: Build APK (dev)
         if: github.event_name == 'push'
         run: >
           flutter build apk --release
           --build-name=${{ steps.ver.outputs.base }}-dev.${{ github.run_number }}
-          --build-number=${{ github.run_number }}
+          --build-number=${{ steps.ver.outputs.code }}
 
       - name: Build APK (validação de PR)
         if: github.event_name != 'push'

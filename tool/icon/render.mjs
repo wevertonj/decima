@@ -16,7 +16,7 @@
 // reduzir o base mudaria o tamanho visual da splash.
 import sharp from 'sharp';
 import pngToIco from 'png-to-ico';
-import { writeFile } from 'node:fs/promises';
+import { mkdir, writeFile } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
 import path from 'node:path';
 
@@ -59,5 +59,23 @@ const icoPngs = await Promise.all(ICO_SIZES.map((size) =>
     .resize(size, size).png().toBuffer()));
 await writeFile(ICO_OUT, await pngToIco(icoPngs));
 console.log(`${path.relative(ROOT, ICO_OUT)} (${ICO_SIZES.join('/')})`);
+
+// Ícone Linux (tema hicolor): o `flutter_launcher_icons` NÃO tem suporte a
+// Linux — quem entrega o ícone é o `.desktop` (`Icon=com.wevasoft.decima`),
+// resolvido pelo tema de ícones instalado. Como no Windows, os ambientes
+// Linux não aplicam máscara própria, então a fonte é o MASTER (squircle com
+// transparência), não o full-bleed. O nome dos arquivos precisa bater com o
+// `Icon=` do `.desktop`, que por sua vez bate com o app ID / `WM_CLASS` —
+// é assim que o WM liga a janela ao ícone.
+const HICOLOR_SIZES = [16, 24, 32, 48, 64, 128, 256, 512];
+const HICOLOR_DIR = p('linux', 'packaging', 'icons', 'hicolor');
+for (const size of HICOLOR_SIZES) {
+  const out = path.join(HICOLOR_DIR, `${size}x${size}`, 'apps', 'com.wevasoft.decima.png');
+  await mkdir(path.dirname(out), { recursive: true });
+  await sharp(p('assets/icon/decima_icon_master.svg'), { density: 300 })
+    .resize(size, size).png().toFile(out);
+}
+console.log(`${path.relative(ROOT, HICOLOR_DIR)}/*/apps/com.wevasoft.decima.png (${HICOLOR_SIZES.join('/')})`);
+
 console.log('\nPNGs derivados OK. Agora rode na raiz:');
 console.log('  dart run flutter_launcher_icons && dart run flutter_native_splash:create');
