@@ -894,9 +894,10 @@ Do checklist original:
 ### Validação
 
 - [x] CI `build-macos` verde no push da `dev` — 4m49s; `Decima.app` 49,0 MB (assinatura ad-hoc verificada) → zip de 20 MB
-- [ ] CI `build-macos` verde no PR para `main`
-- [ ] Primeiro release com o zip publicado (`decima-<semver>-macos.zip` + `.sha256`)
-- [ ] Extrair o zip do release em outro Mac, liberar no Gatekeeper e abrir o app
+- [x] CI `build-macos` verde no PR para `main` (PR #4, 7 checks verdes)
+- [x] Primeiro release com o zip publicado — v0.9.0 (`decima-0.9.0-macos.zip` 20,2 MB + `.sha256` no GitHub Release)
+  - Conferido do lado de fora: `sha256sum -c` OK; zip com `Decima.app/` (88 arquivos, 49,0 MB) incluindo `_CodeSignature`; binário universal (x86_64 + arm64); `CFBundleShortVersionString = 0.9.0`
+- [ ] Extrair o zip do release em outro Mac, liberar no Gatekeeper e abrir o app *(pendente — exige o MacBook)*
 - [x] `flutter test` / `flutter analyze` / `dart format` — regressão intacta (sem código Dart novo)
 
 ---

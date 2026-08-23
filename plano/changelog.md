@@ -1798,4 +1798,7 @@ Novo `PlatformInfo.isLinux` para os dois desvios — mesmo padrão testável do 
 
 - `flutter analyze` / `flutter test` / `dart format` — regressão intacta (etapa sem código Dart)
 - `bash -n tool/macos/build_zip.sh` — sintaxe ok; execução real só no runner macOS
-- CI `build-macos` e primeiro release com o zip publicado — **pendente do PR para a `main`**
+- CI `build-macos` verde no push da `dev` (4m49s) e no PR #4 para a `main` — 7 checks obrigatórios verdes
+- Release **v0.9.0**: `decima-0.9.0-macos.zip` (20,2 MB) + `.sha256` publicados junto do APK, do instalador Windows e do `.deb`
+- Zip conferido fora do runner: `sha256sum -c` OK, `Decima.app/` com 88 arquivos (49,0 MB) e `_CodeSignature` preservado, binário **universal** (x86_64 + arm64), `CFBundleShortVersionString = 0.9.0`
+- Abrir o zip do release em outro Mac (Gatekeeper) — **pendente de verificação do usuário**
