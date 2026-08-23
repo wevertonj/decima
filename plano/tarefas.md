@@ -851,6 +851,8 @@ Do checklist original:
 - [x] Conferir ícone `.icns` — `AppIcon.icns` no bundle, compilado do appiconset regenerado na Etapa 12
 - [x] Documentar assinatura/notarização — `docs/fundacao/empacotamento-macos.md` (referência, sem implementar)
 - [x] Extra: `hiddenWindowAtLaunch()` no `MainFlutterWindow.swift` — setup do `window_manager` que evita a janela piscar no tamanho do template antes do `waitUntilReadyToShow`
+- [x] Extra (pós-validação): ícone do Dock arredondado — `decima_icon_macos.png` (master squircle 824 px em canvas 1024) no `render.mjs` + `macos.image_path`; o full-bleed saía quadrado (macOS não aplica máscara)
+- [x] Extra (pós-validação): `PRODUCT_NAME = Decima` (bundle/launcher com nome capitalizado) e instalação local em `/Applications` via `ditto` + `lsregister`
 
 ### Testes
 

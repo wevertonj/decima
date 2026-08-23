@@ -86,7 +86,13 @@ Sem artefato nos releases por enquanto — compile a partir do código (requer X
 
 ```bash
 flutter build macos --release
-open build/macos/Build/Products/Release/decima.app
+open build/macos/Build/Products/Release/Decima.app
+```
+
+Para instalar de verdade (Launchpad/Spotlight, como qualquer app):
+
+```bash
+ditto build/macos/Build/Products/Release/Decima.app /Applications/Decima.app
 ```
 
 > O `.app` usa assinatura ad-hoc. Se for baixado de outra máquina, o Gatekeeper bloqueia a abertura: autorize em **Ajustes do Sistema → Privacidade e Segurança → Abrir Mesmo Assim**. Detalhes (e o fluxo de notarização, como referência) em [`docs/fundacao/empacotamento-macos.md`](docs/fundacao/empacotamento-macos.md).

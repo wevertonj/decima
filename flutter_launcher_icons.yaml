@@ -1,7 +1,8 @@
 # Ícone do launcher. Master vetor transparente em
 # `assets/icon/decima_icon_master.svg` (glifo "1.0" — barra + ponto decimal +
-# anel vazado); fontes de build em `assets/icon/` (full-bleed p/ web/macOS +
-# camadas do adaptive icon). PNGs derivados via `tool/icon` (npm run render).
+# anel vazado); fontes de build em `assets/icon/` (full-bleed p/ web, squircle
+# com margens p/ macOS + camadas do adaptive icon). PNGs derivados via
+# `tool/icon` (npm run render).
 # Regenerar com `dart run flutter_launcher_icons` — não editar os PNGs nativos.
 flutter_launcher_icons:
   # Android
@@ -21,10 +22,13 @@ flutter_launcher_icons:
   # ignorada silenciosamente). O ícone do Linux vem do tema hicolor, gerado
   # pelo `tool/icon` a partir do master e instalado junto do `.desktop` —
   # ver `linux/packaging/` e `docs/fundacao/empacotamento-linux.md`.
-  # macOS
+  # macOS: como Windows/Linux, o sistema NÃO aplica máscara — e a convenção
+  # Big Sur exige margens (squircle 824 px em canvas 1024 transparente),
+  # senão o ícone sai quadrado e maior que os vizinhos no Dock. O PNG é o
+  # master escalado/centralizado pelo `tool/icon/render.mjs`.
   macos:
     generate: true
-    image_path: assets/icon/decima_icon_fullbleed.png
+    image_path: assets/icon/decima_icon_macos.png
 
   # Imagem-fonte para Android (alta resolução, opaca, sem squircle —
   # a plataforma aplica a própria máscara)

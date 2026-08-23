@@ -1727,3 +1727,31 @@ Novo `PlatformInfo.isLinux` para os dois desvios — mesmo padrão testável do 
 - `flutter test` — 709 testes, 100% verde
 - `flutter analyze` — zero warnings; `dart format` — 0 mudanças
 - Verificação manual (janela fixa, semáforo nativo, verde inativo) — **validada pelo usuário**
+
+---
+
+## [Ajuste] Etapa 16 — Ícone do Dock, nome do bundle e instalação local
+
+**Origem**: validação visual do usuário — o ícone aparecia **quadrado** no Dock (e o bundle se chamava `decima.app`, que renderizaria "decima" minúsculo no launcher).
+
+### Ícone do Dock (squircle com margens)
+
+- Causa: `macos.image_path` apontava para o **full-bleed quadrado** — mas o macOS, como Windows/Linux, **não aplica máscara**; o squircle precisa estar no próprio PNG, e a convenção Big Sur ainda exige margens (ícone ocupa 824 dos 1024 px do canvas, senão fica maior que os vizinhos)
+- `tool/icon/render.mjs` ganhou o passo `decima_icon_macos.png`: master (squircle 22,4% ≈ 22,5% do grid da Apple) rasterizado a 824 px e centrado em canvas 1024 transparente
+- Sem node neste Mac, o PNG foi gerado por um one-off Swift/CoreGraphics equivalente a partir de `assets/branding/logo.png` (o próprio master em 1024 do pipeline); o próximo `npm run render` no WSL regenera o arquivo canônico
+- `fvm dart run flutter_launcher_icons` regenerou só o `AppIcon.appiconset` (Android/web idênticos — pipeline determinístico)
+
+### Nome do bundle
+
+- `PRODUCT_NAME = Decima` em `AppInfo.xcconfig` (`CFBundleName`/executável/`.app` acompanham); refs `decima.app` atualizadas no `project.pbxproj` (product + `TEST_HOST` ×3) e no `Runner.xcscheme` (`BuildableName` ×5)
+- Gotcha real: APFS é case-insensitive — `decima.app` e `Decima.app` são a mesma entrada; um `rm` de "limpeza" no nome antigo apagou o bundle novo (rebuild resolveu). Documentado
+
+### Instalação local
+
+- `ditto` do `Decima.app` para `/Applications` + `lsregister -f` — app no Launchpad/Spotlight como qualquer outro; sandbox container (`com.wevasoft.decima`) inalterado, histórico preservado
+- Docs: `empacotamento-macos.md` (linha de instalação, fonte do appiconset, 2 gotchas novos) e `README.md` (bloco de instalação)
+
+### Validação
+
+- `fvm flutter build macos --release` → `Decima.app` (49,1 MB); `codesign` ad-hoc ok; `CFBundleName = Decima`
+- Instalado e aberto de `/Applications` — ícone arredondado no Dock **pendente de confirmação visual do usuário**
