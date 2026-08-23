@@ -1,6 +1,6 @@
 # CI/CD — GitHub Actions
 
-> Pipeline de integração e entrega contínua: fluxo de branches `dev` → PR → `main`, gates de qualidade (commitlint, format, analyze, testes com cobertura, builds Android/Windows/Linux/macOS), versionamento automático SemVer com changelog e distribuição via Firebase App Distribution e GitHub Releases.
+> Pipeline de integração e entrega contínua: fluxo de branches `dev` → PR → `main`, gates de qualidade (commitlint, format, analyze, testes com cobertura, builds Android/Windows/Linux/macOS), versionamento automático SemVer com changelog e distribuição via GitHub Releases e Firebase App Distribution.
 
 ## Fluxo de Branches
 
@@ -17,7 +17,7 @@
 
 | Arquivo | Gatilho | Função |
 |---|---|---|
-| `.github/workflows/ci.yml` | PR para `dev`/`main`; push em `dev` | Gates de qualidade + build dev + distribuição do grupo `dev` |
+| `.github/workflows/ci.yml` | PR para `dev`/`main`; push em `dev` | Gates de qualidade + builds das 4 plataformas como artefatos do Actions (**não distribui**) |
 | `.github/workflows/release.yml` | Push em `main` (merge de PR) | Bump SemVer + changelog + tag + builds de release das 4 plataformas + Firebase `stable` + GitHub Release |
 | `.github/actions/setup-flutter/action.yml` | — (ação composta) | Instala o Flutter pinado no `.fvmrc` (com cache) e roda `flutter pub get` |
 
@@ -28,13 +28,14 @@
 | `commitlint` | Mensagens Conventional Commits no range do PR/push | `commitlint_cli` (Dart) + `commitlint.yaml` |
 | `analyze` | `dart format --set-exit-if-changed` + `flutter analyze` (zero warnings) | SDK |
 | `test` | `flutter test --coverage` + gate de cobertura mínima (`MIN_COVERAGE`, linhas via lcov) | SDK + awk |
-| `build-android` | APK release (assinado quando há secrets); push em `dev` distribui ao grupo `dev` do Firebase | Gradle + `firebase-tools` |
+| `build-android` | APK release (assinado quando há secrets), publicado como artefato | Gradle |
 | `build-windows` | Bundle Windows + runtime MSVC app-local, zipado como artefato; roda em push na `dev` e PR para `main` | `flutter build windows` |
 | `build-linux` | Bundle Linux + `.deb` (`~dev.N`/`~pr.N`) como artefato; mesmo gating do `build-windows` | `flutter build linux` + `tool/deb/build_deb.sh` |
 | `build-macos` | `Decima.app` universal + zip do `ditto` (`-dev.N`/`-pr.N`) como artefato; mesmo gating do `build-windows` | `flutter build macos` + `tool/macos/build_zip.sh` |
 
 - Builds dev usam `--build-name=<versão>-dev.<run>`; o `versionCode` de **todo** APK do CI (dev e stable) é `minutos desde a epoch Unix` — sequência monotônica única entre branches, sem downgrade ao alternar canal (teto do Android: 2,1 bi; esgota só no ano ~5960)
-- PRs de fork rodam **sem secrets**: assinatura cai na chave de debug e nenhuma distribuição acontece (só ocorre em `push`, que fork não dispara)
+- O CI **não distribui nada**: todo build vira artefato do Actions com retenção de 14 dias. Distribuição para testers/usuários acontece só no `release.yml`
+- PRs de fork rodam **sem secrets**: a assinatura do Android cai na chave de debug e nada sai do runner
 
 ### Jobs do Release (`release.yml`)
 
@@ -69,7 +70,7 @@ Portado do hook `pre-push` (decisões D5/D6) dos projetos `runway`/`verbum`/`dos
 |---|---|---|---|
 | `ANDROID_KEYSTORE_BASE64` | secret | Keystore de upload em base64 | `~/.keystores/decima/decima-release.jks` (máquina do dev — **fazer backup**) |
 | `ANDROID_KEYSTORE_PASSWORD` / `ANDROID_KEY_PASSWORD` / `ANDROID_KEY_ALIAS` | secret | Credenciais do keystore | idem |
-| `FIREBASE_SERVICE_ACCOUNT` | secret | JSON da service account para o App Distribution | Console Firebase → Configurações → Contas de serviço → Gerar chave privada |
+| `FIREBASE_SERVICE_ACCOUNT` | secret | JSON da service account para o App Distribution (**só no `release.yml`**) | Console Firebase → Configurações → Contas de serviço → Gerar chave privada |
 | `RELEASE_DEPLOY_KEY` | secret | Chave SSH privada do bot de release (push do `chore(release)` na `main` protegida) | `ssh-keygen -t ed25519`; pública cadastrada como deploy key com escrita |
 | `FIREBASE_ANDROID_APP_ID` | variável | App Android no Firebase (`1:…:android:…`) | Projeto `decima-wevasoft` |
 
@@ -79,17 +80,18 @@ Portado do hook `pre-push` (decisões D5/D6) dos projetos `runway`/`verbum`/`dos
 |---|---|
 | Projeto | `decima-wevasoft` |
 | App Android | `com.wevasoft.decima` |
-| Grupos de testers | `dev` (builds de push na `dev`) e `stable` (releases da `main`) |
+| Grupos de testers | `stable` (releases da `main`) — único grupo alimentado pelo CD |
 | Mecanismo | `npx firebase-tools@14 appdistribution:distribute` com `GOOGLE_APPLICATION_CREDENTIALS` |
 
 - O app **não** usa SDK Firebase — App Distribution só precisa do APK + App ID + service account; não adicionar `google-services.json` nem plugins Gradle por causa disso
+- O grupo `dev` foi aposentado: builds da branch `dev` são baixados como artefato do Actions, sem passar por App Distribution
 
 ## Segurança e Cibersegurança
 
 | Vetor (OWASP CI/CD) | Mitigação aplicada |
 |---|---|
 | CICD-SEC-1 (fluxo insuficiente) | `main` só recebe código via PR com 7 checks obrigatórios; force-push e deleção bloqueados nas duas branches |
-| CICD-SEC-4 (execução de código de terceiros — PR de fork) | Evento `pull_request` (nunca `pull_request_target`): fork roda sem secrets; distribuição e assinatura só em `push`, que fork não dispara |
+| CICD-SEC-4 (execução de código de terceiros — PR de fork) | Evento `pull_request` (nunca `pull_request_target`): fork roda sem secrets, e o CI não tem nenhum passo de distribuição — publicar só acontece no `release.yml`, disparado por push na `main` |
 | CICD-SEC-5 (permissões excessivas) | `permissions: contents: read` no CI; `write` apenas no release; deploy key restrita a este repositório |
 | CICD-SEC-6 (higiene de credenciais) | Keystore/SA/deploy key só em GitHub Secrets (write-only); materializados em `$RUNNER_TEMP`, nunca no workspace versionado; `key.properties` e keystores git-ignorados |
 | CICD-SEC-8 (integridade de artefatos) | Instalador Windows, `.deb` Linux e zip do macOS publicados com `.sha256`; APK assinado com keystore dedicado; `.app` com assinatura ad-hoc verificada (`codesign --verify`) antes de compactar |

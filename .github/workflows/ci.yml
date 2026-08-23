@@ -1,8 +1,9 @@
 # CI — validação contínua (substitui os hooks husky dos outros projetos).
 #
 # Gatilhos: PRs para `dev`/`main` e pushes diretos em `dev`.
-# PRs de fork rodam sem secrets (jobs de build caem na assinatura de debug e a
-# distribuição nunca roda aqui — só no push, que fork não dispara).
+# Nenhuma distribuição acontece aqui: os builds sobem como artefatos do Actions
+# (14 dias) e só o `release.yml` publica para testers/usuários. PRs de fork
+# rodam sem secrets — a assinatura do Android cai na chave de debug.
 name: CI
 
 on:
@@ -24,7 +25,6 @@ env:
   # Baseline na adoção (2026-08): 88,4%.
   MIN_COVERAGE: '85'
   HAS_KEYSTORE: ${{ secrets.ANDROID_KEYSTORE_BASE64 != '' }}
-  HAS_FIREBASE: ${{ secrets.FIREBASE_SERVICE_ACCOUNT != '' }}
 
 jobs:
   commitlint:
@@ -164,28 +164,6 @@ jobs:
           path: build/app/outputs/flutter-apk/app-release.apk
           retention-days: 14
 
-      - name: Distribuir no Firebase (grupo dev)
-        if: github.event_name == 'push' && env.HAS_FIREBASE == 'true'
-        env:
-          FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
-          FIREBASE_ANDROID_APP_ID: ${{ vars.FIREBASE_ANDROID_APP_ID }}
-        run: |
-          printf '%s' "$FIREBASE_SERVICE_ACCOUNT" > "$RUNNER_TEMP/firebase-sa.json"
-          export GOOGLE_APPLICATION_CREDENTIALS="$RUNNER_TEMP/firebase-sa.json"
-          {
-            echo "Build dev ${{ steps.ver.outputs.base }}-dev.${{ github.run_number }}"
-            echo "Commit: $(git log -1 --format='%s (%h)')"
-          } > "$RUNNER_TEMP/release-notes.txt"
-          npx -y firebase-tools@14 appdistribution:distribute \
-            build/app/outputs/flutter-apk/app-release.apk \
-            --app "$FIREBASE_ANDROID_APP_ID" \
-            --groups dev \
-            --release-notes-file "$RUNNER_TEMP/release-notes.txt"
-
-      - name: Aviso — Firebase não configurado
-        if: github.event_name == 'push' && env.HAS_FIREBASE != 'true'
-        run: echo "::warning::Secret FIREBASE_SERVICE_ACCOUNT ausente — distribuição para o Firebase pulada."
-
   build-linux:
     name: build-linux
     runs-on: ubuntu-latest
@@ -286,6 +264,7 @@ jobs:
           name: decima-windows-bundle
           path: decima-*-windows-x64.zip
           retention-days: 14
+
   build-macos:
     name: build-macos
     runs-on: macos-latest
