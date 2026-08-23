@@ -868,6 +868,38 @@ Do checklist original:
 
 ---
 
+## Etapa 16.1 — Distribuição macOS no CD e enxugamento do canal dev
+
+### Empacotamento
+
+- [x] Criar `tool/macos/build_zip.sh` — guard de `Darwin` → build (opcional) → `codesign --verify --strict` → `ditto -c -k --keepParent` → `dist/` + `.sha256`
+  - Nome do bundle lido de `PRODUCT_NAME` no `AppInfo.xcconfig` (sem constante duplicada)
+  - Flags: `--skip-build` (reusa o bundle existente) e `--version X.Y.Z[-sufixo]`
+  - `zip` comum está proibido: perde symlinks/permissões e invalida a assinatura ad-hoc
+
+### CI/CD
+
+- [x] `ci.yml`: job `build-macos` em `macos-latest` (needs `analyze`+`test`; push na `dev` e PR para `main`; zip `-dev.N`/`-pr.N` como artefato de 14 dias)
+- [x] `ci.yml`: remover a distribuição Firebase do grupo `dev` (steps + env `HAS_FIREBASE`) — o CI deixa de distribuir qualquer coisa
+- [x] `release.yml`: job `release-macos` + artefato incluído no `publish`
+- [ ] Ruleset `main-protegida`: adicionar `build-macos` como 7º check obrigatório (via `gh api`, aprovado pelo usuário)
+
+### Documentação
+
+- [x] `docs/fundacao/empacotamento-macos.md` — script de empacotamento, seção CI/CD, gotchas do `ditto`/`upload-artifact`
+- [x] `docs/fundacao/ci-cd.md` — novos jobs, 7 checks, Firebase restrito ao `release.yml`, grupo `dev` aposentado
+- [x] `README.md` — Instalação (macOS) a partir do GitHub Release
+- [x] Registrar a etapa em `plano/plano.md`, `plano/tarefas.md` e `plano/changelog.md`
+
+### Validação
+
+- [ ] CI `build-macos` verde no push da `dev` e no PR para `main`
+- [ ] Primeiro release com o zip publicado (`decima-<semver>-macos.zip` + `.sha256`)
+- [ ] Extrair o zip do release em outro Mac, liberar no Gatekeeper e abrir o app
+- [x] `flutter test` / `flutter analyze` / `dart format` — regressão intacta (sem código Dart novo)
+
+---
+
 ## Etapa 17 — Suporte a iOS *(removida do escopo)*
 
 Sem Apple Developer Program pago não há caminho de distribuição para iOS. Etapa cancelada — justificativa completa em `plano.md`.

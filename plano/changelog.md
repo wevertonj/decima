@@ -1755,3 +1755,47 @@ Novo `PlatformInfo.isLinux` para os dois desvios — mesmo padrão testável do 
 
 - `fvm flutter build macos --release` → `Decima.app` (49,1 MB); `codesign` ad-hoc ok; `CFBundleName = Decima`
 - Instalado e aberto de `/Applications` — ícone arredondado no Dock **pendente de confirmação visual do usuário**
+
+---
+
+## [Concluída] Etapa 16.1 — Distribuição macOS no CD e enxugamento do canal dev
+
+**Origem**: a Etapa 16 deixou o macOS buildando só na máquina do dev — nenhum release publicava artefato. Na mesma passada, decisão do usuário: aposentar a distribuição Firebase do canal `dev` (o APK de push na `dev` já sai como artefato do Actions e o grupo de testers `dev` nunca teve uso real).
+
+### Empacotamento (`tool/macos/build_zip.sh`)
+
+- Guard de plataforma: aborta fora do `Darwin` — `ditto`/`codesign`/`xcodebuild` não existem em Linux/Windows
+- Nome do bundle lido de `PRODUCT_NAME` no `AppInfo.xcconfig` (`Decima.app`) em vez de constante duplicada no script
+- `codesign --verify --strict` **antes** de compactar: a assinatura ad-hoc é o que garante integridade do bundle sem conta paga — falhar aqui é falhar cedo
+- `ditto -c -k --keepParent` + `shasum -a 256`; saída em `dist/decima-<versão>-macos.zip` (+ `.sha256`), mesmas flags do `build_deb.sh` (`--skip-build`, `--version`)
+
+### CI/CD
+
+| Workflow | Mudança |
+|----------|---------|
+| `ci.yml` | Job `build-macos` (`macos-latest`, needs `analyze`+`test`, mesmo gating do `build-windows`/`build-linux`) — zip `-dev.N`/`-pr.N` como artefato de 14 dias |
+| `ci.yml` | Removidos os steps de distribuição Firebase do grupo `dev` e o env `HAS_FIREBASE` — o CI passa a **não distribuir nada** |
+| `release.yml` | Job `release-macos` + artefato somado ao `publish` (7 jobs no total) |
+| Ruleset `main-protegida` | `build-macos` como 7º check obrigatório |
+
+### Decisões e achados
+
+| Item | Detalhe |
+|------|---------|
+| `ditto` obrigatório | O `upload-artifact` não preserva permissões nem symlinks: subir o `.app` cru entregaria um bundle inexecutável. O job compacta antes do upload — o artefato do Actions é um zip com o zip do `ditto` dentro |
+| Sufixo de versão | O zip não tem a restrição do `.deb` (`~dev.N`): usa `-dev.N`/`-pr.N`, igual ao bundle do Windows |
+| Sem secrets Apple | O CI assina ad-hoc como a máquina local — sem Developer ID nem notarização (conta paga fora do escopo); o SHA-256 no release é a verificação de integridade |
+| SwiftPM | Ligado por padrão no canal stable do Flutter 3.44.2 (`features.dart`) — nenhum `flutter config` extra no runner; CocoaPods segue fora do projeto |
+| Firebase | O grupo `stable` do `release.yml` ficou intacto; só o canal `dev` foi aposentado (o grupo pode ser apagado no console) |
+
+### Documentação
+
+- `docs/fundacao/empacotamento-macos.md` — script na tabela de artefatos/comandos, seção **CI/CD** (matriz contexto→job→artefato) e 2 gotchas novos (`zip` comum destrói o bundle; script só roda no macOS)
+- `docs/fundacao/ci-cd.md` — jobs novos, 7 checks obrigatórios, "o CI não distribui nada", Firebase restrito ao `release.yml`, 4 gotchas novos (upload-artifact, runner arm64/universal, sem secrets Apple, CocoaPods)
+- `README.md` — Instalação (macOS) a partir do GitHub Release (com `ditto -x -k`), bloco de compilação local preservado
+
+### Validação
+
+- `flutter analyze` / `flutter test` / `dart format` — regressão intacta (etapa sem código Dart)
+- `bash -n tool/macos/build_zip.sh` — sintaxe ok; execução real só no runner macOS
+- CI `build-macos` e primeiro release com o zip publicado — **pendente do PR para a `main`**

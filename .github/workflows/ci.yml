@@ -286,3 +286,49 @@ jobs:
           name: decima-windows-bundle
           path: decima-*-windows-x64.zip
           retention-days: 14
+  build-macos:
+    name: build-macos
+    runs-on: macos-latest
+    timeout-minutes: 45
+    needs: [analyze, test]
+    # Pushes em dev (artefato de teste) e PRs para main (gate de release).
+    if: github.event_name != 'pull_request' || github.base_ref == 'main'
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: ./.github/actions/setup-flutter
+
+      - name: Versão base
+        id: ver
+        run: echo "base=$(grep -m1 '^version:' pubspec.yaml | awk '{print $2}' | cut -d+ -f1)" >> "$GITHUB_OUTPUT"
+
+      # Sem CocoaPods no projeto: os plugins são Swift Packages e o SwiftPM já
+      # vem ligado por padrão no canal stable a partir do Flutter do `.fvmrc`.
+      - name: Build macOS (dev)
+        if: github.event_name == 'push'
+        run: >
+          flutter build macos --release
+          --build-name=${{ steps.ver.outputs.base }}-dev.${{ github.run_number }}
+          --build-number=${{ github.run_number }}
+
+      - name: Build macOS (validação de PR)
+        if: github.event_name != 'push'
+        run: flutter build macos --release
+
+      # O zip do `ditto` é o artefato real: o upload-artifact não preserva
+      # permissões nem symlinks e entregaria um .app quebrado se subisse cru.
+      - name: Empacotar .zip
+        run: |
+          if [ "${{ github.event_name }}" = "push" ]; then
+            suffix='-dev.${{ github.run_number }}'
+          else
+            suffix='-pr.${{ github.run_number }}'
+          fi
+          tool/macos/build_zip.sh --skip-build --version "${{ steps.ver.outputs.base }}${suffix}"
+
+      - name: Publicar bundle
+        uses: actions/upload-artifact@v4
+        with:
+          name: decima-macos-app
+          path: dist/*
+          retention-days: 14

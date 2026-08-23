@@ -1,13 +1,13 @@
 # CI/CD — GitHub Actions
 
-> Pipeline de integração e entrega contínua: fluxo de branches `dev` → PR → `main`, gates de qualidade (commitlint, format, analyze, testes com cobertura, builds), versionamento automático SemVer com changelog e distribuição via Firebase App Distribution e GitHub Releases.
+> Pipeline de integração e entrega contínua: fluxo de branches `dev` → PR → `main`, gates de qualidade (commitlint, format, analyze, testes com cobertura, builds Android/Windows/Linux/macOS), versionamento automático SemVer com changelog e distribuição via Firebase App Distribution e GitHub Releases.
 
 ## Fluxo de Branches
 
 | Branch | Papel | Regras (ruleset) |
 |---|---|---|
 | `dev` | Branch de trabalho e integração — commits diretos permitidos | `dev-integracao`: bloqueia force-push e deleção |
-| `main` | Somente releases — **nenhum commit direto** | `main-protegida`: exige PR + checks `commitlint`, `analyze`, `test`, `build-android`, `build-windows`, `build-linux`; bloqueia force-push/deleção; bypass apenas para deploy keys (bot de release) |
+| `main` | Somente releases — **nenhum commit direto** | `main-protegida`: exige PR + checks `commitlint`, `analyze`, `test`, `build-android`, `build-windows`, `build-linux`, `build-macos`; bloqueia force-push/deleção; bypass apenas para deploy keys (bot de release) |
 
 - Branch padrão do repositório: `main` — quem clona ou abre o repositório cai na versão estável. O trabalho do dia a dia é na `dev` (`git switch dev` após o clone)
 - Release = merge de PR `dev` → `main`; o versionamento acontece automaticamente após o merge
@@ -18,7 +18,7 @@
 | Arquivo | Gatilho | Função |
 |---|---|---|
 | `.github/workflows/ci.yml` | PR para `dev`/`main`; push em `dev` | Gates de qualidade + build dev + distribuição do grupo `dev` |
-| `.github/workflows/release.yml` | Push em `main` (merge de PR) | Bump SemVer + changelog + tag + builds de release + Firebase `stable` + GitHub Release |
+| `.github/workflows/release.yml` | Push em `main` (merge de PR) | Bump SemVer + changelog + tag + builds de release das 4 plataformas + Firebase `stable` + GitHub Release |
 | `.github/actions/setup-flutter/action.yml` | — (ação composta) | Instala o Flutter pinado no `.fvmrc` (com cache) e roda `flutter pub get` |
 
 ### Jobs do CI (`ci.yml`)
@@ -31,6 +31,7 @@
 | `build-android` | APK release (assinado quando há secrets); push em `dev` distribui ao grupo `dev` do Firebase | Gradle + `firebase-tools` |
 | `build-windows` | Bundle Windows + runtime MSVC app-local, zipado como artefato; roda em push na `dev` e PR para `main` | `flutter build windows` |
 | `build-linux` | Bundle Linux + `.deb` (`~dev.N`/`~pr.N`) como artefato; mesmo gating do `build-windows` | `flutter build linux` + `tool/deb/build_deb.sh` |
+| `build-macos` | `Decima.app` universal + zip do `ditto` (`-dev.N`/`-pr.N`) como artefato; mesmo gating do `build-windows` | `flutter build macos` + `tool/macos/build_zip.sh` |
 
 - Builds dev usam `--build-name=<versão>-dev.<run>`; o `versionCode` de **todo** APK do CI (dev e stable) é `minutos desde a epoch Unix` — sequência monotônica única entre branches, sem downgrade ao alternar canal (teto do Android: 2,1 bi; esgota só no ano ~5960)
 - PRs de fork rodam **sem secrets**: assinatura cai na chave de debug e nenhuma distribuição acontece (só ocorre em `push`, que fork não dispara)
@@ -43,7 +44,8 @@
 | `release-android` | APK assinado, renomeado `decima-<semver>-android.apk`, distribuído ao grupo `stable` com notas do `CHANGELOG.md` |
 | `release-windows` | `flutter build windows --release` + runtime MSVC + instalador Inno Setup (`tool/installer/decima.iss`) + `.sha256` |
 | `release-linux` | `flutter build linux --release` + `tool/deb/build_deb.sh --skip-build` → `decima-<semver>-linux-amd64.deb` + `.sha256` |
-| `publish-release` | GitHub Release `vX.Y.Z` com APK, instalador Windows, `.deb` Linux e notas da seção do changelog |
+| `release-macos` | `flutter build macos --release` + `tool/macos/build_zip.sh --skip-build` → `decima-<semver>-macos.zip` + `.sha256` (assinatura ad-hoc verificada antes de compactar) |
+| `publish-release` | GitHub Release `vX.Y.Z` com APK, instalador Windows, `.deb` Linux, zip do macOS e notas da seção do changelog |
 
 ## Motor de Versionamento (`tool/bump_version.dart`)
 
@@ -86,11 +88,11 @@ Portado do hook `pre-push` (decisões D5/D6) dos projetos `runway`/`verbum`/`dos
 
 | Vetor (OWASP CI/CD) | Mitigação aplicada |
 |---|---|
-| CICD-SEC-1 (fluxo insuficiente) | `main` só recebe código via PR com 6 checks obrigatórios; force-push e deleção bloqueados nas duas branches |
+| CICD-SEC-1 (fluxo insuficiente) | `main` só recebe código via PR com 7 checks obrigatórios; force-push e deleção bloqueados nas duas branches |
 | CICD-SEC-4 (execução de código de terceiros — PR de fork) | Evento `pull_request` (nunca `pull_request_target`): fork roda sem secrets; distribuição e assinatura só em `push`, que fork não dispara |
 | CICD-SEC-5 (permissões excessivas) | `permissions: contents: read` no CI; `write` apenas no release; deploy key restrita a este repositório |
 | CICD-SEC-6 (higiene de credenciais) | Keystore/SA/deploy key só em GitHub Secrets (write-only); materializados em `$RUNNER_TEMP`, nunca no workspace versionado; `key.properties` e keystores git-ignorados |
-| CICD-SEC-8 (integridade de artefatos) | Instalador Windows e `.deb` Linux publicados com `.sha256`; APK assinado com keystore dedicado |
+| CICD-SEC-8 (integridade de artefatos) | Instalador Windows, `.deb` Linux e zip do macOS publicados com `.sha256`; APK assinado com keystore dedicado; `.app` com assinatura ad-hoc verificada (`codesign --verify`) antes de compactar |
 | Supply chain de actions | Apenas actions oficiais (`actions/*`, `subosito/flutter-action`) e `firebase-tools` pinado no major; sem actions de terceiros para deploy |
 
 - **Nunca** logar conteúdo de secrets nos steps (o GitHub mascara, mas transformações como base64 vazam)
@@ -103,7 +105,7 @@ Portado do hook `pre-push` (decisões D5/D6) dos projetos `runway`/`verbum`/`dos
 | `/.github/` estava no `.gitignore` | Workflows nunca chegariam ao GitHub | Linha removida na adoção do CI — não recolocar |
 | `VersionInfoVersion` do Inno exige versão numérica | `-dev.N` quebraria o ISCC | Build dev do Windows sai como `.zip`; instalador só no release |
 | Push com `GITHUB_TOKEN` não redispara workflows | Release via token não validaria/encadearia nada | Push do release usa a deploy key `RELEASE_DEPLOY_KEY` (redispara e cai no `NOOP`) |
-| Job pulado por `if:` conta como aprovado nos required checks | `build-windows`/`build-linux` não rodam em PR para `dev` sem bloquear merge | Comportamento intencional — não converter em `paths:` (workflow não reportado bloqueia PR para sempre) |
+| Job pulado por `if:` conta como aprovado nos required checks | `build-windows`/`build-linux`/`build-macos` não rodam em PR para `dev` sem bloquear merge | Comportamento intencional — não converter em `paths:` (workflow não reportado bloqueia PR para sempre) |
 | Versão Debian não aceita `-dev.N` | `dpkg` rejeitaria o pacote dev com a mesma convenção do zip do Windows | Builds do CI usam `~dev.N`/`~pr.N` — o `~` ainda ordena antes da versão final |
 | `sqflite_common_ffi` abre `libsqlite3.so` | Testes quebram em runner Linux puro | Job `test` instala `libsqlite3-dev` via apt |
 | `MIN_COVERAGE` (85%) vs. baseline 88,4% | Gate reprova se a cobertura cair | Ajustar o valor apenas conscientemente, nunca para "passar" |
@@ -115,3 +117,7 @@ Portado do hook `pre-push` (decisões D5/D6) dos projetos `runway`/`verbum`/`dos
 | Commit do release é do bot (`github-actions[bot]`) | `git pull` necessário na `dev` após release para receber `chore(release)` | Após merge na `main`: `git checkout dev && git merge main` (ou rebase) |
 | Branch padrão é a `main`, mas o trabalho é na `dev` | Clone novo cai na `main`; PR aberto pela UI/`gh` já vem com `base: main` | `git switch dev` após clonar; conferir a base ao abrir PR de feature (`gh pr create --base dev`) |
 | Badge de CI aponta para `?branch=dev` | `ci.yml` não roda em push na `main` — badge apontando para `main` ficaria "no status" | Manter o `?branch=dev` no `README.md` mesmo com a `main` como default |
+| `upload-artifact` não preserva permissões nem symlinks | Subir o `Decima.app` cru entregaria um bundle inexecutável (assinatura ad-hoc quebrada) | O job compacta com `ditto -c -k --keepParent` **antes** do upload; o artefato do Actions é um zip com o zip do `ditto` dentro |
+| Runner `macos-latest` é arm64 | Um build acidentalmente só-arm64 deixaria Macs Intel de fora | `ARCHS_STANDARD` do template mantém o binário universal (x86_64 + arm64) — conferir com `lipo -archs` ao mexer no `project.pbxproj` |
+| Nenhum secret Apple no CI | Não há Developer ID nem notarização (conta paga fora do escopo) | O `.app` sai com assinatura ad-hoc e o usuário libera pelo Gatekeeper — fluxo em `empacotamento-macos.md` |
+| CocoaPods fora do projeto macOS | Um `pod install` acidental reintroduz integração dupla e quebra o build do CI | Plugins são Swift Packages (SwiftPM ligado por padrão no stable do Flutter do `.fvmrc`) — não recriar `Podfile` |
