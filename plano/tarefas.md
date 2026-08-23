@@ -864,30 +864,13 @@ Do checklist original:
 
 ---
 
-## Etapa 17 — Suporte a iOS
+## Etapa 17 — Suporte a iOS *(removida do escopo)*
 
-### Habilitação da plataforma
+Sem Apple Developer Program pago não há caminho de distribuição para iOS. Etapa cancelada — justificativa completa em `plano.md`.
 
-- [ ] Rodar `flutter create --platforms=ios .`
-- [ ] Configurar `ios/Runner/Info.plist` (nome, orientações apenas portrait, status bar style)
-
-### Identidade visual
-
-- [ ] Conferir que ícones e splash da Etapa 12 cobrem iOS
-- [ ] Validar `LaunchScreen.storyboard` integrado ao splash gerado
-
-### Ajustes específicos
-
-- [ ] Confirmar funcionamento de `sqflite` e `shared_preferences` no iOS
-- [ ] Validar teclado físico (Etapa 13) em iPad com Magic/Smart Keyboard
-- [ ] Conferir safe area (notch / Dynamic Island)
-
-### Validação
-
-- [ ] `flutter build ios --no-codesign` — sucesso
-- [ ] `flutter test` — 100% verde (regressão)
-- [ ] `flutter analyze` — zero warnings
-- [ ] Verificação manual: app roda no simulador iOS com paridade visual ao Android
+- [x] Remover `ios/` do repositório
+- [x] Desabilitar iOS em `flutter_launcher_icons.yaml` e `flutter_native_splash.yaml`
+- [x] Manter os `case TargetPlatform.iOS:` do `PlatformInfo` e seus testes (enum do Flutter, `switch` exaustivo)
 
 ---
 
@@ -918,7 +901,7 @@ Do checklist original:
 - [ ] Verificar interação entre cursor editável, parênteses inteligentes e porcentagem literal
 - [ ] Testar fluxo: operação completa via teclado físico em desktop e mobile com teclado externo
 - [ ] Verificar que o logo e o splash aparecem corretamente em todas as plataformas
-- [ ] Verificar paridade visual entre Android, iOS, Windows, Linux e macOS
+- [ ] Verificar paridade visual entre Android, Windows, Linux e macOS
 
 ### Qualidade
 

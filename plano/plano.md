@@ -2,7 +2,7 @@
 
 ## Resumo
 
-O projeto está dividido em **18 etapas** sequenciais. As **etapas 1-4** cobrem toda a lógica de negócio, dados e infraestrutura (sem UI). As **etapas 5-8** cobrem a UI da calculadora e ajustes de comportamento (porcentagem, fila de toques e parênteses + delete). A **etapa 9** cobre as demais telas (histórico e configurações) e integração de navegação. A **etapa 10** adiciona suporte a copiar e colar via menu de contexto. A **etapa 11** introduz o cursor editável no display. A **etapa 12** substitui o icônico/splash padrão do Flutter pelo logo próprio do Decima. A **etapa 13** habilita operação por teclado físico. As **etapas 14-17** habilitam o suporte multi-plataforma (Windows, Linux, macOS, iOS), com janela fixa e title bar customizada nas plataformas desktop. A **etapa 18** é a revisão final, cobrindo polimento de animações, fluxos completos (incluindo clipboard, cursor, teclado físico e title bar) e qualidade geral em todas as plataformas. Cada etapa cabe na janela de contexto de 172k tokens. Todas seguem o fluxo TDD obrigatório (Red → Green → Refactor).
+O projeto está dividido em **17 etapas** sequenciais, numeradas até 18 — a **etapa 17 (iOS) foi removida do escopo** e a numeração das demais foi preservada. As **etapas 1-4** cobrem toda a lógica de negócio, dados e infraestrutura (sem UI). As **etapas 5-8** cobrem a UI da calculadora e ajustes de comportamento (porcentagem, fila de toques e parênteses + delete). A **etapa 9** cobre as demais telas (histórico e configurações) e integração de navegação. A **etapa 10** adiciona suporte a copiar e colar via menu de contexto. A **etapa 11** introduz o cursor editável no display. A **etapa 12** substitui o icônico/splash padrão do Flutter pelo logo próprio do Decima. A **etapa 13** habilita operação por teclado físico. As **etapas 14-16** habilitam o suporte multi-plataforma (Windows, Linux, macOS), com janela fixa e title bar customizada nas plataformas desktop. A **etapa 18** é a revisão final, cobrindo polimento de animações, fluxos completos (incluindo clipboard, cursor, teclado físico e title bar) e qualidade geral em todas as plataformas. Cada etapa cabe na janela de contexto de 172k tokens. Todas seguem o fluxo TDD obrigatório (Red → Green → Refactor).
 
 ---
 
@@ -776,35 +776,17 @@ O projeto está dividido em **18 etapas** sequenciais. As **etapas 1-4** cobrem 
 
 ---
 
-## Etapa 17 — Suporte a iOS
+## Etapa 17 — Suporte a iOS *(removida do escopo)*
 
-**Objetivo**: Habilitar o build para iOS. Como é uma plataforma mobile, **não há title bar customizada nem janela fixa** — o app segue o comportamento padrão fullscreen do iOS, apenas garantindo paridade visual com Android.
+**Motivo**: sem uma assinatura do Apple Developer Program (US$ 99/ano) não existe **nenhum** caminho de distribuição para iOS — não há TestFlight nem App Store, e um build assinado com Apple ID gratuito expira em 7 dias até no próprio dispositivo. A etapa entregaria apenas um `flutter build ios --no-codesign` verde: uma pasta `ios/` que quebra a cada bump de dependência e que ninguém consegue instalar.
 
-**Escopo**:
+O macOS foi mantido justamente porque a assimetria não se aplica a ele — a assinatura ad-hoc (`CODE_SIGN_IDENTITY = "-"`, default do template) produz um `.app` distribuível, com atrito de Gatekeeper mas instalável.
 
-- **Habilitação da plataforma**:
-  - Rodar `flutter create --platforms=ios .` para gerar o runner
-  - Configurar `ios/Runner/Info.plist`: nome do app, orientações suportadas (apenas portrait, alinhado ao Android), status bar style
-- **Identidade visual**:
-  - Confirmar que ícones e splash gerados na Etapa 12 cobrem iOS
-  - Configurar `LaunchScreen.storyboard` para integrar com o splash gerado (`flutter_native_splash` cuida na maioria dos casos)
-- **Ajustes específicos**:
-  - Garantir que `sqflite` e `shared_preferences` funcionam no iOS (pacotes já suportam)
-  - Conferir teclado físico (Etapa 13) em iPad com Magic Keyboard / Smart Keyboard
-  - Conferir comportamento de safe area (notch / Dynamic Island)
-  - Validar haptic feedback (opcional) coerente com Android
-- **Limitações**:
-  - Sem suporte oficial a iPadOS multitasking com janela fixa nesta etapa (fora de escopo)
+**Removido**: pasta `ios/` (52 arquivos versionados), `ios: true` + `remove_alpha_ios` do `flutter_launcher_icons.yaml`, `ios: true` + `ios_content_mode` do `flutter_native_splash.yaml`.
 
-**Testes**:
+**Preservado**: os `case TargetPlatform.iOS:` em `PlatformInfo` e os testes que os cobrem — o enum é do Flutter e o `switch` precisa continuar exaustivo, independente das plataformas suportadas.
 
-- Verificação manual: app roda no simulador iOS com layout idêntico ao Android
-- Verificação manual: splash e ícone corretos no iOS
-- Verificação manual: teclado físico funciona em iPad
-- `flutter build ios --no-codesign` — sucesso (build sem assinatura para validar compilação)
-- Regressão: testes existentes continuam verdes
-
-**Entregável**: Decima rodando no iOS com paridade visual e funcional em relação ao Android.
+**Reversão**: `flutter create --platforms=ios .` regenera o runner em segundos caso a assinatura paga seja adquirida.
 
 ---
 
@@ -833,7 +815,7 @@ O projeto está dividido em **18 etapas** sequenciais. As **etapas 1-4** cobrem 
   - Verificar interação entre cursor editável, parênteses inteligentes e porcentagem literal
   - Fluxo: operação completa via teclado físico em desktop e mobile com teclado externo
   - Verificar que o logo e o splash aparecem corretamente em todas as plataformas
-  - Verificar paridade visual entre Android, iOS, Windows, Linux e macOS
+  - Verificar paridade visual entre Android, Windows, Linux e macOS
 - **Qualidade**:
   - `flutter analyze` — zero warnings
   - `flutter test` — 100% verde
@@ -853,7 +835,7 @@ O projeto está dividido em **18 etapas** sequenciais. As **etapas 1-4** cobrem 
 - Revisão e complementação de testes de widget para fluxos completos
 - Testes de integração dos fluxos principais (calculadora, histórico, configurações, clipboard, cursor, teclado físico)
 
-**Entregável**: App completo, polido, testado e pronto para uso em todas as plataformas suportadas (Android, iOS, Windows, Linux, macOS), com identidade visual própria, suporte a teclado físico e todas as features integradas e refinadas.
+**Entregável**: App completo, polido, testado e pronto para uso em todas as plataformas suportadas (Android, Windows, Linux, macOS), com identidade visual própria, suporte a teclado físico e todas as features integradas e refinadas.
 
 ---
 
@@ -920,9 +902,6 @@ Etapa 15 (Linux)
 Etapa 16 (macOS)
     │
     ▼
-Etapa 17 (iOS)
-    │
-    ▼
 Etapa 18 (Polimento e Revisão Final)
 ```
 
@@ -934,7 +913,7 @@ Etapa 18 (Polimento e Revisão Final)
 | **Interface Visual e Comportamento** | 5, 6, 7, 8, 9 |
 | **Funcionalidades extras** | 10, 11 |
 | **Identidade visual e entrada** | 12, 13 |
-| **Multi-plataforma** | 14, 14.1, 14.2, 15, 16, 17 |
+| **Multi-plataforma** | 14, 14.1, 14.2, 15, 15.1, 16 |
 | **Processo e infraestrutura** | 14.3 |
 | **Polimento Final** | 18 |
 
@@ -962,6 +941,6 @@ Etapa 18 (Polimento e Revisão Final)
 | 14.3 — CI/CD + fluxo de branches | Média | ~6 (workflows, motor, configs) | ~7 |
 | 15 — Linux | Baixa | ~0 (só nativo) | ~0 |
 | 16 — macOS | Baixa-Média | ~0-1 (ajuste do AppTitleBar) | ~1 |
-| 17 — iOS | Baixa | ~0 (só nativo) | ~0 |
+| ~~17 — iOS~~ | *removida do escopo* | — | — |
 | 18 — Polimento e Revisão Final | Baixa | ~2 | ~4 |
 | **Total** | | **~70-80** | **~115** |

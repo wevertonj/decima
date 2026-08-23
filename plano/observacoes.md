@@ -39,14 +39,14 @@ Cada etapa foi dimensionada para caber confortavelmente na janela de contexto de
 - **Etapa 11** (Cursor editável) permite editar a expressão no meio
 - **Etapa 12** (Logo customizado) substitui o ícone/splash padrão do Flutter
 - **Etapa 13** (Teclado físico) habilita operação completa por teclado
-- **Etapas 14-17** (Multi-plataforma) habilitam Windows, Linux, macOS e iOS — desktop com janela fixa e title bar customizada
+- **Etapas 14-16** (Multi-plataforma) habilitam Windows, Linux e macOS — desktop com janela fixa e title bar customizada
 - **Etapa 18** (Polimento) é a revisão final cobrindo todos os fluxos e plataformas
 
 ### Divisão Lógica vs UI
 
 - **Etapas 1-4**: Toda a lógica de negócio, dados, ViewModels e infraestrutura — sem nenhuma UI
 - **Etapas 5-13**: Toda a interface visual, ajustes de comportamento, features extras e identidade
-- **Etapas 14-17**: Suporte multi-plataforma (desktop e iOS)
+- **Etapas 14-16**: Suporte multi-plataforma (desktop)
 - **Etapa 18**: Polimento e revisão final
 - Isso permite que toda a lógica seja testada unitariamente antes de qualquer widget ser criado
 
@@ -178,17 +178,16 @@ Cada etapa foi dimensionada para caber confortavelmente na janela de contexto de
 - Mecanismo replicado do projeto `verbum`: a preferência de tema é espelhada via `UiModeManager.setApplicationNightMode` (canal `com.wevasoft.decima/night_mode`), fazendo o **próprio Android** persistir qual variante de recurso (`values`/`values-night`) usar antes mesmo do processo do app começar
 - Não há correção "ao vivo" da splash já visível — o sync de cada boot/troca de tema só corrige a **próxima** abertura
 - Só tem efeito a partir da API 31 (Android 12); abaixo disso a splash sempre segue o dark mode do sistema, sem exceção
-- Quando o iOS for implementado (Etapa 17), não há API pública equivalente — aceitar que a splash do iOS sempre siga o sistema
 
-### Suporte multi-plataforma (Etapas 14–17)
+### Suporte multi-plataforma (Etapas 14–16)
 
 - Tamanho fixo da janela em desktop é decisão de UX (proporção mobile-like). Documentar bem.
 - `window_manager` é o pacote escolhido — alternativas (`bitsdojo_window`) ficam como fallback
 - macOS preserva semáforo nativo por convenção da plataforma; `AppTitleBar` adapta-se
 - Linux Wayland pode ter peculiaridades com `TitleBarStyle.hidden` — testar nos compositores principais (GNOME, KDE)
-- iOS é apenas mobile, sem janela fixa nem title bar customizada
 - Builds de release de desktop precisam validar inclusão correta dos assets de branding
-- Empacotamento (MSIX, AppImage, DMG, IPA) está fora do escopo destas etapas — apenas documentar
+- Empacotamento (MSIX, AppImage, DMG) está fora do escopo destas etapas — apenas documentar
+- iOS removido do escopo: sem Apple Developer Program pago não há caminho de distribuição — ver `plano.md`, Etapa 17
 
 ---
 

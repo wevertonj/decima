@@ -1653,3 +1653,37 @@ Novo `PlatformInfo.isLinux` para os dois desvios — mesmo padrão testável do 
 - Achado da validação: `hicolor-icon-theme` incluído no `Depends` — fornece o `/usr/share/icons/hicolor/index.theme` sem o qual o GTK não resolve os ícones instalados (presente na máquina do teste, mas não garantido em sistemas mínimos)
 - Workflows: YAML validado; `build-linux` verde nas duas primeiras execuções (push da `dev` e PR #3, ~1m20s cada)
 - **Release v0.8.0** (PR #3, merge com 6 checks verdes): primeiro release com artefato Linux — `decima-0.8.0-linux-amd64.deb` + `.sha256` publicados no GitHub Release ao lado do APK e do instalador Windows
+
+---
+
+## [Concluída] Remoção do suporte a iOS (Etapa 17 cancelada)
+
+**Origem**: levantamento sobre desenvolver para Apple sem conta paga. Conclusão: macOS e iOS têm caminhos opostos — o macOS distribui via assinatura ad-hoc (`CODE_SIGN_IDENTITY = "-"`, já default no template, com atrito de Gatekeeper), enquanto o iOS **não tem nenhum** caminho sem o Apple Developer Program (US$ 99/ano): sem TestFlight, sem App Store, e build com Apple ID gratuito expira em 7 dias até no próprio dispositivo. A Etapa 17 entregaria só um `flutter build ios --no-codesign` verde. Decisão: remover o iOS e manter o macOS (Etapa 16 segue pendente).
+
+### Removido
+
+- Pasta `ios/` — 52 arquivos versionados + 7 artefatos gerados (entre eles um `flutter_export_environment.sh` ainda apontando para o path antigo `flutter/wevacalc/`)
+- `flutter_launcher_icons.yaml` — `ios: true` e `remove_alpha_ios: true`; comentários de `image_path` ajustados
+- `flutter_native_splash.yaml` — `ios_content_mode`; chave `ios` fixada em `false`
+- `.gitignore` — `**/ios/Flutter/.last_build_id`
+
+### Gotcha — os dois pacotes têm defaults opostos para a chave `ios`
+
+| Pacote | Chave ausente | Ação tomada |
+|--------|---------------|-------------|
+| `flutter_launcher_icons` 0.14.4 | `this.ios = false` (`lib/config/config.dart:25`) | comentar a linha basta |
+| `flutter_native_splash` 2.4.8 | `!containsKey(ios) \|\| ios == true` (`lib/cli_commands.dart:194`) → **gera iOS** | `ios: false` **explícito** — apagar a linha reativaria a geração |
+
+### Preservado (intencional)
+
+- Os `case TargetPlatform.iOS:` em `PlatformInfo.isDesktop`/`isLinux` e os testes que os cobrem (`platform_info_test.dart`, `desktop_shell_test.dart`, `window_close_handler_test.dart`, `night_mode_service_test.dart`) — `TargetPlatform` é enum do Flutter e o `switch` precisa continuar exaustivo, independente das plataformas suportadas. **Nenhuma linha de código Dart foi alterada nesta remoção.**
+- Registros históricos das Etapas 12 e 14 que mencionam iOS no escopo original — o changelog é append-only
+
+### Reversão
+
+`flutter create --platforms=ios .` regenera o runner em segundos, caso a assinatura paga seja adquirida.
+
+### Validação
+
+- `flutter analyze` — zero warnings
+- `flutter test` — 100% verde (regressão intacta)

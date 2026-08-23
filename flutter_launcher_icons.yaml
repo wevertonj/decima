@@ -1,14 +1,12 @@
 # Ícone do launcher. Master vetor transparente em
 # `assets/icon/decima_icon_master.svg` (glifo "1.0" — barra + ponto decimal +
-# anel vazado); fontes de build em `assets/icon/` (full-bleed p/ iOS/legado +
+# anel vazado); fontes de build em `assets/icon/` (full-bleed p/ web/macOS +
 # camadas do adaptive icon). PNGs derivados via `tool/icon` (npm run render).
 # Regenerar com `dart run flutter_launcher_icons` — não editar os PNGs nativos.
 flutter_launcher_icons:
   # Android
   android: true
-  # iOS
-  ios: true
-  remove_alpha_ios: true
+  # iOS: plataforma removida do escopo do projeto — ver `plano/changelog.md`
   # Web
   web:
     generate: true
@@ -28,7 +26,7 @@ flutter_launcher_icons:
     generate: true
     image_path: assets/icon/decima_icon_fullbleed.png
 
-  # Imagem-fonte para Android e iOS (alta resolução, opaca, sem squircle —
+  # Imagem-fonte para Android (alta resolução, opaca, sem squircle —
   # a plataforma aplica a própria máscara)
   image_path: assets/icon/decima_icon_fullbleed.png
 
