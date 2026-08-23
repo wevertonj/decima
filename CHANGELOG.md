@@ -3,6 +3,16 @@
 Todas as mudanças notáveis deste projeto são documentadas aqui.
 O formato segue [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/) e o projeto adere ao [Versionamento Semântico](https://semver.org/lang/pt-BR/).
 
+## [0.7.0] - 2026-08-23
+
+### ✨ Novidades
+- **Desktop:**
+  - Add Linux support with GTK runner and desktop entry
+  - Open context menus with a right click
+
+### ⚙️ Correções
+- **Desktop:** Set the Linux window icon in the GTK runner
+
 ## [0.6.0] - 2026-08-22
 
 ### ✨ Novidades
@@ -16,3 +26,4 @@ O formato segue [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/) e o 
 
 ### ⚙️ Correções
 - **Icon:** Round Windows app icon corners to match brand squircle
+
