@@ -914,7 +914,7 @@ Sem Apple Developer Program pago não há caminho de distribuição para iOS. Et
 
 ## Etapa 18 — Polimento, Integração e Revisão Final
 
-> Revisão de 2026-08-23: todo o escopo já tinha sido entregue e validado nas Etapas 5–16.1 — cada `[x]` abaixo aponta a etapa de origem, e os quatro itens que restavam foram confirmados pelo usuário na própria revisão. Sobrou um bug novo, encontrado ao revalidar o teclado físico no Android: a moldura verde de foco do sistema.
+> Revisão de 2026-08-23: **etapa concluída**. Todo o escopo já tinha sido entregue e validado nas Etapas 5–16.1 — cada `[x]` abaixo aponta a etapa de origem — e os quatro itens que restavam foram confirmados pelo usuário na própria revisão. O único bug novo (moldura verde de foco do sistema com teclado físico no Android) foi corrigido e validado no APK do release v0.9.1.
 
 ### Animações e Transições
 
@@ -941,7 +941,7 @@ Sem Apple Developer Program pago não há caminho de distribuição para iOS. Et
 - [x] Verificar interação entre cursor editável, parênteses inteligentes e porcentagem literal — fix "Etapa 13 — Parênteses no modo de edição"
 - [x] Testar fluxo: operação completa via teclado físico em desktop — validado pelo usuário no Windows (pendência da Etapa 13 resolvida na Etapa 14), incluindo `Ctrl+C`/`Ctrl+V`
 - [x] Testar o mesmo fluxo em mobile com teclado externo — **validado pelo usuário**: operação completa correta no Android
-- [ ] Moldura verde de foco no Android com teclado físico — realce padrão do sistema sobre a `FlutterView`; corrigido em `MainActivity.onStart()` (`defaultFocusHighlightEnabled = false`), *pendente de verificação no device*
+- [x] Moldura verde de foco no Android com teclado físico — realce padrão do sistema sobre a `FlutterView`; corrigido em `MainActivity.onStart()` (`defaultFocusHighlightEnabled = false`) e **validado pelo usuário** no APK do release v0.9.1
 - [x] Verificar que o logo e o splash aparecem corretamente em todas as plataformas — ícone Android/adaptive e splash theme-aware (Etapa 12), `.ico` arredondado no Windows (Etapa 14.1), tema `hicolor` + `.desktop` no Linux (fix da Etapa 15), squircle do Dock no macOS (ajuste da Etapa 16). Splash nativa só existe no Android — desktop abre direto no primeiro frame
 - [x] Verificar paridade visual entre Android, Windows, Linux e macOS — cada plataforma validada visualmente na sua etapa, com a mesma árvore de widgets; a única divergência é deliberada (title bar customizada com botões no Windows/Linux, logo centralizado e semáforo nativo no macOS)
 - [x] Comparação visual das quatro plataformas — **validada pelo usuário** durante o desenvolvimento de cada uma; a ressalva do Linux é o ambiente (WSLg, sem instalação nativa em distro real), não a aparência
@@ -963,4 +963,4 @@ Sem Apple Developer Program pago não há caminho de distribuição para iOS. Et
 - [x] Documentar comportamento de copiar/colar e cursor editável em `docs/features/calculadora.md` — seções "Copiar e Colar" e "Cursor Editável" (Etapas 10, 11 e 13)
 - [x] Documentar atalhos de teclado em `docs/features/calculadora.md` — seção "Atalhos de Teclado" (Etapa 13)
 - [x] Documentar infra de desktop (`AppTitleBar`, `DesktopShell`, `DesktopWindowConfig`) em `docs/fundacao/arquitetura.md` — seção "Infra de Desktop" (Etapas 14–16)
-- [ ] Atualizar changelog *(ao fechar a etapa)*
+- [x] Atualizar changelog — entrada `[Concluída] Etapa 18` com as decisões da revisão, os achados e o estado final

@@ -1865,6 +1865,34 @@ Medição por script (`PostMessage WM_CLOSE` → janela invisível): **155 ms**.
 
 **Arquivo**: `android/app/src/main/kotlin/com/wevasoft/decima/MainActivity.kt`
 
-**Validação**: `flutter build apk --debug` — sucesso (compila o Kotlin novo); `flutter analyze` zero issues e 715 testes verdes (nenhum código Dart alterado). **Verificação no device com teclado físico pendente do usuário.**
+**Validação**: `flutter build apk --debug` — sucesso (compila o Kotlin novo); `flutter analyze` zero issues e 715 testes verdes (nenhum código Dart alterado). Teclado físico no Android conferido pelo usuário no APK do release **v0.9.1** — moldura ausente, operação da calculadora intacta.
 
 **Documentação**: `docs/features/calculadora.md` — bullet em "Feedback visual e foco" e gotcha novo
+
+---
+
+## [Concluída] Etapa 18 — Polimento, Integração e Revisão Final
+
+**Natureza da etapa**: revisão, não implementação. A checagem item a item mostrou que o escopo já tinha sido entregue e validado ao longo das Etapas 5–16.1 — cada item de `plano/tarefas.md` aponta a etapa que o validou. Nenhum fluxo precisou ser reimplementado.
+
+### Confirmado na revisão (decisões do usuário)
+
+| Item | Decisão |
+|------|---------|
+| Transição de página (Calculator ↔ History ↔ Settings) | A transição default do `MaterialPageRoute` fica como está — sem rota customizada |
+| Troca de tema | O cross-fade de 200 ms do `AnimatedTheme` interno do `MaterialApp` basta — sem duração/curva próprias |
+| Teclado externo em mobile | Opera a calculadora corretamente no Android |
+| Paridade visual entre plataformas | Conferida no desenvolvimento de cada uma; o Linux só não foi visto em instalação nativa (apenas WSLg) |
+
+### Achados da revisão
+
+- `AnimatedSwitcher` no display: **não existe e não faz falta** — a timeline usa entrada por linha (`AnimationController` 350 ms `easeOutCubic`), animação por caractere (250 ms `easeOutBack`), `AnimatedOpacity` na prévia e autoscroll (300 ms `easeOutQuart`)
+- Zero `print()` em `lib/` e `tool/`; zero `Text('...')` literal (tudo por `context.l10n.*`); os três ViewModels importam só `package:flutter/foundation.dart`
+- Layout hardcoded: `AppLayout` cobre 13 arquivos; sobraram 3 espaçadores inline de 4–6 px (`language_selector`, `theme_mode_selector`, `history_page`), colados ao ícone que acompanham — mantidos de propósito
+- Um bug novo, encontrado ao revalidar o teclado físico: a moldura verde de foco do Android (registrada acima, corrigida e validada no v0.9.1)
+
+### Estado final
+
+- `flutter analyze` — zero issues; `flutter test` — 715 testes, 100% verde
+- Builds de release nas quatro plataformas publicados no GitHub Release (APK, instalador Inno, `.deb`, zip macOS + `.sha256`)
+- Documentação fechada: copiar/colar, cursor editável e atalhos de teclado em `docs/features/calculadora.md`; infra de desktop em `docs/fundacao/arquitetura.md`
