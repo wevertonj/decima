@@ -98,6 +98,6 @@ A UI nunca acessa o banco diretamente.
   - Resultado (`= valor`)
   - Data/hora inteligente: hora (hoje), "Yesterday, HH:mm" (ontem), "DD/MM/YYYY, HH:mm" (outros)
 - Favorito: `IconButton` com `AnimatedSwitcher` + `ScaleTransition` (200ms) entre `star_outline_rounded` e `star_rounded`
-- Long press abre `AlertDialog` para renomear (campo de texto, submit via teclado ou botão)
+- Long press (`InkWell.onLongPress`) ou clique com o botão direito (`GestureDetector.onSecondaryTap` envolvendo o `InkWell`, que só reconhece o botão primário) abre `AlertDialog` para renomear (campo de texto, submit via teclado ou botão)
 - Botão de limpar (🗑) na AppBar com `AlertDialog` de confirmação (Cancel/Delete)
 - Animação staggered de entrada: cada item anima com slide + fade (300ms, `Curves.easeOutCubic`) com delay progressivo (40ms × index, max 10)

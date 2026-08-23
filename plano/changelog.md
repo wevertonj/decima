@@ -1578,3 +1578,29 @@ Novo `PlatformInfo.isLinux` para os dois desvios — mesmo padrão testável do 
 | X11, tema instalado | Presente (32² em diante, do tema) | Ícone do Decima (o WSLg compõe um selo do Tux por cima — comportamento dele) |
 | X11, tema removido | Presente (48/128/256, do bundle) | Ícone do Decima, idem |
 | Wayland | N/A (propriedade é do X11) | Tux — limitação do WSLg |
+
+---
+
+## [Ajuste] UX de desktop — menu de contexto no clique direito
+
+**Motivação (reportada no uso real)**: no desktop, abrir o menu de contexto exigia manter o botão esquerdo pressionado (toque longo). O gesto natural com mouse é o clique com o botão direito.
+
+**Mudança**: o botão secundário passa a abrir os mesmos menus que o toque longo, sem substituí-lo — dispositivos híbridos (Windows/Linux com tela sensível ao toque) respondem aos dois gestos, e nenhum é condicionado à plataforma.
+
+| Tela | Gesto adicionado | Handler | Abre |
+|------|------------------|---------|------|
+| Calculadora (display) | Clique direito | `onSecondaryTapUp` no `GestureDetector` existente | `CalculatorContextMenu` (copiar cálculo/resultado/histórico, colar) |
+| Histórico (item) | Clique direito | `GestureDetector.onSecondaryTap` envolvendo o `InkWell` | `AlertDialog` de renomear |
+
+**Implementação**:
+
+- `lib/ui/calculator/calculator_page.dart` — `_openContextMenu(viewModel, position)` extraído; `onLongPressStart` e `onSecondaryTapUp` apontam para ele com `details.globalPosition`, mantendo a âncora do menu no ponteiro
+- `lib/ui/history/widgets/history_list_item.dart` — `GestureDetector(onSecondaryTap:)` envolve o `InkWell` do `Card`, porque `InkWell` só reconhece o botão primário
+
+**Testes**:
+
+- `test/widget/calculator/calculator_context_menu_test.dart` — 2 testes novos (menu abre no clique direito; copiar pelo item selecionado nele)
+- `test/widget/history/history_page_test.dart` — 1 teste novo (dialog de renomear no clique direito)
+- **Total: 703 testes — 100% verde**; `flutter analyze` zero issues
+
+**Documentação**: `docs/features/calculadora.md` (tabela "Gestos de abertura" + 2 gotchas), `docs/features/historico.md`

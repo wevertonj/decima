@@ -1,3 +1,4 @@
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
@@ -381,6 +382,36 @@ void main() {
         verify(
           () => mockHistoryRepository.updateName(1, 'My Calculation'),
         ).called(1);
+      });
+
+      testWidgets('should show rename dialog on right click', (tester) async {
+        final entries = [
+          HistoryEntry(
+            id: 1,
+            lines: [HistoryLine(expression: '10.00 + 5.00', result: '15.00')],
+            result: '15.00',
+            createdAt: now,
+          ),
+        ];
+        when(
+          () => mockHistoryRepository.getPaginated(
+            limit: any(named: 'limit'),
+            offset: any(named: 'offset'),
+          ),
+        ).thenAnswer((_) async => entries);
+
+        await tester.pumpApp(HistoryPage(viewModel: viewModel));
+        await tester.pumpAndSettle();
+
+        await tester.tap(
+          find.byType(HistoryListItem),
+          buttons: kSecondaryButton,
+          kind: PointerDeviceKind.mouse,
+        );
+        await tester.pumpAndSettle();
+
+        expect(find.text('Rename'), findsOneWidget);
+        expect(find.text('Entry name'), findsOneWidget);
       });
     });
 
