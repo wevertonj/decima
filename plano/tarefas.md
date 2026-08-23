@@ -862,7 +862,7 @@ Do checklist original:
 - [x] `fvm flutter build macos --release` — sucesso (`decima.app` 49,1 MB, universal x86_64+arm64, assinatura ad-hoc)
 - [x] `flutter test` — 100% verde (709 testes)
 - [x] `flutter analyze` — zero warnings
-- [ ] Verificação manual: janela fixa com semáforo nativo, botão verde inativo — pendente de validação visual do usuário
+- [x] Verificação manual: janela fixa com semáforo nativo, botão verde inativo — **validada pelo usuário**
 
 ---
 

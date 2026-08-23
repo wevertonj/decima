@@ -1726,4 +1726,4 @@ Novo `PlatformInfo.isLinux` para os dois desvios — mesmo padrão testável do 
 - `fvm flutter build macos --release` — `decima.app` 49,1 MB, universal (x86_64 + arm64), `codesign` confirma `Signature=adhoc` e `AppIcon.icns` no bundle
 - `flutter test` — 709 testes, 100% verde
 - `flutter analyze` — zero warnings; `dart format` — 0 mudanças
-- Verificação manual (janela fixa, semáforo nativo, verde inativo) — **pendente do usuário**
+- Verificação manual (janela fixa, semáforo nativo, verde inativo) — **validada pelo usuário**
