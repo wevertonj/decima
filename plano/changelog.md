@@ -1847,3 +1847,24 @@ O desvio tem um eco: o plugin emite o evento `close` **antes** de consultar o `p
 | "Fechar janela" na barra de tarefas | Sim | `10 + 5` sem `=` → gravado no mesmo segundo do fechamento |
 
 Medição por script (`PostMessage WM_CLOSE` → janela invisível): **155 ms**. Nos três fechamentos manuais o processo sobreviveu à janela por 43–48 ms — é o desligamento do engine que antes acontecia com a janela ainda na tela.
+
+---
+
+## [Fix] Etapa 18 — Moldura verde de foco no Android com teclado físico
+
+**Problema (reportado na revisão da Etapa 18)**: com teclado físico no Android, a calculadora respondia corretamente, mas a **primeira tecla** acendia uma moldura verde na borda da tela, que permanecia durante toda a digitação.
+
+**Causa**: não é do app. A primeira tecla física tira a janela do *touch mode*; a partir daí o Android desenha o **realce de foco padrão** (`defaultFocusHighlight`) na view focada. A view focada é a `FlutterView`, que ocupa a tela inteira — o realce vira uma moldura na borda do app. O verde-lima é a cor do realce no One UI.
+
+**Correção**: `MainActivity.onStart()` chama `disableDefaultFocusHighlight(window.decorView)`, que percorre a hierarquia e desliga `defaultFocusHighlightEnabled` em cada view. Guard de API 26 dentro da própria função (o `minSdk` do projeto é 24; abaixo de 26 o framework não desenha o realce). O feedback de foco do app continua sendo o glow do botão equivalente no keypad, do `KeyFlashController` (Etapa 13).
+
+| Alternativa descartada | Motivo |
+|------------------------|--------|
+| `<item name="android:defaultFocusHighlightEnabled">false</item>` no tema | É atributo de `View`, não de janela: o tema da Activity não alcança a `FlutterView`, que é criada programaticamente (`defStyleAttr = 0`) |
+| `FlutterActivity.FLUTTER_VIEW_ID` direto | Depende de constante do embedding; percorrer o `decorView` cobre também as views que o engine adiciona ao redor |
+
+**Arquivo**: `android/app/src/main/kotlin/com/wevasoft/decima/MainActivity.kt`
+
+**Validação**: `flutter build apk --debug` — sucesso (compila o Kotlin novo); `flutter analyze` zero issues e 715 testes verdes (nenhum código Dart alterado). **Verificação no device com teclado físico pendente do usuário.**
+
+**Documentação**: `docs/features/calculadora.md` — bullet em "Feedback visual e foco" e gotcha novo
