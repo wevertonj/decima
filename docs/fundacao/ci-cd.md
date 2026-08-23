@@ -57,8 +57,8 @@ Portado do hook `pre-push` (decisões D5/D6) dos projetos `runway`/`verbum`/`dos
 | `BREAKING CHANGE` no corpo ou `tipo!:` | major | ⚠️ Mudanças importantes |
 | `feat:` | minor | ✨ Novidades |
 | `fix:` / `perf:` | patch | ⚙️ Correções / ⚡ Melhorias |
-| `revert:` ou descrição iniciando em `remov`/`delet`/`exclu` | — | 🗑️ Removido |
-| Só `chore`/`docs`/`refactor`/`style`/`test`/`ci`/`build` | `NOOP` | omitido |
+| `revert:` ou descrição iniciando em `remov`/`delet`/`exclu` **em tipo user-facing** (`feat`/`fix`/`perf`) | — | 🗑️ Removido |
+| Só `chore`/`docs`/`refactor`/`style`/`test`/`ci`/`build` | `NOOP` | omitido (tipo interno **nunca** entra no changelog, nem descrevendo remoção) |
 
 - Range analisado: última tag `v*` → `HEAD` (fallback: último `chore(release)` → histórico inteiro); merges ignorados
 - Decisão D6: o build number `+B` só sobe junto com bump SemVer — merge de `docs`/`chore` na `main` é `NOOP` e **não** publica nada

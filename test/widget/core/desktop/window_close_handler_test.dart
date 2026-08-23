@@ -18,6 +18,10 @@ class _FakeWindowCloseBridge implements WindowCloseBridge {
   Offset position = const Offset(1280, 240);
   final List<String> events = [];
 
+  /// Simula o `destroy` falhando, para checar que a trava de reentrância
+  /// não deixa a janela impossível de fechar.
+  bool destroyThrows = false;
+
   @override
   void addListener(WindowListener listener) => this.listener = listener;
 
@@ -37,7 +41,10 @@ class _FakeWindowCloseBridge implements WindowCloseBridge {
   }
 
   @override
-  Future<void> destroy() async => events.add('destroy');
+  Future<void> destroy() async {
+    events.add('destroy');
+    if (destroyThrows) throw StateError('destroy failed');
+  }
 }
 
 void main() {
@@ -219,6 +226,74 @@ void main() {
 
       expect(bridge.getPositionCalls, 0);
       expect(events, ['flush', 'destroy']);
+    });
+
+    testWidgets('ignores close requests while the flush is in flight', (
+      tester,
+    ) async {
+      final flush = Completer<void>();
+      await pumpHandlerOn(
+        tester,
+        TargetPlatform.windows,
+        onFlush: () {
+          events.add('flush');
+
+          return flush.future;
+        },
+      );
+
+      bridge.listener!.onWindowClose();
+      bridge.listener!.onWindowClose();
+      await tester.pump();
+
+      flush.complete();
+      await tester.pump();
+
+      // Um clique repetido no `X` durante as gravações não pode disparar
+      // um segundo flush.
+      expect(events, ['flush', 'destroy']);
+    });
+
+    testWidgets('ignores the close event echoed by the destroy itself', (
+      tester,
+    ) async {
+      await pumpHandlerOn(
+        tester,
+        TargetPlatform.windows,
+        onFlush: () async => events.add('flush'),
+      );
+
+      bridge.listener!.onWindowClose();
+      await tester.pump();
+
+      // No Windows o `destroy` manda um `close()` real, e o plugin reemite
+      // o evento antes de consultar o `preventClose`.
+      bridge.listener!.onWindowClose();
+      await tester.pump();
+
+      expect(events, ['flush', 'destroy']);
+    });
+
+    testWidgets('accepts a new close request when destroying fails', (
+      tester,
+    ) async {
+      bridge.destroyThrows = true;
+      await pumpHandlerOn(
+        tester,
+        TargetPlatform.windows,
+        onFlush: () async => events.add('flush'),
+      );
+
+      bridge.listener!.onWindowClose();
+      await tester.pump();
+
+      expect(events, ['flush', 'destroy']);
+
+      bridge.destroyThrows = false;
+      bridge.listener!.onWindowClose();
+      await tester.pump();
+
+      expect(events, ['flush', 'destroy', 'flush', 'destroy']);
     });
 
     testWidgets('unregisters the listener when disposed', (tester) async {

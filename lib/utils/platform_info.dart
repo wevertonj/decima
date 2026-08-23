@@ -36,6 +36,16 @@ class PlatformInfo {
     return defaultTargetPlatform == TargetPlatform.linux;
   }
 
+  /// True quando rodando em Windows.
+  ///
+  /// Existe porque `windowManager.destroy()` no Windows é apenas
+  /// `PostQuitMessage(0)` — ver `WindowManagerCloseBridge.destroy`.
+  static bool get isWindows {
+    if (kIsWeb) return false;
+
+    return defaultTargetPlatform == TargetPlatform.windows;
+  }
+
   /// True quando rodando em macOS.
   ///
   /// Existe porque a `AppTitleBar` muda de forma no macOS: o semáforo

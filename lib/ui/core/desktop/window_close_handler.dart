@@ -21,7 +21,7 @@ abstract class WindowCloseBridge {
   /// Canto superior esquerdo da janela, em pixels lógicos.
   Future<Offset> getPosition();
 
-  /// Fecha a janela ignorando o `preventClose`.
+  /// Encerra a janela imediatamente, ignorando o `preventClose`.
   Future<void> destroy();
 }
 
@@ -44,8 +44,26 @@ class WindowManagerCloseBridge implements WindowCloseBridge {
   @override
   Future<Offset> getPosition() => windowManager.getPosition();
 
+  /// No Windows, `windowManager.destroy()` é apenas `PostQuitMessage(0)`:
+  /// enfileira `WM_QUIT` e **não** destrói a janela, que fica na tela os
+  /// segundos que o engine leva para desligar — o app parece travado depois
+  /// do clique no `X`. Desligar o `preventClose` e mandar um `close()` real
+  /// faz o novo `WM_CLOSE` chegar ao `DefWindowProc`, que chama
+  /// `DestroyWindow` e some com a janela na hora.
+  ///
+  /// Linux e macOS não precisam do desvio: lá `destroy()` já é
+  /// `gtk_window_close` e `NSApp.terminate`, que fecham a janela na hora.
   @override
-  Future<void> destroy() => windowManager.destroy();
+  Future<void> destroy() async {
+    if (!PlatformInfo.isWindows) {
+      await windowManager.destroy();
+
+      return;
+    }
+
+    await windowManager.setPreventClose(false);
+    await windowManager.close();
+  }
 }
 
 /// Intercepta o fechamento da janela em desktop para gravar a sessão e a
@@ -96,6 +114,15 @@ class _WindowCloseHandlerState extends State<WindowCloseHandler>
   /// Não-null apenas em desktop — é o que marca o handler como ativo.
   WindowCloseBridge? _bridge;
 
+  /// True do primeiro [onWindowClose] aceito até a janela ser destruída.
+  ///
+  /// No Windows a destruição passa por um `close()` real, que gera um novo
+  /// `WM_CLOSE`; o plugin emite o evento antes de consultar o `preventClose`,
+  /// então o pedido volta como [onWindowClose] no meio do próprio
+  /// fechamento. Também absorve cliques repetidos no `X` enquanto as
+  /// gravações rodam, que de outra forma disparariam um flush por clique.
+  bool _closing = false;
+
   @override
   void initState() {
     super.initState();
@@ -115,6 +142,9 @@ class _WindowCloseHandlerState extends State<WindowCloseHandler>
 
   @override
   void onWindowClose() {
+    if (_closing) return;
+
+    _closing = true;
     unawaited(_flushAndDestroy());
   }
 
@@ -133,7 +163,13 @@ class _WindowCloseHandlerState extends State<WindowCloseHandler>
       // Falha ou timeout nas gravações não pode impedir o fechamento — o
       // `finally` destrói a janela de qualquer forma.
     } finally {
-      await bridge.destroy();
+      try {
+        await bridge.destroy();
+      } on Object {
+        // Destruir falhou: liberar a trava para que o próximo clique no `X`
+        // tente de novo, em vez de deixar a janela impossível de fechar.
+        _closing = false;
+      }
     }
   }
 

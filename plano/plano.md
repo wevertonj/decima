@@ -866,6 +866,10 @@ O macOS foi mantido justamente porque a assimetria não se aplica a ele — a as
 - Revisão e complementação de testes de widget para fluxos completos
 - Testes de integração dos fluxos principais (calculadora, histórico, configurações, clipboard, cursor, teclado físico)
 
+**Status (revisão de 2026-08-23)**: todo o escopo já havia sido entregue e validado nas Etapas 5–16.1 — a checagem item a item, com a etapa de origem de cada validação, está em `plano/tarefas.md`. Os quatro itens que restavam foram confirmados pelo usuário na própria revisão: a transição default do `MaterialPageRoute` e o cross-fade de tema do `MaterialApp` ficam como estão, o teclado externo no Android opera a calculadora corretamente e a paridade visual foi conferida em cada plataforma durante o desenvolvimento (o Linux só não foi visto em instalação nativa, apenas via WSLg).
+
+Pendência única: a moldura verde que o Android desenha na borda da tela ao primeiro toque no teclado físico — realce de foco do sistema sobre a `FlutterView`. Corrigido em `MainActivity.onStart()`, aguardando verificação no device.
+
 **Entregável**: App completo, polido, testado e pronto para uso em todas as plataformas suportadas (Android, Windows, Linux, macOS), com identidade visual própria, suporte a teclado físico e todas as features integradas e refinadas.
 
 ---

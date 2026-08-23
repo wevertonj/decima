@@ -1798,4 +1798,73 @@ Novo `PlatformInfo.isLinux` para os dois desvios — mesmo padrão testável do 
 
 - `flutter analyze` / `flutter test` / `dart format` — regressão intacta (etapa sem código Dart)
 - `bash -n tool/macos/build_zip.sh` — sintaxe ok; execução real só no runner macOS
-- CI `build-macos` e primeiro release com o zip publicado — **pendente do PR para a `main`**
+- CI `build-macos` verde no push da `dev` (4m49s) e no PR #4 para a `main` — 7 checks obrigatórios verdes
+- Release **v0.9.0**: `decima-0.9.0-macos.zip` (20,2 MB) + `.sha256` publicados junto do APK, do instalador Windows e do `.deb`
+- Zip conferido fora do runner: `sha256sum -c` OK, `Decima.app/` com 88 arquivos (49,0 MB) e `_CodeSignature` preservado, binário **universal** (x86_64 + arm64), `CFBundleShortVersionString = 0.9.0`
+- Abrir o zip do release em outro Mac (Gatekeeper) — **pendente de verificação do usuário**
+
+---
+
+## [Fix] Etapa 14.2 — Fechamento lento da janela no Windows
+
+**Problema (reportado no uso real)**: no Windows, clicar no `X` deixava a janela na tela por alguns segundos antes de ela sumir — regressão introduzida junto com o flush da sessão ao fechar (Etapa 14.2 A). Linux e macOS não apresentavam o atraso.
+
+**Causa**: `windowManager.destroy()` não tem a mesma semântica nos três desktops.
+
+| Plataforma | O que o plugin faz (`window_manager` 0.5.2) | Efeito na janela |
+|------------|---------------------------------------------|------------------|
+| Linux | `_is_prevent_close = false` + `gtk_window_close()` | Some na hora |
+| macOS | `NSApp.terminate(nil)` | Some na hora |
+| Windows | `PostQuitMessage(0)` | **Continua na tela** durante todo o desligamento do engine |
+
+No Windows, `PostQuitMessage(0)` apenas enfileira `WM_QUIT`: nenhuma janela é destruída. Antes do `setPreventClose(true)` o `WM_CLOSE` seguia para o `DefWindowProc`, que chama `DestroyWindow` — a janela sumia no ato e o encerramento do engine acontecia com ela já fora da tela. Com a interceptação, esse caminho deixou de existir e o custo de shutdown virou tempo de tela.
+
+**Correção**: `WindowManagerCloseBridge.destroy()` desvia só no Windows para `setPreventClose(false)` + `close()`. O novo `WM_CLOSE` chega ao `DefWindowProc` sem ser interceptado, `DestroyWindow` roda e o fechamento volta a ser instantâneo. Linux e macOS seguem no `destroy()` direto.
+
+O desvio tem um eco: o plugin emite o evento `close` **antes** de consultar o `preventClose`, então esse `close()` reentra no handler como um novo `onWindowClose`. Trava `_closing` no `_WindowCloseHandlerState` absorve o eco — e, de quebra, cliques repetidos no `X` enquanto as gravações rodam, que antes disparavam um flush por clique. A trava só é liberada se o próprio `destroy()` falhar, para o app nunca ficar impossível de fechar.
+
+**Arquivos**:
+
+| Arquivo | Mudança |
+|---------|---------|
+| `lib/ui/core/desktop/window_close_handler.dart` | Desvio de plataforma no `destroy()` da ponte real; trava `_closing`; `destroy()` do `finally` protegido por `try` |
+| `lib/utils/platform_info.dart` | `PlatformInfo.isWindows` |
+
+**Testes**:
+
+- `test/unit/ui/core/desktop/window_manager_close_bridge_test.dart` (novo) — 3 testes espionando o canal `window_manager`: Windows emite `setPreventClose(false)` + `close`; Linux e macOS emitem `destroy`
+- `test/widget/core/desktop/window_close_handler_test.dart` — 3 testes novos (clique repetido durante o flush, eco do `close` após o `destroy`, trava liberada quando o `destroy` falha)
+- **Total: 715 testes — 100% verde**; `flutter analyze` zero issues
+
+**Documentação**: `docs/fundacao/arquitetura.md` — subseção "`destroy()` por plataforma", 2 garantias novas na tabela do fechamento e 2 gotchas
+
+**Validação manual (Windows)** — build de release da cópia `decima-winbuild`, os três caminhos que chegam como `onWindowClose`:
+
+| Caminho | Janela some no ato | Flush |
+|---------|--------------------|-------|
+| `X` da title bar | Sim | `10 + 5` sem `=` → gravado no mesmo segundo do fechamento |
+| `Alt+F4` | Sim | `10 + 5` sem `=` → gravado no mesmo segundo do fechamento |
+| "Fechar janela" na barra de tarefas | Sim | `10 + 5` sem `=` → gravado no mesmo segundo do fechamento |
+
+Medição por script (`PostMessage WM_CLOSE` → janela invisível): **155 ms**. Nos três fechamentos manuais o processo sobreviveu à janela por 43–48 ms — é o desligamento do engine que antes acontecia com a janela ainda na tela.
+
+---
+
+## [Fix] Etapa 18 — Moldura verde de foco no Android com teclado físico
+
+**Problema (reportado na revisão da Etapa 18)**: com teclado físico no Android, a calculadora respondia corretamente, mas a **primeira tecla** acendia uma moldura verde na borda da tela, que permanecia durante toda a digitação.
+
+**Causa**: não é do app. A primeira tecla física tira a janela do *touch mode*; a partir daí o Android desenha o **realce de foco padrão** (`defaultFocusHighlight`) na view focada. A view focada é a `FlutterView`, que ocupa a tela inteira — o realce vira uma moldura na borda do app. O verde-lima é a cor do realce no One UI.
+
+**Correção**: `MainActivity.onStart()` chama `disableDefaultFocusHighlight(window.decorView)`, que percorre a hierarquia e desliga `defaultFocusHighlightEnabled` em cada view. Guard de API 26 dentro da própria função (o `minSdk` do projeto é 24; abaixo de 26 o framework não desenha o realce). O feedback de foco do app continua sendo o glow do botão equivalente no keypad, do `KeyFlashController` (Etapa 13).
+
+| Alternativa descartada | Motivo |
+|------------------------|--------|
+| `<item name="android:defaultFocusHighlightEnabled">false</item>` no tema | É atributo de `View`, não de janela: o tema da Activity não alcança a `FlutterView`, que é criada programaticamente (`defStyleAttr = 0`) |
+| `FlutterActivity.FLUTTER_VIEW_ID` direto | Depende de constante do embedding; percorrer o `decorView` cobre também as views que o engine adiciona ao redor |
+
+**Arquivo**: `android/app/src/main/kotlin/com/wevasoft/decima/MainActivity.kt`
+
+**Validação**: `flutter build apk --debug` — sucesso (compila o Kotlin novo); `flutter analyze` zero issues e 715 testes verdes (nenhum código Dart alterado). **Verificação no device com teclado físico pendente do usuário.**
+
+**Documentação**: `docs/features/calculadora.md` — bullet em "Feedback visual e foco" e gotcha novo

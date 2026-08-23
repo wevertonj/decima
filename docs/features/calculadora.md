@@ -262,6 +262,7 @@ O caractere é a fonte **primária** da camada 3 porque teclas como `%`, `*`, `(
 - O campo `sequence` do `KeyFlash` muda a cada acionamento para que a mesma tecla repetida reinicie a animação em vez de ser descartada por igualdade de valor
 - `KeyboardShortcutsHandler` envolve a `CalculatorPage` em `Focus(autofocus: true)`, então o app recebe teclas sem clique prévio
 - Eventos `KeyRepeatEvent` são aceitos: segurar `Backspace` apaga repetidamente
+- `MainActivity.onStart()` desliga o `defaultFocusHighlightEnabled` de toda a hierarquia de views no Android: sem isso, a primeira tecla física tira a janela do touch mode e o sistema desenha seu realce de foco na `FlutterView`, que ocupa a tela inteira (moldura verde no One UI)
 
 ## Segurança e Cibersegurança
 
@@ -283,6 +284,7 @@ O caractere é a fonte **primária** da camada 3 porque teclas como `%`, `*`, `(
 | `KeyEventSimulator` não simula `LogicalKeyboardKey.percent`/`parenthesisLeft` sem `physicalKey` explícito | Widget test lança assert no mapa de teclas da plataforma | Nos testes, enviar a tecla base com `character` (`sendKeyEvent(LogicalKeyboardKey.digit5, character: '%')`) |
 | `TextField` no mesmo subtree do handler | Digitar no campo dispararia a calculadora também (eventos sobem a cadeia de foco) | `_isTextEditingFocused()` procura `EditableTextState` acima do foco primário e devolve `KeyEventResult.ignored` |
 | `FocusNode` do `TextField` está no `Focus` interno do `EditableText` | Comparar `primaryFocus.context.widget is EditableText` nunca dá match | Usar `findAncestorStateOfType<EditableTextState>()` |
+| Android desenha o realce de foco padrão fora do touch mode | A primeira tecla física acende uma moldura na borda da tela (a `FlutterView` é a view focada e cobre tudo) | `disableDefaultFocusHighlight(window.decorView)` no `onStart` da `MainActivity` (API 26+; abaixo disso o framework não desenha o realce) |
 | `Focus(autofocus: true)` do handler concorre com outros `autofocus` no mesmo escopo | Em testes com `TextField(autofocus: true)` o handler ganha o foco | Dar foco ao campo explicitamente (tap/`requestFocus`) no teste; no app não há `TextField` na árvore da calculadora |
 | `AnimationController.value = 0` + `forward()` no glow por teclado | Sem `tapUp`, o LED ficaria aceso para sempre se só ligássemos o valor | `_onKeyFlash` acende e inicia o fade out no mesmo frame |
 | Rótulos dos botões duplicados entre keypad e handler | Divergência silenciosa quebra o feedback visual | Rótulos não numéricos são constantes em `CalculatorKeypad` (`clearLabel`, `percentLabel`, `parenthesisLabel`, `equalsLabel`, `doubleZeroLabel`, `tripleZeroLabel`) |

@@ -894,9 +894,10 @@ Do checklist original:
 ### Validação
 
 - [x] CI `build-macos` verde no push da `dev` — 4m49s; `Decima.app` 49,0 MB (assinatura ad-hoc verificada) → zip de 20 MB
-- [ ] CI `build-macos` verde no PR para `main`
-- [ ] Primeiro release com o zip publicado (`decima-<semver>-macos.zip` + `.sha256`)
-- [ ] Extrair o zip do release em outro Mac, liberar no Gatekeeper e abrir o app
+- [x] CI `build-macos` verde no PR para `main` (PR #4, 7 checks verdes)
+- [x] Primeiro release com o zip publicado — v0.9.0 (`decima-0.9.0-macos.zip` 20,2 MB + `.sha256` no GitHub Release)
+  - Conferido do lado de fora: `sha256sum -c` OK; zip com `Decima.app/` (88 arquivos, 49,0 MB) incluindo `_CodeSignature`; binário universal (x86_64 + arm64); `CFBundleShortVersionString = 0.9.0`
+- [ ] Extrair o zip do release em outro Mac, liberar no Gatekeeper e abrir o app *(pendente — exige o MacBook)*
 - [x] `flutter test` / `flutter analyze` / `dart format` — regressão intacta (sem código Dart novo)
 
 ---
@@ -913,48 +914,53 @@ Sem Apple Developer Program pago não há caminho de distribuição para iOS. Et
 
 ## Etapa 18 — Polimento, Integração e Revisão Final
 
+> Revisão de 2026-08-23: todo o escopo já tinha sido entregue e validado nas Etapas 5–16.1 — cada `[x]` abaixo aponta a etapa de origem, e os quatro itens que restavam foram confirmados pelo usuário na própria revisão. Sobrou um bug novo, encontrado ao revalidar o teclado físico no Android: a moldura verde de foco do sistema.
+
 ### Animações e Transições
 
-- [ ] Revisar animações de todos os botões (curvas, durações)
-- [ ] Implementar transição de página animada (Calculator ↔ History ↔ Settings)
-- [ ] Animação de troca de tema global suave (AnimatedTheme ou wrap)
-- [ ] Verificar AnimatedSwitcher no display da timeline
-- [ ] Refinar animação de abertura/fechamento do menu de contexto (Etapa 10)
-- [ ] Refinar animação de slide horizontal e blink do cursor editável (Etapa 11)
-- [ ] Refinar hover/press dos botões da `AppTitleBar` em desktop (Etapas 14–16)
+- [x] Revisar animações de todos os botões (curvas, durações) — `CalculatorButton` com glow LED (600 ms, `easeInCubic`) + flash de fundo (200/40 ms) e dim (`fastOutSlowIn`, 280 ms); revisado nas Etapas 5, 8 e 13
+- [x] Implementar transição de página animada (Calculator ↔ History ↔ Settings) — **validado pelo usuário**: a transição default do `MaterialPageRoute` já está no ponto; nenhuma rota customizada necessária
+- [x] Animação de troca de tema global suave — **validada pelo usuário**: o cross-fade de 200 ms do `AnimatedTheme` interno do `MaterialApp` já basta; sem duração/curva customizadas
+- [x] Verificar AnimatedSwitcher no display da timeline — verificado: o display não usa `AnimatedSwitcher`, e sim animação de entrada por linha (`AnimationController` 350 ms, `easeOutCubic`), animação por caractere (250 ms `easeOutBack`), `AnimatedOpacity` da prévia e autoscroll (300 ms, `easeOutQuart`) — Etapas 5 e 11
+- [x] Refinar animação de abertura/fechamento do menu de contexto (Etapa 10) — `showMenu` ancorado no ponteiro; revisitado no ajuste "UX de desktop — menu de contexto no clique direito" (toque longo + clique direito)
+- [x] Refinar animação de slide horizontal e blink do cursor editável (Etapa 11) — blink por `Timer.periodic` (não `AnimationController`, para não travar `pumpAndSettle`) e slide dos caracteres em 200 ms `easeOutCubic`; quatro fixes de refino na própria Etapa 11
+- [x] Refinar hover/press dos botões da `AppTitleBar` em desktop (Etapas 14–16) — `AnimatedContainer` + `TweenAnimationBuilder` de 150 ms `easeOutCubic`; validado no Windows, Linux e macOS
 
 ### Fluxos de Integração
 
-- [ ] Testar fluxo: calculadora → = → resultado aparece na timeline
-- [ ] Testar fluxo: calculadora → ⏱ → histórico → tocar item → timeline carregada
-- [ ] Testar fluxo: calculadora → ⚙ → mudar tema → reflexo imediato
-- [ ] Testar fluxo: calculadora → ⚙ → mudar separador → reflexo no display
-- [ ] Testar fluxo: fechar app → reabrir → preferências mantidas
-- [ ] Testar fluxo: sessão longa → load more na timeline carrega anteriores
-- [ ] Testar fluxo: histórico → load more → favoritar → filtrar → renomear
-- [ ] Testar fluxo: copiar cálculo/resultado/histórico → colar em outro app e de volta na calculadora
-- [ ] Testar fluxo: colar valor inválido → snackbar de erro com texto via `context.l10n.*`
-- [ ] Testar fluxo: navegar com cursor editável → inserir/apagar no meio da expressão → confirmar com `=`
-- [ ] Verificar interação entre cursor editável, parênteses inteligentes e porcentagem literal
-- [ ] Testar fluxo: operação completa via teclado físico em desktop e mobile com teclado externo
-- [ ] Verificar que o logo e o splash aparecem corretamente em todas as plataformas
-- [ ] Verificar paridade visual entre Android, Windows, Linux e macOS
+- [x] Testar fluxo: calculadora → = → resultado aparece na timeline — `calculator_page_test.dart` grupo `integration` (Etapa 5)
+- [x] Testar fluxo: calculadora → ⏱ → histórico → tocar item → timeline carregada — `Navigator.pop(entry)` → `loadSession` (Etapa 9); coberto por `calculator_view_model_test.dart` grupo `loadSession` + `history_page_test.dart`
+- [x] Testar fluxo: calculadora → ⚙ → mudar tema → reflexo imediato — `SettingsViewModel` como lazy singleton com listener no `_DecimaAppState` (Etapa 9); `settings_page_test.dart`
+- [x] Testar fluxo: calculadora → ⚙ → mudar separador → reflexo no display — `settings_page_test.dart` (Etapa 9)
+- [x] Testar fluxo: fechar app → reabrir → preferências mantidas — validado no Windows real (Etapa 14.2) e no Linux (Etapa 15), junto com o flush da sessão e a memória da posição da janela
+- [x] Testar fluxo: sessão longa → load more na timeline carrega anteriores — `timeline_display_test.dart` grupo `load more` (Etapas 2.1 e 5)
+- [x] Testar fluxo: histórico → load more → favoritar → filtrar → renomear — `history_page_test.dart` cobre os quatro (Etapa 9)
+- [x] Testar fluxo: copiar cálculo/resultado/histórico → colar em outro app e de volta na calculadora — validado pelo usuário no Windows com os dados de `plano/fixtures-colar.md` (Etapa 14)
+- [x] Testar fluxo: colar valor inválido → snackbar de erro com texto via `context.l10n.*` — `calculator_context_menu_test.dart` e `keyboard_shortcuts_handler_test.dart` (Etapas 10 e 13)
+- [x] Testar fluxo: navegar com cursor editável → inserir/apagar no meio da expressão → confirmar com `=` — Etapa 11 e seus quatro fixes (edição Add2-aware, ancoragem, partição de blocos, multiline)
+- [x] Verificar interação entre cursor editável, parênteses inteligentes e porcentagem literal — fix "Etapa 13 — Parênteses no modo de edição"
+- [x] Testar fluxo: operação completa via teclado físico em desktop — validado pelo usuário no Windows (pendência da Etapa 13 resolvida na Etapa 14), incluindo `Ctrl+C`/`Ctrl+V`
+- [x] Testar o mesmo fluxo em mobile com teclado externo — **validado pelo usuário**: operação completa correta no Android
+- [ ] Moldura verde de foco no Android com teclado físico — realce padrão do sistema sobre a `FlutterView`; corrigido em `MainActivity.onStart()` (`defaultFocusHighlightEnabled = false`), *pendente de verificação no device*
+- [x] Verificar que o logo e o splash aparecem corretamente em todas as plataformas — ícone Android/adaptive e splash theme-aware (Etapa 12), `.ico` arredondado no Windows (Etapa 14.1), tema `hicolor` + `.desktop` no Linux (fix da Etapa 15), squircle do Dock no macOS (ajuste da Etapa 16). Splash nativa só existe no Android — desktop abre direto no primeiro frame
+- [x] Verificar paridade visual entre Android, Windows, Linux e macOS — cada plataforma validada visualmente na sua etapa, com a mesma árvore de widgets; a única divergência é deliberada (title bar customizada com botões no Windows/Linux, logo centralizado e semáforo nativo no macOS)
+- [x] Comparação visual das quatro plataformas — **validada pelo usuário** durante o desenvolvimento de cada uma; a ressalva do Linux é o ambiente (WSLg, sem instalação nativa em distro real), não a aparência
 
 ### Qualidade
 
-- [ ] `flutter analyze` — zero warnings
-- [ ] `flutter test` — 100% verde
-- [ ] Verificar: nenhuma string hardcoded na UI
-- [ ] Verificar: nenhum valor de layout hardcoded
-- [ ] Verificar: nenhum `print()` no código
-- [ ] Verificar: ViewModels não importam Flutter (exceto `foundation.dart`)
-- [ ] Revisar cobertura de testes (incluindo `ClipboardService`, cursor, teclado físico, title bar)
-- [ ] Builds de release passam em todas as plataformas suportadas
+- [x] `flutter analyze` — zero warnings *(rodado em 2026-08-23: "No issues found!")*
+- [x] `flutter test` — 100% verde *(rodado em 2026-08-23: 715 testes)*
+- [x] Verificar: nenhuma string hardcoded na UI — nenhum `Text('...')` literal em `lib/`; tudo via `context.l10n.*`
+- [x] Verificar: nenhum valor de layout hardcoded — `AppLayout` em 13 arquivos; sobraram 3 espaçadores inline de 4–6 px (`language_selector`, `theme_mode_selector`, `history_page`), colados ao ícone que acompanham
+- [x] Verificar: nenhum `print()` no código — zero ocorrências em `lib/` e `tool/`
+- [x] Verificar: ViewModels não importam Flutter (exceto `foundation.dart`) — os três importam apenas `package:flutter/foundation.dart`
+- [x] Revisar cobertura de testes (incluindo `ClipboardService`, cursor, teclado físico, title bar) — 48 arquivos de teste; as quatro áreas citadas têm suíte própria
+- [x] Builds de release passam em todas as plataformas suportadas — APK (Etapa 14.3), instalador Windows (14.1), `.deb` (15.1) e `.zip` macOS (16.1), todos publicados no release v0.9.0
 
 ### Documentação
 
-- [ ] Atualizar docs se houve desvios da arquitetura
-- [ ] Documentar comportamento de copiar/colar e cursor editável em `docs/features/calculadora.md`
-- [ ] Documentar atalhos de teclado em `docs/features/calculadora.md`
-- [ ] Documentar infra de desktop (`AppTitleBar`, `DesktopShell`, `DesktopWindowConfig`) em `docs/fundacao/arquitetura.md`
-- [ ] Atualizar changelog
+- [x] Atualizar docs se houve desvios da arquitetura — docs atualizados etapa a etapa (12 arquivos em `docs/`)
+- [x] Documentar comportamento de copiar/colar e cursor editável em `docs/features/calculadora.md` — seções "Copiar e Colar" e "Cursor Editável" (Etapas 10, 11 e 13)
+- [x] Documentar atalhos de teclado em `docs/features/calculadora.md` — seção "Atalhos de Teclado" (Etapa 13)
+- [x] Documentar infra de desktop (`AppTitleBar`, `DesktopShell`, `DesktopWindowConfig`) em `docs/fundacao/arquitetura.md` — seção "Infra de Desktop" (Etapas 14–16)
+- [ ] Atualizar changelog *(ao fechar a etapa)*
