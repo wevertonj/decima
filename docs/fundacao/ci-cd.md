@@ -9,8 +9,9 @@
 | `dev` | Branch de trabalho e integração — commits diretos permitidos | `dev-integracao`: bloqueia force-push e deleção |
 | `main` | Somente releases — **nenhum commit direto** | `main-protegida`: exige PR + checks `commitlint`, `analyze`, `test`, `build-android`, `build-windows`; bloqueia force-push/deleção; bypass apenas para deploy keys (bot de release) |
 
-- Branch padrão do repositório: `dev`
+- Branch padrão do repositório: `main` — quem clona ou abre o repositório cai na versão estável. O trabalho do dia a dia é na `dev` (`git switch dev` após o clone)
 - Release = merge de PR `dev` → `main`; o versionamento acontece automaticamente após o merge
+- Como a `main` é o default, PR aberto pela UI/`gh` já vem com `base: main`: **conferir a base** ao abrir PR de branch de feature, que deve mirar a `dev`
 
 ## Workflows
 
@@ -109,3 +110,5 @@ Portado do hook `pre-push` (decisões D5/D6) dos projetos `runway`/`verbum`/`dos
 | `path_provider_android` pinado `<2.3.0` | `flutter pub upgrade` cego quebra o build (jni/AGP) | Manter o pin — ver `plano/changelog.md` da migração Kotlin |
 | Versão do Flutter no CI vem do `.fvmrc` | Divergência local×CI se atualizar só um lado | Atualizar `.fvmrc` e testar localmente com o mesmo FVM |
 | Commit do release é do bot (`github-actions[bot]`) | `git pull` necessário na `dev` após release para receber `chore(release)` | Após merge na `main`: `git checkout dev && git merge main` (ou rebase) |
+| Branch padrão é a `main`, mas o trabalho é na `dev` | Clone novo cai na `main`; PR aberto pela UI/`gh` já vem com `base: main` | `git switch dev` após clonar; conferir a base ao abrir PR de feature (`gh pr create --base dev`) |
+| Badge de CI aponta para `?branch=dev` | `ci.yml` não roda em push na `main` — badge apontando para `main` ficaria "no status" | Manter o `?branch=dev` no `README.md` mesmo com a `main` como default |
