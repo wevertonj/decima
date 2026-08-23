@@ -831,8 +831,8 @@ Do checklist original:
   - Achado: `hicolor-icon-theme` adicionado ao `Depends` (fornece o `index.theme` que o lookup de ícones exige)
   - `dpkg -r` preservando `~/.local/share/com.wevasoft.decima` — não exercitado (app mantido instalado)
 - [x] `flutter test` / `flutter analyze` / `dart format` — regressão intacta (sem código Dart novo)
-- [ ] CI `build-linux` verde no push da `dev` — confirmar no próximo push
-- [ ] Primeiro release com o `.deb` publicado no GitHub Release
+- [x] CI `build-linux` verde no push da `dev` e no PR #3 (~1m20s cada)
+- [x] Primeiro release com o `.deb` publicado — v0.8.0 (`decima-0.8.0-linux-amd64.deb` + `.sha256` no GitHub Release)
 
 ---
 
