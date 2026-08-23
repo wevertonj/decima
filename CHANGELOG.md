@@ -3,6 +3,16 @@
 Todas as mudanças notáveis deste projeto são documentadas aqui.
 O formato segue [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/) e o projeto adere ao [Versionamento Semântico](https://semver.org/lang/pt-BR/).
 
+## [0.9.0] - 2026-08-23
+
+### ✨ Novidades
+- **macOS:**
+  - Add macOS support with platform-native title bar
+  - Package the app as a .zip and publish it in CI/CD releases
+
+### ⚙️ Correções
+- **macOS:** Round the Dock icon and title-case the bundle name
+
 ## [0.8.0] - 2026-08-23
 
 ### ✨ Novidades
@@ -31,5 +41,6 @@ O formato segue [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/) e o 
 
 ### ⚙️ Correções
 - **Icon:** Round Windows app icon corners to match brand squircle
+
 
 
