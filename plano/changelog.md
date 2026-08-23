@@ -1687,3 +1687,43 @@ Novo `PlatformInfo.isLinux` para os dois desvios — mesmo padrão testável do 
 
 - `flutter analyze` — zero warnings
 - `flutter test` — 100% verde (regressão intacta)
+
+---
+
+## [Concluída] Etapa 16 — Suporte a macOS
+
+**Objetivo**: habilitar o build macOS reutilizando a infra de desktop da Etapa 14, respeitando as convenções da plataforma (semáforo nativo, janela fixa).
+
+### Contexto de ambiente
+
+- Primeira etapa executada no MacBook. O `flutter` global da máquina (3.41.7) tinha rebaixado o `pubspec.lock` num `pub get` anterior — restaurado e regenerado com o FVM do projeto (3.44.2). Regra registrada: sempre `fvm flutter ...` neste repo
+- O runner `macos/` já existia desde a fundação (commit `a64f457`), renomeado na migração WevaCalc→Decima — `flutter create --platforms=macos .` não foi necessário
+
+### Implementado
+
+- `PlatformInfo.isMacOS` — mesmo padrão testável de `isLinux` (guard de `kIsWeb` + `defaultTargetPlatform`)
+- `AppTitleBar` com variante macOS: sem botões customizados de minimizar/fechar (o semáforo nativo permanece visível com `TitleBarStyle.hidden`, sobreposto ao canto superior esquerdo); logo + nome **centralizados** — convenção de título do macOS e desvia do semáforo sem precisar de inset mágico. `DragToMoveArea` cobre a barra inteira
+- `MainFlutterWindow.swift`: `import window_manager` + `hiddenWindowAtLaunch()` no override de `order(_:relativeTo:)` — setup documentado do plugin; sem ele a janela pisca no tamanho do template antes de o Dart aplicar as `WindowOptions`
+- Docs: `docs/fundacao/empacotamento-macos.md` (build, distribuição ad-hoc + Gatekeeper, fluxo Developer ID/notarização como referência); seção "Instalação (macOS)" no `README.md`; índice em `docs/README.md`
+
+### Decisões e achados
+
+| Achado | Detalhe |
+|--------|---------|
+| Botão verde | `setMaximizable(false)` no macOS **não** desabilita o botão — só veta o zoom em `windowShouldZoom`. Quem o deixa cinza é o `setResizable(false)` (remove `.resizable` do `styleMask`), já chamado desde a Etapa 14. Nenhuma mudança no `initDesktopWindow` |
+| Semáforo | `windowButtonVisibility` default `true` mantém os três botões; `false` esconderia o semáforo inteiro (não há API por botão no `window_manager`) — default mantido |
+| CocoaPods removido | O primeiro build adicionou integração **dupla** (SwiftPM + CocoaPods). Todos os plugins macOS são Swift Packages e o próprio Flutter recomenda deintegrar: `pod deintegrate` + `Podfile`/`Podfile.lock` apagados + `Flutter-*.xcconfig` e workspace revertidos. Segundo build verde só com SwiftPM, sem avisos |
+| Entitlements | Release mínimo (`app-sandbox` apenas); `allow-jit`/`network.server` só em DebugProfile. Dados do app ficam no container `~/Library/Containers/com.wevasoft.decima/` |
+| Ícone | `AppIcon.icns` compilado pelo Xcode a partir do appiconset regenerado na Etapa 12 — nenhum `.icns` versionado no repo (comportamento esperado) |
+
+### Testes
+
+- `app_title_bar_test.dart` — novo grupo "AppTitleBar on macOS": botões ocultos, logo+nome centralizados (centro geométrico do conteúdo ≈ centro da barra), drag area e altura preservadas
+- `platform_info_test.dart` — grupo `PlatformInfo.isMacOS` espelhando o de `isLinux`
+
+### Validação
+
+- `fvm flutter build macos --release` — `decima.app` 49,1 MB, universal (x86_64 + arm64), `codesign` confirma `Signature=adhoc` e `AppIcon.icns` no bundle
+- `flutter test` — 709 testes, 100% verde
+- `flutter analyze` — zero warnings; `dart format` — 0 mudanças
+- Verificação manual (janela fixa, semáforo nativo, verde inativo) — **pendente do usuário**

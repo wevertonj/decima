@@ -80,6 +80,17 @@ linux/packaging/install-desktop-entry.sh   # remover com --uninstall
 
 Detalhes do pacote `.deb` e demais formatos (AppImage/Flatpak/Snap) em [`docs/fundacao/empacotamento-linux.md`](docs/fundacao/empacotamento-linux.md).
 
+## Instalação (macOS)
+
+Sem artefato nos releases por enquanto — compile a partir do código (requer Xcode):
+
+```bash
+flutter build macos --release
+open build/macos/Build/Products/Release/decima.app
+```
+
+> O `.app` usa assinatura ad-hoc. Se for baixado de outra máquina, o Gatekeeper bloqueia a abertura: autorize em **Ajustes do Sistema → Privacidade e Segurança → Abrir Mesmo Assim**. Detalhes (e o fluxo de notarização, como referência) em [`docs/fundacao/empacotamento-macos.md`](docs/fundacao/empacotamento-macos.md).
+
 ## Desenvolvimento
 
 ```bash

@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -148,6 +149,49 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(buttonColor(tester, Icons.close_rounded)!.a, 0.0);
+    });
+  });
+
+  group('AppTitleBar on macOS', () {
+    // O binding verifica que debugDefaultTargetPlatformOverride foi
+    // restaurado ANTES dos tearDowns — o reset precisa acontecer no corpo
+    // do teste, logo após o último pump.
+    Future<void> pumpOnMacOS(WidgetTester tester) async {
+      debugDefaultTargetPlatformOverride = TargetPlatform.macOS;
+      await tester.pumpApp(buildTitleBar());
+      debugDefaultTargetPlatformOverride = null;
+    }
+
+    testWidgets('hides the custom window buttons', (tester) async {
+      await pumpOnMacOS(tester);
+
+      expect(find.byIcon(Icons.remove_rounded), findsNothing);
+      expect(find.byIcon(Icons.close_rounded), findsNothing);
+    });
+
+    testWidgets('renders logo and app name centered', (tester) async {
+      await pumpOnMacOS(tester);
+
+      expect(find.byType(AppLogo), findsOneWidget);
+      expect(find.text('Decima'), findsOneWidget);
+
+      final barCenter = tester.getCenter(find.byType(AppTitleBar)).dx;
+      final logoLeft = tester.getTopLeft(find.byType(AppLogo)).dx;
+      final titleRight = tester.getTopRight(find.text('Decima')).dx;
+      final contentCenter = (logoLeft + titleRight) / 2;
+      expect(contentCenter, moreOrLessEquals(barCenter, epsilon: 1.0));
+    });
+
+    testWidgets('keeps the drag-to-move area and configured height', (
+      tester,
+    ) async {
+      await pumpOnMacOS(tester);
+
+      expect(find.byType(DragToMoveArea), findsOneWidget);
+      expect(
+        tester.getSize(find.byType(AppTitleBar)).height,
+        DesktopWindowConfig.titleBarHeight,
+      );
     });
   });
 }

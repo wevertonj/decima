@@ -35,4 +35,15 @@ class PlatformInfo {
 
     return defaultTargetPlatform == TargetPlatform.linux;
   }
+
+  /// True quando rodando em macOS.
+  ///
+  /// Existe porque a `AppTitleBar` muda de forma no macOS: o semáforo
+  /// nativo permanece visível com `TitleBarStyle.hidden`, então os botões
+  /// customizados de minimizar/fechar não são renderizados.
+  static bool get isMacOS {
+    if (kIsWeb) return false;
+
+    return defaultTargetPlatform == TargetPlatform.macOS;
+  }
 }

@@ -840,27 +840,29 @@ Do checklist original:
 
 ### Habilitação da plataforma
 
-- [ ] Rodar `flutter create --platforms=macos .`
-- [ ] Conferir entitlements em `macos/Runner/*.entitlements`
+- [x] Rodar `flutter create --platforms=macos .` — o runner já existia desde a fundação; o primeiro build integrou os plugins via Swift Package Manager (CocoaPods deintegrado — ver changelog)
+- [x] Conferir entitlements em `macos/Runner/*.entitlements` — Release só com `app-sandbox`; `allow-jit`/`network.server` restritos ao DebugProfile. Nada a adicionar
 
 ### Ajustes específicos
 
-- [ ] Esconder o botão verde de maximizar (`windowManager.setMaximizable(false)` ou `setWindowButtonVisibility`)
-- [ ] Decisão UX: manter semáforo nativo (recomendado); `AppTitleBar` em macOS exibe apenas logo + nome
-- [ ] Adicionar branch `Platform.isMacOS` em `AppTitleBar` para ocultar botões customizados de minimizar/fechar
-- [ ] Conferir ícone `.icns` (gerado na Etapa 12) integrado ao bundle
-- [ ] Documentar processo básico de assinatura/notarização — sem implementar
+- [x] Esconder o botão verde de maximizar — `setResizable(false)` (já chamado) o deixa cinza (sem `.resizable` no `styleMask`); `setMaximizable(false)` no macOS só veta o zoom no delegate, não muda o visual
+- [x] Decisão UX: semáforo nativo mantido; `AppTitleBar` em macOS exibe apenas logo + nome, centralizados (convenção de título da plataforma, longe do semáforo)
+- [x] Adicionar branch `PlatformInfo.isMacOS` em `AppTitleBar` ocultando os botões customizados
+- [x] Conferir ícone `.icns` — `AppIcon.icns` no bundle, compilado do appiconset regenerado na Etapa 12
+- [x] Documentar assinatura/notarização — `docs/fundacao/empacotamento-macos.md` (referência, sem implementar)
+- [x] Extra: `hiddenWindowAtLaunch()` no `MainFlutterWindow.swift` — setup do `window_manager` que evita a janela piscar no tamanho do template antes do `waitUntilReadyToShow`
 
 ### Testes
 
-- [ ] Atualizar `app_title_bar_test.dart` com cenário macOS (botões customizados ocultos)
+- [x] Atualizar `app_title_bar_test.dart` com cenário macOS (botões ocultos, logo+nome centralizados, drag area e altura preservadas)
+- [x] Extra: grupo `PlatformInfo.isMacOS` em `platform_info_test.dart`
 
 ### Validação
 
-- [ ] `flutter build macos` — sucesso
-- [ ] `flutter test` — 100% verde
-- [ ] `flutter analyze` — zero warnings
-- [ ] Verificação manual: janela fixa com semáforo nativo, sem botão verde de maximizar
+- [x] `fvm flutter build macos --release` — sucesso (`decima.app` 49,1 MB, universal x86_64+arm64, assinatura ad-hoc)
+- [x] `flutter test` — 100% verde (709 testes)
+- [x] `flutter analyze` — zero warnings
+- [ ] Verificação manual: janela fixa com semáforo nativo, botão verde inativo — pendente de validação visual do usuário
 
 ---
 

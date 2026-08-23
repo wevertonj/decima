@@ -34,6 +34,30 @@ void main() {
     });
   });
 
+  group('PlatformInfo.isMacOS', () {
+    test('is true on macOS', () {
+      debugDefaultTargetPlatformOverride = TargetPlatform.macOS;
+
+      expect(PlatformInfo.isMacOS, isTrue);
+    });
+
+    test('is false on the other desktop platforms', () {
+      for (final platform in [TargetPlatform.windows, TargetPlatform.linux]) {
+        debugDefaultTargetPlatformOverride = platform;
+
+        expect(PlatformInfo.isMacOS, isFalse, reason: '$platform');
+      }
+    });
+
+    test('is false on mobile', () {
+      for (final platform in [TargetPlatform.android, TargetPlatform.iOS]) {
+        debugDefaultTargetPlatformOverride = platform;
+
+        expect(PlatformInfo.isMacOS, isFalse, reason: '$platform');
+      }
+    });
+  });
+
   group('PlatformInfo.isLinux', () {
     test('is true on Linux', () {
       debugDefaultTargetPlatformOverride = TargetPlatform.linux;
