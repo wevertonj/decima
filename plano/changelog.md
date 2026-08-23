@@ -1838,4 +1838,12 @@ O desvio tem um eco: o plugin emite o evento `close` **antes** de consultar o `p
 
 **Documentação**: `docs/fundacao/arquitetura.md` — subseção "`destroy()` por plataforma", 2 garantias novas na tabela do fechamento e 2 gotchas
 
-**Validação manual (Windows)**: pendente — fechar pelo `X`, por `Alt+F4` e pela barra de tarefas, conferindo que a janela some no ato e que o cálculo em andamento continua no histórico ao reabrir
+**Validação manual (Windows)** — build de release da cópia `decima-winbuild`, os três caminhos que chegam como `onWindowClose`:
+
+| Caminho | Janela some no ato | Flush |
+|---------|--------------------|-------|
+| `X` da title bar | Sim | `10 + 5` sem `=` → gravado no mesmo segundo do fechamento |
+| `Alt+F4` | Sim | `10 + 5` sem `=` → gravado no mesmo segundo do fechamento |
+| "Fechar janela" na barra de tarefas | Sim | `10 + 5` sem `=` → gravado no mesmo segundo do fechamento |
+
+Medição por script (`PostMessage WM_CLOSE` → janela invisível): **155 ms**. Nos três fechamentos manuais o processo sobreviveu à janela por 43–48 ms — é o desligamento do engine que antes acontecia com a janela ainda na tela.
