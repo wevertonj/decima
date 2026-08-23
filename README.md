@@ -53,22 +53,32 @@ Para gerar o instalador localmente, veja [`docs/fundacao/empacotamento-windows.m
 
 ## Instalação (Linux)
 
-Ainda não há artefato publicado — compile o bundle e publique no menu:
+Baixe `decima-<versão>-linux-amd64.deb` em [Releases](https://github.com/wevertonj/decima/releases) e instale (Debian 12+, Ubuntu 22.04+ e derivados):
+
+```bash
+sudo dpkg -i decima-<versão>-linux-amd64.deb
+```
+
+- App em `/usr/lib/decima`, comando `decima` e entrada no menu de aplicativos
+- **Sem pré-requisitos** além do GTK 3 do próprio sistema (o SQLite vai embutido)
+- Confira o SHA-256 publicado no release antes de instalar
+- Remover com `sudo dpkg -r decima` — o histórico em `~/.local/share/com.wevasoft.decima` é preservado
+
+Sem root (ou em outra distro), compile o bundle e publique no menu do usuário:
 
 ```bash
 flutter build linux --release
-linux/packaging/install-desktop-entry.sh
+linux/packaging/install-desktop-entry.sh   # remover com --uninstall
 ```
 
 - Exige `clang`, `cmake`, `ninja-build`, `pkg-config` e `libgtk-3-dev`
 - A entrada e os ícones vão para `~/.local/share` — **sem `sudo`**
-- Remover com `linux/packaging/install-desktop-entry.sh --uninstall`
 
-> Em Wayland, instalar a entrada é o que dá ícone à janela: o GTK3 não tem como enviar o ícone pelo protocolo, e o compositor o resolve casando o `app_id` com o `.desktop`. Em X11 o ícone funciona mesmo rodando o bundle solto.
+> Em Wayland, ter a entrada `.desktop` instalada (o `.deb` já instala) é o que dá ícone à janela: o GTK3 não tem como enviar o ícone pelo protocolo, e o compositor o resolve casando o `app_id` com o `.desktop`. Em X11 o ícone funciona mesmo rodando o bundle solto.
 
 > Ainda em Wayland, a janela não reabre na última posição usada: o protocolo não permite que o app saiba onde está. Em X11 a posição é lembrada normalmente.
 
-Detalhes e opções de empacotamento (AppImage/Flatpak/Snap) em [`docs/fundacao/empacotamento-linux.md`](docs/fundacao/empacotamento-linux.md).
+Detalhes do pacote `.deb` e demais formatos (AppImage/Flatpak/Snap) em [`docs/fundacao/empacotamento-linux.md`](docs/fundacao/empacotamento-linux.md).
 
 ## Desenvolvimento
 

@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  AppStream do Decima. O id casa com o APPLICATION_ID do CMakeLists (e com o
+  .desktop e o ícone) — é esse casamento que liga o componente ao app nas
+  lojas gráficas (GNOME Software/Discover). @VERSION@ e @DATE@ são
+  substituídos por tool/deb/build_deb.sh no empacotamento.
+-->
+<component type="desktop-application">
+  <id>com.wevasoft.decima</id>
+  <metadata_license>CC0-1.0</metadata_license>
+  <project_license>LicenseRef-proprietary</project_license>
+  <name>Decima</name>
+  <summary>Add2 calculator — two decimal places typed automatically</summary>
+  <summary xml:lang="pt-BR">Calculadora Add2 — duas casas decimais digitadas automaticamente</summary>
+  <description>
+    <p>
+      Decima is an Add2 calculator: every digit typed flows into a fixed
+      two-decimal display, the way desktop adding machines work. It keeps a
+      session timeline, a persistent history with favorites, literal
+      percentages, nested parentheses and full physical-keyboard support.
+    </p>
+    <p xml:lang="pt-BR">
+      O Decima é uma calculadora Add2: cada dígito digitado entra num display
+      de duas casas decimais fixas, como nas somadoras de mesa. Traz timeline
+      de sessão, histórico persistente com favoritos, porcentagem literal,
+      parênteses aninhados e suporte completo a teclado físico.
+    </p>
+  </description>
+  <launchable type="desktop-id">com.wevasoft.decima.desktop</launchable>
+  <categories>
+    <category>Utility</category>
+    <category>Calculator</category>
+  </categories>
+  <developer id="com.wevasoft">
+    <name>Wevasoft</name>
+  </developer>
+  <url type="homepage">https://github.com/wevertonj/decima</url>
+  <url type="bugtracker">https://github.com/wevertonj/decima/issues</url>
+  <content_rating type="oars-1.1"/>
+  <releases>
+    <release version="@VERSION@" date="@DATE@"/>
+  </releases>
+</component>

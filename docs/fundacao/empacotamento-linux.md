@@ -1,6 +1,6 @@
 # Empacotamento — Linux
 
-> Suporte ao alvo Linux (GTK): runner customizado, integração com o desktop via `.desktop` + tema `hicolor` e referência de empacotamento (AppImage/Flatpak/Snap).
+> Suporte ao alvo Linux (GTK): runner customizado, integração com o desktop via `.desktop` + tema `hicolor`, pacote `.deb` (`tool/deb/build_deb.sh`, publicado no GitHub Release pelo CD) e referência dos demais formatos (AppImage/Flatpak/Snap).
 
 ## Artefatos
 
@@ -11,6 +11,8 @@
 | `linux/packaging/com.wevasoft.decima.desktop` | Entrada de menu (nome, ícone, categorias, `StartupWMClass`) |
 | `linux/packaging/icons/hicolor/<N>x<N>/apps/com.wevasoft.decima.png` | Ícone do tema, derivado do master pelo `tool/icon` |
 | `linux/packaging/install-desktop-entry.sh` | Instala/remove a entrada e os ícones em `~/.local/share` |
+| `linux/packaging/com.wevasoft.decima.metainfo.xml` | AppStream (lojas gráficas); `@VERSION@`/`@DATE@` substituídos no empacotamento |
+| `tool/deb/build_deb.sh` | Monta o `.deb` a partir do bundle → `dist/decima-<versão>-linux-<arch>.deb` + `.sha256` |
 | `build/linux/x64/release/bundle/` | Bundle relocável gerado (**não versionado**) |
 
 ## Uso
@@ -21,6 +23,8 @@
 | `./build/linux/x64/release/bundle/decima` | Executa o bundle |
 | `linux/packaging/install-desktop-entry.sh [bundle]` | Publica no menu do usuário apontando para o bundle (padrão: o de release) |
 | `linux/packaging/install-desktop-entry.sh --uninstall` | Remove a entrada e os ícones |
+| `tool/deb/build_deb.sh` | `flutter build linux --release` + empacota o `.deb` em `dist/` |
+| `tool/deb/build_deb.sh --skip-build [--version X.Y.Z]` | Só empacota o bundle existente (é o que o CI usa) |
 | `cd tool/icon && npm run render` | Regenera os PNGs do `hicolor` (e os demais derivados) a partir dos SVGs |
 
 ### Dependências de build
@@ -73,14 +77,44 @@ O template do Flutter não define ícone nenhum, então `set_application_icon()`
 
 Por isso o nome do arquivo `com.wevasoft.decima.desktop` precisa ser exatamente o `APPLICATION_ID` — em Wayland é esse casamento, e só ele, que dá ícone à janela.
 
-## Empacotamento (referência — não implementado)
+## Pacote `.deb` (`tool/deb/build_deb.sh`)
+
+Formato de distribuição adotado (Etapa 15.1): `.deb` avulso anexado ao GitHub Release — instalável com `dpkg -i`/duplo clique, sem exigir repositório APT. Empacotamento manual via `dpkg-deb` (sem `flutter_distributor`).
+
+### Layout instalado
+
+| Caminho | Conteúdo |
+|---------|----------|
+| `/usr/lib/decima/` | Bundle inteiro (`decima`, `lib/`, `data/`) — relocável, `RUNPATH=$ORIGIN/lib` |
+| `/usr/bin/decima` | Symlink relativo `../lib/decima/decima` (`/proc/self/exe` resolve o real, então `data/` é encontrado) |
+| `/usr/share/applications/com.wevasoft.decima.desktop` | Cópia fiel — `Exec=decima` resolve via `PATH`, sem reescrita |
+| `/usr/share/icons/hicolor/<N>x<N>/apps/com.wevasoft.decima.png` | Os 8 tamanhos de `linux/packaging/icons/` |
+| `/usr/share/metainfo/com.wevasoft.decima.metainfo.xml` | AppStream com versão/data injetadas |
+| `/usr/share/doc/decima/copyright` | Copyright mínimo |
+
+### `DEBIAN/control`
+
+| Campo | Valor | Motivo |
+|-------|-------|--------|
+| `Package` / `Section` / `Priority` | `decima` / `utils` / `optional` | — |
+| `Version` | `X.Y.Z` no release; `X.Y.Z~dev.N` / `X.Y.Z~pr.N` no CI | `~` ordena **antes** da versão final (upgrade dev→stable nunca é downgrade); `-dev.N` não é válido como no zip do Windows |
+| `Architecture` | `amd64` (ou `arm64`, por `uname -m`) | — |
+| `Depends` | `libgtk-3-0 (>= 3.24), libglib2.0-0 (>= 2.66), libstdc++6, libc6, zlib1g, hicolor-icon-theme` | `libgtk-3-0` puxa o resto da pilha (cairo, pango, gdk-pixbuf, epoxy, fontconfig). **Sem SQLite**: o bundle embute `libsqlite3.so` via native assets do `package:sqlite3`. `hicolor-icon-theme` fornece o `index.theme` sem o qual o GTK não resolve os ícones instalados |
+| `Installed-Size` | `du -sk` do staging | Calculado a cada build |
+
+- **Sem scripts de mantenedor**: caches de `.desktop` (`desktop-file-utils`), ícones (`gtk-update-icon-cache`) e AppStream são atualizados por dpkg triggers dos próprios pacotes do sistema
+- **Sistemas t64** (Ubuntu 24.04+): os pacotes renomeados (`libgtk-3-0t64` etc.) publicam `Provides: libgtk-3-0 (= versão)` — o `Depends` com os nomes antigos instala em Debian 12, Ubuntu 22.04 **e** 24.04+
+- `dpkg-deb --root-owner-group` dispensa `fakeroot`; permissões normalizadas no staging (755 dirs/binário, 644 arquivos)
+- A remoção (`dpkg -r decima`) **preserva** `~/.local/share/com.wevasoft.decima` — dado do usuário nunca entra no pacote
+
+## Demais formatos (referência — não implementado)
 
 | Formato | Ponto de partida | Observações |
 |---------|------------------|-------------|
 | AppImage | `appimagetool` sobre um `AppDir` com o bundle em `usr/bin/`, o `.desktop` e o `icons/hicolor` na raiz do `AppDir` | Menor atrito: arquivo único, sem instalação. Exige `AppRun` apontando para `usr/bin/decima` |
-| Flatpak | Manifesto `com.wevasoft.decima.yml` com `org.freedesktop.Platform` + `org.gnome.Sdk` | Sandbox por padrão; o banco cai em `~/.var/app/com.wevasoft.decima/data`. Publicação no Flathub exige AppStream (`metainfo.xml`) |
+| Flatpak | Manifesto `com.wevasoft.decima.yml` com `org.freedesktop.Platform` + `org.gnome.Sdk` | Sandbox por padrão; o banco cai em `~/.var/app/com.wevasoft.decima/data`. Publicação no Flathub exige AppStream — o `metainfo.xml` já existe |
 | Snap | `snapcraft.yaml` com `base: core22` e a extensão `gnome` | A extensão já traz GTK e temas; `confinement: strict` basta (o app não acessa rede nem arquivos do usuário) |
-| `.deb`/`.rpm` | `flutter_distributor` ou empacotamento manual | Só compensa com repositório próprio; o bundle já é relocável |
+| `.rpm` | Empacotamento manual (`rpmbuild`) espelhando o layout do `.deb` | Mesma árvore FHS; só muda o metadado |
 
 Nos três primeiros o `.desktop` e o `icons/hicolor` de `linux/packaging/` entram como estão, trocando apenas o `Exec`.
 
@@ -103,6 +137,8 @@ O diretório vem de `getApplicationSupportDirectory()`: o `path_provider_linux` 
 | Vazamento de dados na remoção | Histórico permanece após desinstalar | Intencional e documentado; remoção manual em `~/.local/share/com.wevasoft.decima` |
 | Injeção de caminho no script de instalação | Caminho com `\|`, `&` ou `\1` seria reinterpretado por um `sed`; espaço quebraria o `Exec` em vários argumentos | `set -euo pipefail` + toda expansão entre aspas; a substituição usa `awk` com o valor passado por variável (nunca como parte do programa) e aplica as aspas/escapes que a spec do Desktop Entry exige |
 | Sandbox ausente no bundle solto | App roda com todas as permissões do usuário | Aceito para uso local; Flatpak/Snap são o caminho quando isolamento importar |
+| Injeção via `--version` no `build_deb.sh` | Valor entra no `DEBIAN/control` e em `sed` | Validado contra `^[0-9][A-Za-z0-9.+~]*$` antes de qualquer uso; fora disso o script aborta |
+| Escalonamento na instalação do `.deb` | Pacote instala em `/usr` como root | Sem scripts de mantenedor (nenhum código roda no `dpkg -i` além do dpkg); conteúdo é só o bundle + arquivos de integração |
 
 ## Desenvolvimento & Gotchas
 
@@ -119,3 +155,6 @@ O diretório vem de `getApplicationSupportDirectory()`: o `path_provider_linux` 
 | Ícone genérico em Wayland sem a entrada instalada | Não há como o GTK3 enviar o ícone pelo protocolo — só o casamento `app_id` ↔ `.desktop` resolve | Rodar `install-desktop-entry.sh` (ou empacotar em AppImage/Flatpak/Snap, que instalam a entrada) |
 | `WSLg` mostra o Tux no lugar do ícone | Sob Wayland o Weston do WSLg não faz o lookup `app_id` → `.desktop`; sob X11 ele **compõe** um selo do Tux sobre o ícone real | Em X11 o ícone aparece (com o selo, comportamento do WSLg); conferir o que a janela publica com `xprop -id <id> _NET_WM_ICON` antes de suspeitar do app |
 | `libEGL warning: DRI3 error` / `failed to get driver name` no WSL | Ruído no stderr, render cai para software | Esperado sem GPU passthrough; não ocorre em desktop com driver nativo |
+| `WSLg` não aplica a escala de DPI do Windows ao GTK | A janela (360×720 lógicos) parece menor que o build Windows na mesma tela — o Windows honra os 125/150% do monitor, o Weston do WSLg renderiza a 100% | Quirk do ambiente, não do app; em desktop Linux real o compositor aplica a escala do display. Ajuste opcional no WSLg via `%USERPROFILE%\.wslgconfig` |
+| `build/flutter_assets` é staging compartilhado entre debug e release | Um `flutter run` (debug) deixa `kernel_blob.bin` (~53 MB, JIT) lá e o CMake o copia para o bundle release (AOT, que nunca o lê) — o `.deb` saltava de 8 para 19 MB | `build_deb.sh` remove `kernel_blob.bin`/`*_snapshot_data` no staging; no CI (checkout limpo) o problema não existe |
+| Versão com `-dev.N` no `.deb` | `dpkg` rejeita — hífen separa a *Debian revision* | CI usa `~dev.N`/`~pr.N` (`~` ordena antes da final; upgrade para stable nunca é downgrade) |

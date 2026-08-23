@@ -186,6 +186,54 @@ jobs:
         if: github.event_name == 'push' && env.HAS_FIREBASE != 'true'
         run: echo "::warning::Secret FIREBASE_SERVICE_ACCOUNT ausente — distribuição para o Firebase pulada."
 
+  build-linux:
+    name: build-linux
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    needs: [analyze, test]
+    # Pushes em dev (artefato de teste) e PRs para main (gate de release).
+    if: github.event_name != 'pull_request' || github.base_ref == 'main'
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: ./.github/actions/setup-flutter
+
+      - name: Instalar toolchain GTK
+        run: sudo apt-get update -q && sudo apt-get install -y -q ninja-build libgtk-3-dev
+
+      - name: Versão base
+        id: ver
+        run: echo "base=$(grep -m1 '^version:' pubspec.yaml | awk '{print $2}' | cut -d+ -f1)" >> "$GITHUB_OUTPUT"
+
+      - name: Build Linux (dev)
+        if: github.event_name == 'push'
+        run: >
+          flutter build linux --release
+          --build-name=${{ steps.ver.outputs.base }}-dev.${{ github.run_number }}
+          --build-number=${{ github.run_number }}
+
+      - name: Build Linux (validação de PR)
+        if: github.event_name != 'push'
+        run: flutter build linux --release
+
+      # Versão Debian com `~` (ordena antes da final) — `-dev.N` não é válido
+      # como versão de pacote, ao contrário do zip do Windows.
+      - name: Empacotar .deb
+        run: |
+          if [ "${{ github.event_name }}" = "push" ]; then
+            suffix='~dev.${{ github.run_number }}'
+          else
+            suffix='~pr.${{ github.run_number }}'
+          fi
+          tool/deb/build_deb.sh --skip-build --version "${{ steps.ver.outputs.base }}${suffix}"
+
+      - name: Publicar .deb
+        uses: actions/upload-artifact@v4
+        with:
+          name: decima-linux-deb
+          path: dist/*
+          retention-days: 14
+
   build-windows:
     name: build-windows
     runs-on: windows-latest
