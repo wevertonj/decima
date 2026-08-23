@@ -1604,3 +1604,51 @@ Novo `PlatformInfo.isLinux` para os dois desvios — mesmo padrão testável do 
 - **Total: 703 testes — 100% verde**; `flutter analyze` zero issues
 
 **Documentação**: `docs/features/calculadora.md` (tabela "Gestos de abertura" + 2 gotchas), `docs/features/historico.md`
+
+---
+
+## [Concluída] Etapa 15.1 — Pacote `.deb` e distribuição Linux no CD
+
+**Origem**: o release v0.7.0 saiu sem artefato Linux — a Etapa 15 documentou as opções de empacotamento sem implementar. Decisão: `.deb` avulso no GitHub Release (instala com `dpkg -i`/duplo clique, sem repositório APT); loja (Flathub) fica como evolução futura.
+
+### Empacotamento (`tool/deb/build_deb.sh`)
+
+- Empacotamento manual com `dpkg-deb --root-owner-group` (sem `fakeroot` nem `flutter_distributor`)
+- Layout FHS: bundle inteiro em `/usr/lib/decima` (relocável, `RUNPATH=$ORIGIN/lib`), symlink `/usr/bin/decima`, `.desktop` **sem reescrita** (`Exec=decima` resolve via `PATH`), ícones `hicolor` (8 tamanhos), AppStream e copyright
+- `Depends` mínimo: `libgtk-3-0 (>= 3.24), libglib2.0-0 (>= 2.66), libstdc++6, libc6, zlib1g`
+  - **Sem SQLite**: o bundle embute `libsqlite3.so` via native assets do `package:sqlite3` (confirmado no `lib/` do bundle + `native_assets.json`)
+  - Nomes antigos funcionam no Ubuntu 24.04+ (t64): os pacotes renomeados publicam `Provides:` versionado (`libgtk-3-0t64` → `libgtk-3-0 (= 3.24.41...)`)
+- Sem scripts de mantenedor — caches de menu/ícones/AppStream atualizam pelos dpkg triggers do sistema; nenhum código roda no `dpkg -i`
+- Flags: `--skip-build` (CI e reempacotamento) e `--version` (validada contra `^[0-9][A-Za-z0-9.+~]*$` — entra no `control` e em `sed`)
+- Saída: `dist/decima-<versão>-linux-<arch>.deb` + `.sha256` (arch por `uname -m`: amd64/arm64)
+
+### AppStream (`linux/packaging/com.wevasoft.decima.metainfo.xml`)
+
+- `id` = `APPLICATION_ID`, `launchable` → `.desktop`, resumo/descrição em en + pt-BR, `@VERSION@`/`@DATE@` injetados no empacotamento
+- `appstreamcli validate` — ✔ sem issues; também pré-requisito de um futuro Flathub
+
+### Bug encontrado — `kernel_blob.bin` de 53 MB no bundle release
+
+`build/flutter_assets` é staging **compartilhado** entre debug e release: um `flutter run` (debug) anterior deixou o `kernel_blob.bin` (JIT) lá e o CMake o copiou para o bundle release — que é AOT e nunca lê o arquivo. Evidência: mtime do blob (21:10) anterior ao `libapp.so` (21:52); apagar e rebuildar release o trouxe de volta com o **mesmo** mtime (cópia, não geração). O `.deb` caía de 8,3 MB para 19 MB (27 → 79 MB instalado). Correção: o script remove `kernel_blob.bin`/`*_snapshot_data` no staging; no CI (checkout limpo, só release) o problema não existe.
+
+### CI/CD
+
+- `ci.yml`: job `build-linux` (needs `analyze`+`test`; push na `dev` e PR para `main` — mesmo gating do `build-windows`), toolchain via apt (`ninja-build libgtk-3-dev`), `.deb` como artefato de 14 dias
+  - Versão Debian não aceita `-dev.N` (hífen separa a *Debian revision*): builds do CI usam `~dev.N`/`~pr.N` — `~` ordena **antes** da final, então atualizar do dev para o stable nunca é downgrade
+- `release.yml`: job `release-linux` (`flutter build linux --release` + `build_deb.sh --skip-build --version <semver>`); `publish` agora agrega os três artefatos no GitHub Release
+- Ruleset `main-protegida`: `build-linux` adicionado como 6º check obrigatório via `gh api -X PUT` (aprovado pelo usuário na sessão) — confirmado: os 6 contexts ativos no ruleset
+
+### Documentação
+
+- `docs/fundacao/empacotamento-linux.md` — seção "Pacote `.deb`" (layout, control, t64, triggers), tabela de formatos atualizada (`.rpm` segue referência), novos gotchas (staging compartilhado, `~dev`) e vetores (injeção via `--version`, instalação como root)
+- `docs/fundacao/ci-cd.md` — jobs `build-linux`/`release-linux`, 6 checks, `.sha256` do `.deb`
+- `README.md` — "Instalação (Linux)" reescrita: `.deb` do release como caminho principal, bundle manual como alternativa sem root
+
+### Validação
+
+- `tool/deb/build_deb.sh --skip-build` → `dist/decima-0.7.0-linux-amd64.deb` (8,3 MB; 27 MB instalado) + `.sha256`
+- `dpkg-deb --info`/`--contents` — control, permissões (root:root, 755/644), symlink e layout corretos
+- Smoke test sem root: `dpkg-deb -x` + execução via `usr/bin/decima` (symlink) sob WSLg — janela abre, layout relocado resolve libs (`RUNPATH`) e assets (`/proc/self/exe`)
+- Instalação real (`sudo dpkg -i`) — **validada pelo usuário**: app instalado, aberto e operando lado a lado com o build Windows. O dpkg trigger regenerou o `icon-theme.cache`; `xprop` confirmou `_NET_WM_ICON` (do tema) e `WM_CLASS` sob X11. Dois quirks do WSLg observados e documentados: Tux na barra de tarefas (Wayland sem lookup `app_id`→`.desktop`) e janela menor que o build Windows (WSLg renderiza a 100% e ignora a escala de DPI do monitor) — nenhum ocorre em desktop Linux real
+- Achado da validação: `hicolor-icon-theme` incluído no `Depends` — fornece o `/usr/share/icons/hicolor/index.theme` sem o qual o GTK não resolve os ícones instalados (presente na máquina do teste, mas não garantido em sistemas mínimos)
+- Workflows: YAML validado; `build-linux` verde no CI fica confirmado no próximo push da `dev`

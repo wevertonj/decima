@@ -7,10 +7,11 @@
 | Branch | Papel | Regras (ruleset) |
 |---|---|---|
 | `dev` | Branch de trabalho e integração — commits diretos permitidos | `dev-integracao`: bloqueia force-push e deleção |
-| `main` | Somente releases — **nenhum commit direto** | `main-protegida`: exige PR + checks `commitlint`, `analyze`, `test`, `build-android`, `build-windows`; bloqueia force-push/deleção; bypass apenas para deploy keys (bot de release) |
+| `main` | Somente releases — **nenhum commit direto** | `main-protegida`: exige PR + checks `commitlint`, `analyze`, `test`, `build-android`, `build-windows`, `build-linux`; bloqueia force-push/deleção; bypass apenas para deploy keys (bot de release) |
 
-- Branch padrão do repositório: `dev`
+- Branch padrão do repositório: `main` — quem clona ou abre o repositório cai na versão estável. O trabalho do dia a dia é na `dev` (`git switch dev` após o clone)
 - Release = merge de PR `dev` → `main`; o versionamento acontece automaticamente após o merge
+- Como a `main` é o default, PR aberto pela UI/`gh` já vem com `base: main`: **conferir a base** ao abrir PR de branch de feature, que deve mirar a `dev`
 
 ## Workflows
 
@@ -29,6 +30,7 @@
 | `test` | `flutter test --coverage` + gate de cobertura mínima (`MIN_COVERAGE`, linhas via lcov) | SDK + awk |
 | `build-android` | APK release (assinado quando há secrets); push em `dev` distribui ao grupo `dev` do Firebase | Gradle + `firebase-tools` |
 | `build-windows` | Bundle Windows + runtime MSVC app-local, zipado como artefato; roda em push na `dev` e PR para `main` | `flutter build windows` |
+| `build-linux` | Bundle Linux + `.deb` (`~dev.N`/`~pr.N`) como artefato; mesmo gating do `build-windows` | `flutter build linux` + `tool/deb/build_deb.sh` |
 
 - Builds dev usam `--build-name=<versão>-dev.<run>`; o `versionCode` de **todo** APK do CI (dev e stable) é `minutos desde a epoch Unix` — sequência monotônica única entre branches, sem downgrade ao alternar canal (teto do Android: 2,1 bi; esgota só no ano ~5960)
 - PRs de fork rodam **sem secrets**: assinatura cai na chave de debug e nenhuma distribuição acontece (só ocorre em `push`, que fork não dispara)
@@ -40,7 +42,8 @@
 | `bump-version` | Roda `tool/bump_version.dart`; com bump: commita `chore(release): vX.Y.Z+B`, cria tag `vX.Y.Z` e push via deploy key |
 | `release-android` | APK assinado, renomeado `decima-<semver>-android.apk`, distribuído ao grupo `stable` com notas do `CHANGELOG.md` |
 | `release-windows` | `flutter build windows --release` + runtime MSVC + instalador Inno Setup (`tool/installer/decima.iss`) + `.sha256` |
-| `publish-release` | GitHub Release `vX.Y.Z` com APK, instalador e notas da seção do changelog |
+| `release-linux` | `flutter build linux --release` + `tool/deb/build_deb.sh --skip-build` → `decima-<semver>-linux-amd64.deb` + `.sha256` |
+| `publish-release` | GitHub Release `vX.Y.Z` com APK, instalador Windows, `.deb` Linux e notas da seção do changelog |
 
 ## Motor de Versionamento (`tool/bump_version.dart`)
 
@@ -83,11 +86,11 @@ Portado do hook `pre-push` (decisões D5/D6) dos projetos `runway`/`verbum`/`dos
 
 | Vetor (OWASP CI/CD) | Mitigação aplicada |
 |---|---|
-| CICD-SEC-1 (fluxo insuficiente) | `main` só recebe código via PR com 5 checks obrigatórios; force-push e deleção bloqueados nas duas branches |
+| CICD-SEC-1 (fluxo insuficiente) | `main` só recebe código via PR com 6 checks obrigatórios; force-push e deleção bloqueados nas duas branches |
 | CICD-SEC-4 (execução de código de terceiros — PR de fork) | Evento `pull_request` (nunca `pull_request_target`): fork roda sem secrets; distribuição e assinatura só em `push`, que fork não dispara |
 | CICD-SEC-5 (permissões excessivas) | `permissions: contents: read` no CI; `write` apenas no release; deploy key restrita a este repositório |
 | CICD-SEC-6 (higiene de credenciais) | Keystore/SA/deploy key só em GitHub Secrets (write-only); materializados em `$RUNNER_TEMP`, nunca no workspace versionado; `key.properties` e keystores git-ignorados |
-| CICD-SEC-8 (integridade de artefatos) | Instalador Windows publicado com `.sha256`; APK assinado com keystore dedicado |
+| CICD-SEC-8 (integridade de artefatos) | Instalador Windows e `.deb` Linux publicados com `.sha256`; APK assinado com keystore dedicado |
 | Supply chain de actions | Apenas actions oficiais (`actions/*`, `subosito/flutter-action`) e `firebase-tools` pinado no major; sem actions de terceiros para deploy |
 
 - **Nunca** logar conteúdo de secrets nos steps (o GitHub mascara, mas transformações como base64 vazam)
@@ -100,7 +103,8 @@ Portado do hook `pre-push` (decisões D5/D6) dos projetos `runway`/`verbum`/`dos
 | `/.github/` estava no `.gitignore` | Workflows nunca chegariam ao GitHub | Linha removida na adoção do CI — não recolocar |
 | `VersionInfoVersion` do Inno exige versão numérica | `-dev.N` quebraria o ISCC | Build dev do Windows sai como `.zip`; instalador só no release |
 | Push com `GITHUB_TOKEN` não redispara workflows | Release via token não validaria/encadearia nada | Push do release usa a deploy key `RELEASE_DEPLOY_KEY` (redispara e cai no `NOOP`) |
-| Job pulado por `if:` conta como aprovado nos required checks | `build-windows` não roda em PR para `dev` sem bloquear merge | Comportamento intencional — não converter em `paths:` (workflow não reportado bloqueia PR para sempre) |
+| Job pulado por `if:` conta como aprovado nos required checks | `build-windows`/`build-linux` não rodam em PR para `dev` sem bloquear merge | Comportamento intencional — não converter em `paths:` (workflow não reportado bloqueia PR para sempre) |
+| Versão Debian não aceita `-dev.N` | `dpkg` rejeitaria o pacote dev com a mesma convenção do zip do Windows | Builds do CI usam `~dev.N`/`~pr.N` — o `~` ainda ordena antes da versão final |
 | `sqflite_common_ffi` abre `libsqlite3.so` | Testes quebram em runner Linux puro | Job `test` instala `libsqlite3-dev` via apt |
 | `MIN_COVERAGE` (85%) vs. baseline 88,4% | Gate reprova se a cobertura cair | Ajustar o valor apenas conscientemente, nunca para "passar" |
 | Sem secrets, release build assina com chave de debug | APK de fork/clone não serve para distribuição | Fallback intencional para manter forks buildáveis |
@@ -109,3 +113,5 @@ Portado do hook `pre-push` (decisões D5/D6) dos projetos `runway`/`verbum`/`dos
 | `path_provider_android` pinado `<2.3.0` | `flutter pub upgrade` cego quebra o build (jni/AGP) | Manter o pin — ver `plano/changelog.md` da migração Kotlin |
 | Versão do Flutter no CI vem do `.fvmrc` | Divergência local×CI se atualizar só um lado | Atualizar `.fvmrc` e testar localmente com o mesmo FVM |
 | Commit do release é do bot (`github-actions[bot]`) | `git pull` necessário na `dev` após release para receber `chore(release)` | Após merge na `main`: `git checkout dev && git merge main` (ou rebase) |
+| Branch padrão é a `main`, mas o trabalho é na `dev` | Clone novo cai na `main`; PR aberto pela UI/`gh` já vem com `base: main` | `git switch dev` após clonar; conferir a base ao abrir PR de feature (`gh pr create --base dev`) |
+| Badge de CI aponta para `?branch=dev` | `ci.yml` não roda em push na `main` — badge apontando para `main` ficaria "no status" | Manter o `?branch=dev` no `README.md` mesmo com a `main` como default |

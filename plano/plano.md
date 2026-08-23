@@ -716,6 +716,38 @@ O projeto está dividido em **18 etapas** sequenciais. As **etapas 1-4** cobrem 
 
 ---
 
+## Etapa 15.1 — Pacote `.deb` e distribuição Linux no CD
+
+> Origem: o release v0.7.0 saiu sem artefato Linux — a Etapa 15 documentou as opções de empacotamento sem implementar nenhuma. Decisão: `.deb` avulso no GitHub Release (instalável com `dpkg -i`/duplo clique, sem exigir repositório APT); presença em loja (Flathub) fica como evolução futura.
+
+**Objetivo**: Empacotar o bundle Linux como `.deb` reutilizável (script local + CI) e integrá-lo ao pipeline: artefato de validação no CI e `.deb` + `.sha256` no GitHub Release.
+
+**Escopo**:
+
+- **Empacotamento** (`tool/deb/build_deb.sh`):
+  - Layout FHS: bundle inteiro em `/usr/lib/decima/`, symlink `/usr/bin/decima`, `.desktop` e ícones `hicolor` de `linux/packaging/` em `/usr/share/`, AppStream em `/usr/share/metainfo/`
+  - `DEBIAN/control` gerado com `Installed-Size` calculado; `dpkg-deb --root-owner-group` (sem fakeroot)
+  - `Depends` mínimo (`libgtk-3-0`, `libglib2.0-0` + base): o SQLite **não** entra — o bundle embute `libsqlite3.so` via native assets do `package:sqlite3`; nomes antigos funcionam nos sistemas `t64` (Ubuntu 24.04+) porque os pacotes renomeados publicam `Provides:` versionado
+  - Sem scripts de mantenedor: caches de `.desktop`/ícones/AppStream atualizam via dpkg triggers dos pacotes do sistema
+  - Versão Debian: `X.Y.Z` no release; `X.Y.Z~dev.N` / `X.Y.Z~pr.N` nos builds do CI (`~` ordena antes da final)
+  - Saída: `dist/decima-<versão>-linux-amd64.deb` + `.sha256`
+- **AppStream** (`linux/packaging/com.wevasoft.decima.metainfo.xml`):
+  - `id` = `APPLICATION_ID`, `launchable` apontando para o `.desktop`, resumo/descrição em inglês e pt-BR; `@VERSION@`/`@DATE@` substituídos pelo script no empacotamento
+- **CI** (`ci.yml`): job `build-linux` (needs `analyze`+`test`, mesmo gating do `build-windows`: push na `dev` e PR para `main`), build + `.deb` como artefato de 14 dias; vira o 6º check obrigatório do ruleset `main-protegida`
+- **Release** (`release.yml`): job `release-linux` (`flutter build linux --release` + `build_deb.sh --skip-build`), artefato somado ao GitHub Release pelo `publish`
+- **Documentação**: `docs/fundacao/empacotamento-linux.md` (seção do `.deb`, tabela de opções atualizada), `docs/fundacao/ci-cd.md` (novos jobs, 6 checks), `README.md` (Instalação (Linux) com o `.deb`)
+
+**Testes**:
+
+- Estrutural: `dpkg-deb --info`/`--contents` conferindo control, layout, permissões e symlink
+- Instalação local: `dpkg -i` → abrir pelo menu → operar → remover com `dpkg -r` preservando `~/.local/share/com.wevasoft.decima`
+- CI: `build-linux` verde no push da `dev`; primeiro release com `.deb` publicado
+- Regressão: suíte de testes e `flutter analyze` intactos (etapa sem código Dart)
+
+**Entregável**: Todo release da `main` publica `decima-<versão>-linux-amd64.deb` com SHA-256 no GitHub Release, e o CI valida o empacotamento a cada PR para `main`.
+
+---
+
 ## Etapa 16 — Suporte a macOS
 
 **Objetivo**: Habilitar o build para macOS reutilizando a infra de desktop da Etapa 14, com adaptações para o sistema (semáforo de botões, entitlements e assinatura).

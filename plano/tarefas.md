@@ -795,6 +795,47 @@ Do checklist original:
 
 ---
 
+## Etapa 15.1 — Pacote `.deb` e distribuição Linux no CD
+
+### Empacotamento
+
+- [x] Criar `tool/deb/build_deb.sh` — build (opcional) → staging FHS → `DEBIAN/control` → `dpkg-deb --root-owner-group` → `dist/` + `.sha256`
+  - Layout: bundle em `/usr/lib/decima/`, symlink `/usr/bin/decima`, `.desktop` + ícones de `linux/packaging/`, metainfo AppStream
+  - Flags: `--skip-build` (reusa o bundle existente) e `--version X.Y.Z[~sufixo]`
+  - `Depends` mínimo (GTK3 + base; sem SQLite — embutido no bundle via native assets)
+  - Sem scripts de mantenedor (dpkg triggers cuidam dos caches)
+  - Extra: remoção do `kernel_blob.bin` deixado no staging compartilhado por builds debug (ver changelog)
+- [x] Criar `linux/packaging/com.wevasoft.decima.metainfo.xml` (AppStream, `@VERSION@`/`@DATE@` substituídos no empacotamento) — `appstreamcli validate` ✔
+
+### CI/CD
+
+- [x] `ci.yml`: job `build-linux` (needs `analyze`+`test`; push na `dev` e PR para `main`; `.deb` `~dev.N`/`~pr.N` como artefato de 14 dias)
+- [x] `release.yml`: job `release-linux` + artefato incluído no `publish`
+- [x] Ruleset `main-protegida`: adicionar `build-linux` como 6º check obrigatório (via `gh api`, aprovado pelo usuário)
+
+### Documentação
+
+- [x] `docs/fundacao/empacotamento-linux.md` — seção do `.deb` (layout, control, gotchas), tabela de opções atualizada
+- [x] `docs/fundacao/ci-cd.md` — novos jobs, 6 checks no ruleset
+- [x] `README.md` — Instalação (Linux) com o `.deb` do GitHub Release
+- [x] Registrar a etapa em `plano/plano.md`, `plano/tarefas.md` e `plano/changelog.md`
+
+### Validação
+
+- [x] `tool/deb/build_deb.sh` gera `dist/decima-<versão>-linux-amd64.deb` + `.sha256` — 8,3 MB (27 MB instalado)
+- [x] `dpkg-deb --info`/`--contents` — control, layout, permissões e symlink corretos
+- [x] Smoke test sem root: `dpkg-deb -x` + execução via symlink `usr/bin/decima` sob WSLg — janela abre, libs e assets resolvidos
+- [x] Instalação local: `dpkg -i` → app instalado, aberto e operando (**validado pelo usuário**, lado a lado com o build Windows)
+  - dpkg trigger regenerou o `icon-theme.cache` na instalação; `_NET_WM_ICON` publicado sob X11 (`xprop`) e `WM_CLASS` correto
+  - Tux na barra de tarefas e janela menor que o build Windows = quirks documentados do WSLg (sem lookup `app_id`→`.desktop` no Wayland; DPI a 100%) — não ocorrem em desktop Linux real
+  - Achado: `hicolor-icon-theme` adicionado ao `Depends` (fornece o `index.theme` que o lookup de ícones exige)
+  - `dpkg -r` preservando `~/.local/share/com.wevasoft.decima` — não exercitado (app mantido instalado)
+- [x] `flutter test` / `flutter analyze` / `dart format` — regressão intacta (sem código Dart novo)
+- [ ] CI `build-linux` verde no push da `dev` — confirmar no próximo push
+- [ ] Primeiro release com o `.deb` publicado no GitHub Release
+
+---
+
 ## Etapa 16 — Suporte a macOS
 
 ### Habilitação da plataforma
