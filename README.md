@@ -80,6 +80,29 @@ linux/packaging/install-desktop-entry.sh   # remover com --uninstall
 
 Detalhes do pacote `.deb` e demais formatos (AppImage/Flatpak/Snap) em [`docs/fundacao/empacotamento-linux.md`](docs/fundacao/empacotamento-linux.md).
 
+## Instalação (macOS)
+
+Baixe `decima-<versão>-macos.zip` em [Releases](https://github.com/wevertonj/decima/releases) e extraia o app para `/Applications`:
+
+```bash
+ditto -x -k decima-<versão>-macos.zip /Applications
+```
+
+- Binário **universal** (Apple Silicon e Intel), macOS 10.15 ou superior
+- **Sem pré-requisitos** — o Flutter e o SQLite vão dentro do bundle
+- Confira o SHA-256 publicado no release antes de instalar
+
+> O `.app` usa assinatura ad-hoc (sem certificado pago), então o Gatekeeper bloqueia a primeira abertura: feche com **Concluído** e autorize em **Ajustes do Sistema → Privacidade e Segurança → Abrir Mesmo Assim**.
+
+Para compilar localmente (requer Xcode):
+
+```bash
+flutter build macos --release            # ou tool/macos/build_zip.sh, que já gera o zip + .sha256
+open build/macos/Build/Products/Release/Decima.app
+```
+
+Detalhes do empacotamento (e o fluxo de notarização, como referência) em [`docs/fundacao/empacotamento-macos.md`](docs/fundacao/empacotamento-macos.md).
+
 ## Desenvolvimento
 
 ```bash
@@ -99,6 +122,6 @@ O projeto segue **TDD** rigorosamente. Consulte `/docs` para documentação comp
 
 - Branch de trabalho: `dev` (padrão). A `main` só recebe código via **pull request** com CI verde
 - Mensagens de commit seguem **Conventional Commits** (validadas por `commitlint` no CI)
-- Merge na `main` dispara o release automático: bump SemVer + `CHANGELOG.md` + tag + APK no Firebase App Distribution + instalador Windows no GitHub Release
+- Merge na `main` dispara o release automático: bump SemVer + `CHANGELOG.md` + tag + APK no Firebase App Distribution + APK, instalador Windows, `.deb` Linux e zip do macOS no GitHub Release
 
 Detalhes em [`docs/fundacao/ci-cd.md`](docs/fundacao/ci-cd.md).

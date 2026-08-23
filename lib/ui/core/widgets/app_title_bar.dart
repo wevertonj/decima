@@ -5,6 +5,7 @@ import 'package:decima/config/theme/app_layout.dart';
 import 'package:decima/ui/core/desktop/desktop_window_config.dart';
 import 'package:decima/ui/core/widgets/app_logo.dart';
 import 'package:decima/utils/extensions/l10n_extension.dart';
+import 'package:decima/utils/platform_info.dart';
 
 /// Barra de título customizada para plataformas desktop.
 ///
@@ -12,6 +13,12 @@ import 'package:decima/utils/extensions/l10n_extension.dart';
 /// logo + nome do app à esquerda em uma área arrastável, botões de
 /// minimizar e fechar à direita. Sem botão de maximizar — a janela
 /// tem tamanho fixo.
+///
+/// No macOS o semáforo nativo (close/minimize/zoom) permanece visível
+/// mesmo com `TitleBarStyle.hidden`, sobreposto ao canto superior
+/// esquerdo. Por convenção da plataforma os botões customizados não são
+/// renderizados e o logo + nome ficam centralizados — longe do semáforo
+/// e alinhados ao título centrado das janelas macOS.
 class AppTitleBar extends StatelessWidget {
   const AppTitleBar({super.key, this.onMinimize, this.onClose});
 
@@ -31,6 +38,33 @@ class AppTitleBar extends StatelessWidget {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
 
+    final title = Text(
+      context.l10n.appTitle,
+      style: theme.textTheme.labelLarge?.copyWith(
+        color: colorScheme.onSurface.withValues(alpha: 0.85),
+        fontWeight: FontWeight.w600,
+      ),
+    );
+
+    if (PlatformInfo.isMacOS) {
+      return Material(
+        color: colorScheme.surface,
+        child: SizedBox(
+          height: DesktopWindowConfig.titleBarHeight,
+          child: DragToMoveArea(
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                const AppLogo(size: _logoSize),
+                SizedBox(width: AppLayout.spacing.small),
+                title,
+              ],
+            ),
+          ),
+        ),
+      );
+    }
+
     return Material(
       color: colorScheme.surface,
       child: SizedBox(
@@ -44,13 +78,7 @@ class AppTitleBar extends StatelessWidget {
                     SizedBox(width: AppLayout.padding.medium),
                     const AppLogo(size: _logoSize),
                     SizedBox(width: AppLayout.spacing.small),
-                    Text(
-                      context.l10n.appTitle,
-                      style: theme.textTheme.labelLarge?.copyWith(
-                        color: colorScheme.onSurface.withValues(alpha: 0.85),
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
+                    title,
                   ],
                 ),
               ),

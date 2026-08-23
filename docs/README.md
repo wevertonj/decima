@@ -13,6 +13,7 @@ docs/
 │   ├── tema-design-system.md          # Tema, cores, layout e animações
 │   ├── empacotamento-windows.md       # Instalador .exe (Inno Setup) e bridge WSL→Windows
 │   ├── empacotamento-linux.md         # Runner GTK, .desktop + ícone hicolor e AppImage/Flatpak/Snap
+│   ├── empacotamento-macos.md         # .app com assinatura ad-hoc, Gatekeeper e notarização (referência)
 │   └── ci-cd.md                       # CI/CD (GitHub Actions), branches, release e distribuição
 ├── features/
 │   ├── calculadora.md                 # Calculadora (conceito Add2, timeline, keypad)

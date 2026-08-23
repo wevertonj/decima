@@ -831,8 +831,8 @@ Do checklist original:
   - Achado: `hicolor-icon-theme` adicionado ao `Depends` (fornece o `index.theme` que o lookup de ícones exige)
   - `dpkg -r` preservando `~/.local/share/com.wevasoft.decima` — não exercitado (app mantido instalado)
 - [x] `flutter test` / `flutter analyze` / `dart format` — regressão intacta (sem código Dart novo)
-- [ ] CI `build-linux` verde no push da `dev` — confirmar no próximo push
-- [ ] Primeiro release com o `.deb` publicado no GitHub Release
+- [x] CI `build-linux` verde no push da `dev` e no PR #3 (~1m20s cada)
+- [x] Primeiro release com o `.deb` publicado — v0.8.0 (`decima-0.8.0-linux-amd64.deb` + `.sha256` no GitHub Release)
 
 ---
 
@@ -840,54 +840,74 @@ Do checklist original:
 
 ### Habilitação da plataforma
 
-- [ ] Rodar `flutter create --platforms=macos .`
-- [ ] Conferir entitlements em `macos/Runner/*.entitlements`
+- [x] Rodar `flutter create --platforms=macos .` — o runner já existia desde a fundação; o primeiro build integrou os plugins via Swift Package Manager (CocoaPods deintegrado — ver changelog)
+- [x] Conferir entitlements em `macos/Runner/*.entitlements` — Release só com `app-sandbox`; `allow-jit`/`network.server` restritos ao DebugProfile. Nada a adicionar
 
 ### Ajustes específicos
 
-- [ ] Esconder o botão verde de maximizar (`windowManager.setMaximizable(false)` ou `setWindowButtonVisibility`)
-- [ ] Decisão UX: manter semáforo nativo (recomendado); `AppTitleBar` em macOS exibe apenas logo + nome
-- [ ] Adicionar branch `Platform.isMacOS` em `AppTitleBar` para ocultar botões customizados de minimizar/fechar
-- [ ] Conferir ícone `.icns` (gerado na Etapa 12) integrado ao bundle
-- [ ] Documentar processo básico de assinatura/notarização — sem implementar
+- [x] Esconder o botão verde de maximizar — `setResizable(false)` (já chamado) o deixa cinza (sem `.resizable` no `styleMask`); `setMaximizable(false)` no macOS só veta o zoom no delegate, não muda o visual
+- [x] Decisão UX: semáforo nativo mantido; `AppTitleBar` em macOS exibe apenas logo + nome, centralizados (convenção de título da plataforma, longe do semáforo)
+- [x] Adicionar branch `PlatformInfo.isMacOS` em `AppTitleBar` ocultando os botões customizados
+- [x] Conferir ícone `.icns` — `AppIcon.icns` no bundle, compilado do appiconset regenerado na Etapa 12
+- [x] Documentar assinatura/notarização — `docs/fundacao/empacotamento-macos.md` (referência, sem implementar)
+- [x] Extra: `hiddenWindowAtLaunch()` no `MainFlutterWindow.swift` — setup do `window_manager` que evita a janela piscar no tamanho do template antes do `waitUntilReadyToShow`
+- [x] Extra (pós-validação): ícone do Dock arredondado — `decima_icon_macos.png` (master squircle 824 px em canvas 1024) no `render.mjs` + `macos.image_path`; o full-bleed saía quadrado (macOS não aplica máscara)
+- [x] Extra (pós-validação): `PRODUCT_NAME = Decima` (bundle/launcher com nome capitalizado) e instalação local em `/Applications` via `ditto` + `lsregister`
 
 ### Testes
 
-- [ ] Atualizar `app_title_bar_test.dart` com cenário macOS (botões customizados ocultos)
+- [x] Atualizar `app_title_bar_test.dart` com cenário macOS (botões ocultos, logo+nome centralizados, drag area e altura preservadas)
+- [x] Extra: grupo `PlatformInfo.isMacOS` em `platform_info_test.dart`
 
 ### Validação
 
-- [ ] `flutter build macos` — sucesso
-- [ ] `flutter test` — 100% verde
-- [ ] `flutter analyze` — zero warnings
-- [ ] Verificação manual: janela fixa com semáforo nativo, sem botão verde de maximizar
+- [x] `fvm flutter build macos --release` — sucesso (`decima.app` 49,1 MB, universal x86_64+arm64, assinatura ad-hoc)
+- [x] `flutter test` — 100% verde (709 testes)
+- [x] `flutter analyze` — zero warnings
+- [x] Verificação manual: janela fixa com semáforo nativo, botão verde inativo — **validada pelo usuário**
 
 ---
 
-## Etapa 17 — Suporte a iOS
+## Etapa 16.1 — Distribuição macOS no CD e enxugamento do canal dev
 
-### Habilitação da plataforma
+### Empacotamento
 
-- [ ] Rodar `flutter create --platforms=ios .`
-- [ ] Configurar `ios/Runner/Info.plist` (nome, orientações apenas portrait, status bar style)
+- [x] Criar `tool/macos/build_zip.sh` — guard de `Darwin` → build (opcional) → `codesign --verify --strict` → `ditto -c -k --keepParent` → `dist/` + `.sha256`
+  - Nome do bundle lido de `PRODUCT_NAME` no `AppInfo.xcconfig` (sem constante duplicada)
+  - Flags: `--skip-build` (reusa o bundle existente) e `--version X.Y.Z[-sufixo]`
+  - `zip` comum está proibido: perde symlinks/permissões e invalida a assinatura ad-hoc
 
-### Identidade visual
+### CI/CD
 
-- [ ] Conferir que ícones e splash da Etapa 12 cobrem iOS
-- [ ] Validar `LaunchScreen.storyboard` integrado ao splash gerado
+- [x] `ci.yml`: job `build-macos` em `macos-latest` (needs `analyze`+`test`; push na `dev` e PR para `main`; zip `-dev.N`/`-pr.N` como artefato de 14 dias)
+- [x] `ci.yml`: remover a distribuição Firebase do grupo `dev` (steps + env `HAS_FIREBASE`) — o CI deixa de distribuir qualquer coisa
+- [x] `release.yml`: job `release-macos` + artefato incluído no `publish`
+- [x] Ruleset `main-protegida`: adicionar `build-macos` como 7º check obrigatório (via `gh api`, aprovado pelo usuário)
 
-### Ajustes específicos
+### Documentação
 
-- [ ] Confirmar funcionamento de `sqflite` e `shared_preferences` no iOS
-- [ ] Validar teclado físico (Etapa 13) em iPad com Magic/Smart Keyboard
-- [ ] Conferir safe area (notch / Dynamic Island)
+- [x] `docs/fundacao/empacotamento-macos.md` — script de empacotamento, seção CI/CD, gotchas do `ditto`/`upload-artifact`
+- [x] `docs/fundacao/ci-cd.md` — novos jobs, 7 checks, Firebase restrito ao `release.yml`, grupo `dev` aposentado
+- [x] `README.md` — Instalação (macOS) a partir do GitHub Release
+- [x] Registrar a etapa em `plano/plano.md`, `plano/tarefas.md` e `plano/changelog.md`
 
 ### Validação
 
-- [ ] `flutter build ios --no-codesign` — sucesso
-- [ ] `flutter test` — 100% verde (regressão)
-- [ ] `flutter analyze` — zero warnings
-- [ ] Verificação manual: app roda no simulador iOS com paridade visual ao Android
+- [x] CI `build-macos` verde no push da `dev` — 4m49s; `Decima.app` 49,0 MB (assinatura ad-hoc verificada) → zip de 20 MB
+- [ ] CI `build-macos` verde no PR para `main`
+- [ ] Primeiro release com o zip publicado (`decima-<semver>-macos.zip` + `.sha256`)
+- [ ] Extrair o zip do release em outro Mac, liberar no Gatekeeper e abrir o app
+- [x] `flutter test` / `flutter analyze` / `dart format` — regressão intacta (sem código Dart novo)
+
+---
+
+## Etapa 17 — Suporte a iOS *(removida do escopo)*
+
+Sem Apple Developer Program pago não há caminho de distribuição para iOS. Etapa cancelada — justificativa completa em `plano.md`.
+
+- [x] Remover `ios/` do repositório
+- [x] Desabilitar iOS em `flutter_launcher_icons.yaml` e `flutter_native_splash.yaml`
+- [x] Manter os `case TargetPlatform.iOS:` do `PlatformInfo` e seus testes (enum do Flutter, `switch` exaustivo)
 
 ---
 
@@ -918,7 +938,7 @@ Do checklist original:
 - [ ] Verificar interação entre cursor editável, parênteses inteligentes e porcentagem literal
 - [ ] Testar fluxo: operação completa via teclado físico em desktop e mobile com teclado externo
 - [ ] Verificar que o logo e o splash aparecem corretamente em todas as plataformas
-- [ ] Verificar paridade visual entre Android, iOS, Windows, Linux e macOS
+- [ ] Verificar paridade visual entre Android, Windows, Linux e macOS
 
 ### Qualidade
 

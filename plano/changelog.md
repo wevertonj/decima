@@ -1651,4 +1651,151 @@ Novo `PlatformInfo.isLinux` para os dois desvios — mesmo padrão testável do 
 - Smoke test sem root: `dpkg-deb -x` + execução via `usr/bin/decima` (symlink) sob WSLg — janela abre, layout relocado resolve libs (`RUNPATH`) e assets (`/proc/self/exe`)
 - Instalação real (`sudo dpkg -i`) — **validada pelo usuário**: app instalado, aberto e operando lado a lado com o build Windows. O dpkg trigger regenerou o `icon-theme.cache`; `xprop` confirmou `_NET_WM_ICON` (do tema) e `WM_CLASS` sob X11. Dois quirks do WSLg observados e documentados: Tux na barra de tarefas (Wayland sem lookup `app_id`→`.desktop`) e janela menor que o build Windows (WSLg renderiza a 100% e ignora a escala de DPI do monitor) — nenhum ocorre em desktop Linux real
 - Achado da validação: `hicolor-icon-theme` incluído no `Depends` — fornece o `/usr/share/icons/hicolor/index.theme` sem o qual o GTK não resolve os ícones instalados (presente na máquina do teste, mas não garantido em sistemas mínimos)
-- Workflows: YAML validado; `build-linux` verde no CI fica confirmado no próximo push da `dev`
+- Workflows: YAML validado; `build-linux` verde nas duas primeiras execuções (push da `dev` e PR #3, ~1m20s cada)
+- **Release v0.8.0** (PR #3, merge com 6 checks verdes): primeiro release com artefato Linux — `decima-0.8.0-linux-amd64.deb` + `.sha256` publicados no GitHub Release ao lado do APK e do instalador Windows
+
+---
+
+## [Concluída] Remoção do suporte a iOS (Etapa 17 cancelada)
+
+**Origem**: levantamento sobre desenvolver para Apple sem conta paga. Conclusão: macOS e iOS têm caminhos opostos — o macOS distribui via assinatura ad-hoc (`CODE_SIGN_IDENTITY = "-"`, já default no template, com atrito de Gatekeeper), enquanto o iOS **não tem nenhum** caminho sem o Apple Developer Program (US$ 99/ano): sem TestFlight, sem App Store, e build com Apple ID gratuito expira em 7 dias até no próprio dispositivo. A Etapa 17 entregaria só um `flutter build ios --no-codesign` verde. Decisão: remover o iOS e manter o macOS (Etapa 16 segue pendente).
+
+### Removido
+
+- Pasta `ios/` — 52 arquivos versionados + 7 artefatos gerados (entre eles um `flutter_export_environment.sh` ainda apontando para o path antigo `flutter/wevacalc/`)
+- `flutter_launcher_icons.yaml` — `ios: true` e `remove_alpha_ios: true`; comentários de `image_path` ajustados
+- `flutter_native_splash.yaml` — `ios_content_mode`; chave `ios` fixada em `false`
+- `.gitignore` — `**/ios/Flutter/.last_build_id`
+
+### Gotcha — os dois pacotes têm defaults opostos para a chave `ios`
+
+| Pacote | Chave ausente | Ação tomada |
+|--------|---------------|-------------|
+| `flutter_launcher_icons` 0.14.4 | `this.ios = false` (`lib/config/config.dart:25`) | comentar a linha basta |
+| `flutter_native_splash` 2.4.8 | `!containsKey(ios) \|\| ios == true` (`lib/cli_commands.dart:194`) → **gera iOS** | `ios: false` **explícito** — apagar a linha reativaria a geração |
+
+### Preservado (intencional)
+
+- Os `case TargetPlatform.iOS:` em `PlatformInfo.isDesktop`/`isLinux` e os testes que os cobrem (`platform_info_test.dart`, `desktop_shell_test.dart`, `window_close_handler_test.dart`, `night_mode_service_test.dart`) — `TargetPlatform` é enum do Flutter e o `switch` precisa continuar exaustivo, independente das plataformas suportadas. **Nenhuma linha de código Dart foi alterada nesta remoção.**
+- Registros históricos das Etapas 12 e 14 que mencionam iOS no escopo original — o changelog é append-only
+
+### Reversão
+
+`flutter create --platforms=ios .` regenera o runner em segundos, caso a assinatura paga seja adquirida.
+
+### Validação
+
+- `flutter analyze` — zero warnings
+- `flutter test` — 100% verde (regressão intacta)
+
+---
+
+## [Concluída] Etapa 16 — Suporte a macOS
+
+**Objetivo**: habilitar o build macOS reutilizando a infra de desktop da Etapa 14, respeitando as convenções da plataforma (semáforo nativo, janela fixa).
+
+### Contexto de ambiente
+
+- Primeira etapa executada no MacBook. O `flutter` global da máquina (3.41.7) tinha rebaixado o `pubspec.lock` num `pub get` anterior — restaurado e regenerado com o FVM do projeto (3.44.2). Regra registrada: sempre `fvm flutter ...` neste repo
+- O runner `macos/` já existia desde a fundação (commit `a64f457`), renomeado na migração WevaCalc→Decima — `flutter create --platforms=macos .` não foi necessário
+
+### Implementado
+
+- `PlatformInfo.isMacOS` — mesmo padrão testável de `isLinux` (guard de `kIsWeb` + `defaultTargetPlatform`)
+- `AppTitleBar` com variante macOS: sem botões customizados de minimizar/fechar (o semáforo nativo permanece visível com `TitleBarStyle.hidden`, sobreposto ao canto superior esquerdo); logo + nome **centralizados** — convenção de título do macOS e desvia do semáforo sem precisar de inset mágico. `DragToMoveArea` cobre a barra inteira
+- `MainFlutterWindow.swift`: `import window_manager` + `hiddenWindowAtLaunch()` no override de `order(_:relativeTo:)` — setup documentado do plugin; sem ele a janela pisca no tamanho do template antes de o Dart aplicar as `WindowOptions`
+- Docs: `docs/fundacao/empacotamento-macos.md` (build, distribuição ad-hoc + Gatekeeper, fluxo Developer ID/notarização como referência); seção "Instalação (macOS)" no `README.md`; índice em `docs/README.md`
+
+### Decisões e achados
+
+| Achado | Detalhe |
+|--------|---------|
+| Botão verde | `setMaximizable(false)` no macOS **não** desabilita o botão — só veta o zoom em `windowShouldZoom`. Quem o deixa cinza é o `setResizable(false)` (remove `.resizable` do `styleMask`), já chamado desde a Etapa 14. Nenhuma mudança no `initDesktopWindow` |
+| Semáforo | `windowButtonVisibility` default `true` mantém os três botões; `false` esconderia o semáforo inteiro (não há API por botão no `window_manager`) — default mantido |
+| CocoaPods removido | O primeiro build adicionou integração **dupla** (SwiftPM + CocoaPods). Todos os plugins macOS são Swift Packages e o próprio Flutter recomenda deintegrar: `pod deintegrate` + `Podfile`/`Podfile.lock` apagados + `Flutter-*.xcconfig` e workspace revertidos. Segundo build verde só com SwiftPM, sem avisos |
+| Entitlements | Release mínimo (`app-sandbox` apenas); `allow-jit`/`network.server` só em DebugProfile. Dados do app ficam no container `~/Library/Containers/com.wevasoft.decima/` |
+| Ícone | `AppIcon.icns` compilado pelo Xcode a partir do appiconset regenerado na Etapa 12 — nenhum `.icns` versionado no repo (comportamento esperado) |
+
+### Testes
+
+- `app_title_bar_test.dart` — novo grupo "AppTitleBar on macOS": botões ocultos, logo+nome centralizados (centro geométrico do conteúdo ≈ centro da barra), drag area e altura preservadas
+- `platform_info_test.dart` — grupo `PlatformInfo.isMacOS` espelhando o de `isLinux`
+
+### Validação
+
+- `fvm flutter build macos --release` — `decima.app` 49,1 MB, universal (x86_64 + arm64), `codesign` confirma `Signature=adhoc` e `AppIcon.icns` no bundle
+- `flutter test` — 709 testes, 100% verde
+- `flutter analyze` — zero warnings; `dart format` — 0 mudanças
+- Verificação manual (janela fixa, semáforo nativo, verde inativo) — **validada pelo usuário**
+
+---
+
+## [Ajuste] Etapa 16 — Ícone do Dock, nome do bundle e instalação local
+
+**Origem**: validação visual do usuário — o ícone aparecia **quadrado** no Dock (e o bundle se chamava `decima.app`, que renderizaria "decima" minúsculo no launcher).
+
+### Ícone do Dock (squircle com margens)
+
+- Causa: `macos.image_path` apontava para o **full-bleed quadrado** — mas o macOS, como Windows/Linux, **não aplica máscara**; o squircle precisa estar no próprio PNG, e a convenção Big Sur ainda exige margens (ícone ocupa 824 dos 1024 px do canvas, senão fica maior que os vizinhos)
+- `tool/icon/render.mjs` ganhou o passo `decima_icon_macos.png`: master (squircle 22,4% ≈ 22,5% do grid da Apple) rasterizado a 824 px e centrado em canvas 1024 transparente
+- Sem node neste Mac, o PNG foi gerado por um one-off Swift/CoreGraphics equivalente a partir de `assets/branding/logo.png` (o próprio master em 1024 do pipeline); o próximo `npm run render` no WSL regenera o arquivo canônico
+- `fvm dart run flutter_launcher_icons` regenerou só o `AppIcon.appiconset` (Android/web idênticos — pipeline determinístico)
+
+### Nome do bundle
+
+- `PRODUCT_NAME = Decima` em `AppInfo.xcconfig` (`CFBundleName`/executável/`.app` acompanham); refs `decima.app` atualizadas no `project.pbxproj` (product + `TEST_HOST` ×3) e no `Runner.xcscheme` (`BuildableName` ×5)
+- Gotcha real: APFS é case-insensitive — `decima.app` e `Decima.app` são a mesma entrada; um `rm` de "limpeza" no nome antigo apagou o bundle novo (rebuild resolveu). Documentado
+
+### Instalação local
+
+- `ditto` do `Decima.app` para `/Applications` + `lsregister -f` — app no Launchpad/Spotlight como qualquer outro; sandbox container (`com.wevasoft.decima`) inalterado, histórico preservado
+- Docs: `empacotamento-macos.md` (linha de instalação, fonte do appiconset, 2 gotchas novos) e `README.md` (bloco de instalação)
+
+### Validação
+
+- `fvm flutter build macos --release` → `Decima.app` (49,1 MB); `codesign` ad-hoc ok; `CFBundleName = Decima`
+- Instalado e aberto de `/Applications` — ícone arredondado no Dock **pendente de confirmação visual do usuário**
+
+---
+
+## [Concluída] Etapa 16.1 — Distribuição macOS no CD e enxugamento do canal dev
+
+**Origem**: a Etapa 16 deixou o macOS buildando só na máquina do dev — nenhum release publicava artefato. Na mesma passada, decisão do usuário: aposentar a distribuição Firebase do canal `dev` (o APK de push na `dev` já sai como artefato do Actions e o grupo de testers `dev` nunca teve uso real).
+
+### Empacotamento (`tool/macos/build_zip.sh`)
+
+- Guard de plataforma: aborta fora do `Darwin` — `ditto`/`codesign`/`xcodebuild` não existem em Linux/Windows
+- Nome do bundle lido de `PRODUCT_NAME` no `AppInfo.xcconfig` (`Decima.app`) em vez de constante duplicada no script
+- `codesign --verify --strict` **antes** de compactar: a assinatura ad-hoc é o que garante integridade do bundle sem conta paga — falhar aqui é falhar cedo
+- `ditto -c -k --keepParent` + `shasum -a 256`; saída em `dist/decima-<versão>-macos.zip` (+ `.sha256`), mesmas flags do `build_deb.sh` (`--skip-build`, `--version`)
+
+### CI/CD
+
+| Workflow | Mudança |
+|----------|---------|
+| `ci.yml` | Job `build-macos` (`macos-latest`, needs `analyze`+`test`, mesmo gating do `build-windows`/`build-linux`) — zip `-dev.N`/`-pr.N` como artefato de 14 dias |
+| `ci.yml` | Removidos os steps de distribuição Firebase do grupo `dev` e o env `HAS_FIREBASE` — o CI passa a **não distribuir nada** |
+| `release.yml` | Job `release-macos` + artefato somado ao `publish` (7 jobs no total) |
+| Ruleset `main-protegida` | `build-macos` como 7º check obrigatório |
+
+### Decisões e achados
+
+| Item | Detalhe |
+|------|---------|
+| `ditto` obrigatório | O `upload-artifact` não preserva permissões nem symlinks: subir o `.app` cru entregaria um bundle inexecutável. O job compacta antes do upload — o artefato do Actions é um zip com o zip do `ditto` dentro |
+| Sufixo de versão | O zip não tem a restrição do `.deb` (`~dev.N`): usa `-dev.N`/`-pr.N`, igual ao bundle do Windows |
+| Sem secrets Apple | O CI assina ad-hoc como a máquina local — sem Developer ID nem notarização (conta paga fora do escopo); o SHA-256 no release é a verificação de integridade |
+| SwiftPM | Ligado por padrão no canal stable do Flutter 3.44.2 (`features.dart`) — nenhum `flutter config` extra no runner; CocoaPods segue fora do projeto |
+| Firebase | O grupo `stable` do `release.yml` ficou intacto; só o canal `dev` foi aposentado (o grupo pode ser apagado no console) |
+
+### Documentação
+
+- `docs/fundacao/empacotamento-macos.md` — script na tabela de artefatos/comandos, seção **CI/CD** (matriz contexto→job→artefato) e 2 gotchas novos (`zip` comum destrói o bundle; script só roda no macOS)
+- `docs/fundacao/ci-cd.md` — jobs novos, 7 checks obrigatórios, "o CI não distribui nada", Firebase restrito ao `release.yml`, 4 gotchas novos (upload-artifact, runner arm64/universal, sem secrets Apple, CocoaPods)
+- `README.md` — Instalação (macOS) a partir do GitHub Release (com `ditto -x -k`), bloco de compilação local preservado
+
+### Validação
+
+- `flutter analyze` / `flutter test` / `dart format` — regressão intacta (etapa sem código Dart)
+- `bash -n tool/macos/build_zip.sh` — sintaxe ok; execução real só no runner macOS
+- CI `build-macos` e primeiro release com o zip publicado — **pendente do PR para a `main`**

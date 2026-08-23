@@ -60,6 +60,25 @@ const icoPngs = await Promise.all(ICO_SIZES.map((size) =>
 await writeFile(ICO_OUT, await pngToIco(icoPngs));
 console.log(`${path.relative(ROOT, ICO_OUT)} (${ICO_SIZES.join('/')})`);
 
+// Ícone macOS (decima_icon_macos.png): o macOS também NÃO aplica máscara —
+// e a convenção Big Sur exige margens: o squircle ocupa 824 dos 1024 px do
+// canvas (o resto é transparência), senão o ícone fica maior que os vizinhos
+// no Dock. Fonte: MASTER escalado e centralizado (o raio de 22,4% do master
+// ≈ os 22,5% do grid da Apple). Consumido pelo `flutter_launcher_icons` via
+// `macos.image_path`, que deriva o AppIcon.appiconset (16–1024 px).
+const MACOS_CANVAS = 1024;
+const MACOS_GLYPH = 824;
+const MACOS_MARGIN = (MACOS_CANVAS - MACOS_GLYPH) / 2;
+await sharp(p('assets/icon/decima_icon_master.svg'), { density: 300 })
+  .resize(MACOS_GLYPH, MACOS_GLYPH)
+  .extend({
+    top: MACOS_MARGIN, bottom: MACOS_MARGIN,
+    left: MACOS_MARGIN, right: MACOS_MARGIN,
+    background: { r: 0, g: 0, b: 0, alpha: 0 },
+  })
+  .png().toFile(p('assets/icon/decima_icon_macos.png'));
+console.log(`assets/icon/decima_icon_macos.png (${MACOS_CANVAS}×${MACOS_CANVAS}, glifo ${MACOS_GLYPH})`);
+
 // Ícone Linux (tema hicolor): o `flutter_launcher_icons` NÃO tem suporte a
 // Linux — quem entrega o ícone é o `.desktop` (`Icon=com.wevasoft.decima`),
 // resolvido pelo tema de ícones instalado. Como no Windows, os ambientes

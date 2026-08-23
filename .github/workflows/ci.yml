@@ -1,8 +1,9 @@
 # CI — validação contínua (substitui os hooks husky dos outros projetos).
 #
 # Gatilhos: PRs para `dev`/`main` e pushes diretos em `dev`.
-# PRs de fork rodam sem secrets (jobs de build caem na assinatura de debug e a
-# distribuição nunca roda aqui — só no push, que fork não dispara).
+# Nenhuma distribuição acontece aqui: os builds sobem como artefatos do Actions
+# (14 dias) e só o `release.yml` publica para testers/usuários. PRs de fork
+# rodam sem secrets — a assinatura do Android cai na chave de debug.
 name: CI
 
 on:
@@ -24,7 +25,6 @@ env:
   # Baseline na adoção (2026-08): 88,4%.
   MIN_COVERAGE: '85'
   HAS_KEYSTORE: ${{ secrets.ANDROID_KEYSTORE_BASE64 != '' }}
-  HAS_FIREBASE: ${{ secrets.FIREBASE_SERVICE_ACCOUNT != '' }}
 
 jobs:
   commitlint:
@@ -164,28 +164,6 @@ jobs:
           path: build/app/outputs/flutter-apk/app-release.apk
           retention-days: 14
 
-      - name: Distribuir no Firebase (grupo dev)
-        if: github.event_name == 'push' && env.HAS_FIREBASE == 'true'
-        env:
-          FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
-          FIREBASE_ANDROID_APP_ID: ${{ vars.FIREBASE_ANDROID_APP_ID }}
-        run: |
-          printf '%s' "$FIREBASE_SERVICE_ACCOUNT" > "$RUNNER_TEMP/firebase-sa.json"
-          export GOOGLE_APPLICATION_CREDENTIALS="$RUNNER_TEMP/firebase-sa.json"
-          {
-            echo "Build dev ${{ steps.ver.outputs.base }}-dev.${{ github.run_number }}"
-            echo "Commit: $(git log -1 --format='%s (%h)')"
-          } > "$RUNNER_TEMP/release-notes.txt"
-          npx -y firebase-tools@14 appdistribution:distribute \
-            build/app/outputs/flutter-apk/app-release.apk \
-            --app "$FIREBASE_ANDROID_APP_ID" \
-            --groups dev \
-            --release-notes-file "$RUNNER_TEMP/release-notes.txt"
-
-      - name: Aviso — Firebase não configurado
-        if: github.event_name == 'push' && env.HAS_FIREBASE != 'true'
-        run: echo "::warning::Secret FIREBASE_SERVICE_ACCOUNT ausente — distribuição para o Firebase pulada."
-
   build-linux:
     name: build-linux
     runs-on: ubuntu-latest
@@ -285,4 +263,51 @@ jobs:
         with:
           name: decima-windows-bundle
           path: decima-*-windows-x64.zip
+          retention-days: 14
+
+  build-macos:
+    name: build-macos
+    runs-on: macos-latest
+    timeout-minutes: 45
+    needs: [analyze, test]
+    # Pushes em dev (artefato de teste) e PRs para main (gate de release).
+    if: github.event_name != 'pull_request' || github.base_ref == 'main'
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: ./.github/actions/setup-flutter
+
+      - name: Versão base
+        id: ver
+        run: echo "base=$(grep -m1 '^version:' pubspec.yaml | awk '{print $2}' | cut -d+ -f1)" >> "$GITHUB_OUTPUT"
+
+      # Sem CocoaPods no projeto: os plugins são Swift Packages e o SwiftPM já
+      # vem ligado por padrão no canal stable a partir do Flutter do `.fvmrc`.
+      - name: Build macOS (dev)
+        if: github.event_name == 'push'
+        run: >
+          flutter build macos --release
+          --build-name=${{ steps.ver.outputs.base }}-dev.${{ github.run_number }}
+          --build-number=${{ github.run_number }}
+
+      - name: Build macOS (validação de PR)
+        if: github.event_name != 'push'
+        run: flutter build macos --release
+
+      # O zip do `ditto` é o artefato real: o upload-artifact não preserva
+      # permissões nem symlinks e entregaria um .app quebrado se subisse cru.
+      - name: Empacotar .zip
+        run: |
+          if [ "${{ github.event_name }}" = "push" ]; then
+            suffix='-dev.${{ github.run_number }}'
+          else
+            suffix='-pr.${{ github.run_number }}'
+          fi
+          tool/macos/build_zip.sh --skip-build --version "${{ steps.ver.outputs.base }}${suffix}"
+
+      - name: Publicar bundle
+        uses: actions/upload-artifact@v4
+        with:
+          name: decima-macos-app
+          path: dist/*
           retention-days: 14

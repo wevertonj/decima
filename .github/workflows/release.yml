@@ -5,9 +5,9 @@
 # SemVer pelo range de commits desde a última tag `v*`. Com bump, o workflow
 # commita `chore(release): vX.Y.Z+B` + tag `vX.Y.Z` na main — o push usa a
 # deploy key `RELEASE_DEPLOY_KEY` (bypass do ruleset `main-protegida`) —,
-# builda APK assinado, instalador Windows e `.deb` Linux, distribui no
-# Firebase (grupo stable) e publica o GitHub Release. Sem bump (range só de
-# chore/docs/etc.), NOOP: nada é publicado.
+# builda APK assinado, instalador Windows, `.deb` Linux e `.app` macOS (zip),
+# distribui no Firebase (grupo stable) e publica o GitHub Release. Sem bump
+# (range só de chore/docs/etc.), NOOP: nada é publicado.
 #
 # Anti-loop: o push do commit de release redispara este workflow, mas um range
 # só de `chore(release)` resulta em NOOP no motor (decisão D6).
@@ -234,11 +234,40 @@ jobs:
           path: dist/*
           retention-days: 30
 
+  macos:
+    name: release-macos
+    runs-on: macos-latest
+    timeout-minutes: 45
+    needs: bump
+    if: needs.bump.outputs.released == 'true'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.bump.outputs.sha }}
+
+      - uses: ./.github/actions/setup-flutter
+
+      - name: Build macOS release
+        run: flutter build macos --release
+
+      # O script verifica a assinatura ad-hoc, compacta com `ditto` (preserva
+      # symlinks/permissões do bundle) e gera dist/decima-<semver>-macos.zip
+      # + .sha256 — sem conta paga não há notarização, o hash é a integridade.
+      - name: Empacotar .zip
+        run: tool/macos/build_zip.sh --skip-build --version '${{ needs.bump.outputs.semver }}'
+
+      - name: Publicar .zip
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-macos
+          path: dist/*
+          retention-days: 30
+
   publish:
     name: publish-release
     runs-on: ubuntu-latest
     timeout-minutes: 10
-    needs: [bump, android, windows, linux]
+    needs: [bump, android, windows, linux, macos]
     if: needs.bump.outputs.released == 'true'
     steps:
       - uses: actions/checkout@v4
