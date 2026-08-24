@@ -957,6 +957,8 @@ O único bug novo da revisão — a moldura verde que o Android desenhava na bor
 
 **Entregável**: `CalculatorViewModel` legível de uma sentada, cada responsabilidade em uma classe nomeável, verificador de tamanho sem exceções.
 
+**Status (2026-08-24)**: entregue integralmente. Além dos dois controllers planejados, a decomposição rendeu mais dois colaboradores: `TimelineController` (decisão registrada: **extraído**, 34 linhas — o estado da timeline não se mistura à orquestração da fachada) e `CursorController` (estado do cursor/modo de edição roteando pelo `ExpressionEditor`); e a máquina de composição por digitação saiu do ViewModel para o domínio como `ExpressionComposer` (contraponto append do `ExpressionEditor`). DIP concluído (`Add2Engine` factory, `ExpressionEvaluator` lazy singleton no GetIt). O TDD dos controllers endureceu dois contratos: `SessionRecorder._trackWrite` ganhou `write.ignore()` (escrita que falhava antes do microtask do encadeamento virava erro não tratado na zone — corrida latente herdada do ViewModel antigo) e a colagem passou a rejeitar linha resolvida inavaliável (divisão por zero, detectada por `ExpressionEvaluator.errorResult`, agora público). `calculator_view_model.dart`: 1.199 → 561 linhas; teste fatiado em 7 arquivos (171–502 linhas) + 2 de controllers, nenhum cenário descartado. **Allowlist do verificador zerada** — nenhum arquivo de `lib/`/`test/` acima de 600 linhas. 751 testes verdes. **Etapa concluída.**
+
 ---
 
 ## Etapa 22 — Refatoração da UI: widgets enxutos

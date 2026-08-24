@@ -1018,27 +1018,29 @@ Sem Apple Developer Program pago não há caminho de distribuição para iOS. Et
 
 ---
 
-## Etapa 21 — Refatoração do ViewModel: sub-controllers
+## Etapa 21 — Refatoração do ViewModel: sub-controllers ✅
 
 ### Extração
 
-- [ ] Criar `lib/ui/calculator/controllers/session_recorder.dart` (sessão/persistência: escritas encadeadas, gerações, flush idempotente)
-- [ ] Criar `lib/ui/calculator/controllers/clipboard_controller.dart` (copiar/colar + aplicação de conteúdo colado)
-- [ ] Avaliar `timeline_controller.dart` para visibleCount/loadMore (registrar a decisão)
-- [ ] Injetar `Add2Engine` e `ExpressionEvaluator` via construtor (com default); wiring em `dependencies.dart`
-- [ ] `CalculatorViewModel` como fachada ≤ 600 linhas — única API para a UI
+- [x] Criar `lib/ui/calculator/controllers/session_recorder.dart` (sessão/persistência: escritas encadeadas, gerações, flush idempotente) — 157 linhas; `_trackWrite` ganhou `write.ignore()` (escrita que falha antes do microtask do encadeamento virava erro não tratado na zone)
+- [x] Criar `lib/ui/calculator/controllers/clipboard_controller.dart` (copiar/colar + aplicação de conteúdo colado) — devolve `PastedSession` reavaliado; rejeita a colagem inteira quando alguma linha resolvida é inavaliável (divisão por zero via `ExpressionEvaluator.errorResult`, agora público)
+- [x] Avaliar `timeline_controller.dart` para visibleCount/loadMore (registrar a decisão) — **extraído** (34 linhas): o estado da timeline não se mistura à orquestração da fachada
+- [x] Extra: `lib/ui/calculator/controllers/cursor_controller.dart` (130 linhas) — estado do cursor/modo de edição, roteando pelo `ExpressionEditor`
+- [x] Extra: `lib/domain/expression_composer.dart` (445 linhas) — a máquina de composição por digitação (tokens confirmados + operador pendente + operando ativo no `Add2Engine`) saiu do ViewModel para o domínio, contraponto do `ExpressionEditor`
+- [x] Injetar `Add2Engine` e `ExpressionEvaluator` via construtor (com default); wiring em `dependencies.dart` (`Add2Engine` factory por ser stateful, avaliador lazy singleton)
+- [x] `CalculatorViewModel` como fachada ≤ 600 linhas — única API para a UI (1.199 → 561 linhas)
 
 ### Testes
 
-- [ ] Fatiar `calculator_view_model_test.dart` por área em `test/unit/ui/calculator/` (entrada/operadores, parênteses/porcentagem, sessão, clipboard, timeline, cursor) — nenhum cenário descartado
-- [ ] Testes diretos de `SessionRecorder` e `ClipboardController`
-- [ ] Suíte completa verde; cobertura ≥ baseline
+- [x] Fatiar `calculator_view_model_test.dart` por área em `test/unit/ui/calculator/` (entrada/operadores, parênteses/porcentagem, sessão, clipboard, timeline, cursor, backspace) — 7 arquivos (171–502 linhas), nenhum cenário descartado
+- [x] Testes diretos de `SessionRecorder` (245 linhas) e `ClipboardController` (175 linhas), incluindo dois cenários novos: cadeia de escrita nunca envenenada por falha e colagem com linha inavaliável rejeitada
+- [x] Suíte completa verde (751 testes); cobertura ≥ baseline via CI na `dev`
 
 ### Fechamento
 
-- [ ] Zerar a allowlist do verificador (nenhum arquivo > 600 linhas em `lib/` e `test/`)
-- [ ] Atualizar `docs/fundacao/arquitetura.md` (pasta `controllers/`, fluxo de dados)
-- [ ] Registrar a etapa em `plano/plano.md`, `plano/tarefas.md` e `plano/changelog.md`
+- [x] Zerar a allowlist do verificador (nenhum arquivo > 600 linhas em `lib/` e `test/`) — os cenários de tolerância/entrada obsoleta do teste do verificador saíram (inalcançáveis com a lista `const` vazia); entrou cenário dos ex-allowlisted dentro do limite
+- [x] Atualizar `docs/fundacao/arquitetura.md` (pasta `controllers/`, seção "Controllers da Calculadora", `ExpressionComposer` no domínio, snippet do GetIt)
+- [x] Registrar a etapa em `plano/plano.md`, `plano/tarefas.md` e `plano/changelog.md`
 
 ---
 

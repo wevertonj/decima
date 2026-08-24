@@ -1960,3 +1960,45 @@ Segunda etapa do ciclo de refatoração 19–23 (sem mudança de comportamento).
 - `flutter analyze` — zero issues; `dart format` — limpo
 - `flutter test` — 729 testes, 100% verde (eram 721: 14 cenários migraram para o editor e a cobertura direta somou 8 novos)
 - `dart run tool/check_file_length.dart` — nenhuma violação; allowlist reportada como ⚠️ aguardando a Etapa 21
+
+---
+
+## [Concluída] Etapa 21 — Refatoração do ViewModel: sub-controllers
+
+Terceira etapa do ciclo de refatoração 19–23 (sem mudança de comportamento observável, com dois contratos endurecidos pelo TDD). Decompõe o restante do `CalculatorViewModel` em colaboradores de responsabilidade única e fecha o ciclo do verificador de tamanho.
+
+### Extração
+
+- `lib/ui/calculator/controllers/` criada com quatro colaboradores, todos recebendo repositórios/serviços via construtor (mockáveis em teste):
+  - `SessionRecorder` (157 linhas) — sessão como uma única `HistoryEntry`: criação no primeiro `=` e update nos seguintes, encadeamento de escritas (`pendingWrite`), gerações de sessão, flush idempotente
+  - `ClipboardController` (84 linhas) — copiar/colar: I/O com `ClipboardService`, parse via `PasteInputParser`, reavaliação das linhas coladas devolvendo `PastedSession`
+  - `CursorController` (130 linhas) — estado do cursor/modo de edição (`editText`, posição, `atEnd`), roteando pelo `ExpressionEditor`
+  - `TimelineController` (34 linhas) — **decisão registrada: extraído** (em vez de mantido no ViewModel): janela de visibilidade das linhas (`visibleEntries`, `hasMore`, `loadMore` em lotes de 20)
+- `lib/domain/expression_composer.dart` (445 linhas) — a máquina de composição por digitação (tokens confirmados + operador pendente + operando ativo no `Add2Engine`) saiu do ViewModel para o domínio como `ExpressionComposer`, contraponto append do `ExpressionEditor` (Dart puro, tokens crus, sem formatação de exibição)
+- **DIP**: `Add2Engine` e `ExpressionEvaluator` injetados no ViewModel via construtor (com default) e registrados no GetIt em `dependencies.dart` — `Add2Engine` como factory (stateful: guarda o operando ativo), `ExpressionEvaluator` como lazy singleton (stateless)
+- `CalculatorViewModel` virou **fachada** de 561 linhas (era 1.199) — única API para a UI, orquestrando os colaboradores e concentrando formatação de exibição + `notifyListeners`
+
+### Contratos endurecidos (TDD dos controllers)
+
+- `SessionRecorder._trackWrite` chama `write.ignore()` antes de encadear: o encadeamento (`_pendingWrite.then`) só escuta a escrita um microtask depois, então uma escrita que falhava antes disso virava erro não tratado na zone — corrida latente herdada do `_trackWrite` do ViewModel antigo, exposta pelo teste direto "pendingWrite should never be poisoned by a failed write"
+- Colagem rejeita a sessão inteira (`null`) quando qualquer linha resolvida é inavaliável: divisão por zero devolve a string sentinela do avaliador (não `null`), então a checagem antiga `result == null` deixava `Error` entrar no histórico. `_divisionByZeroError` virou `ExpressionEvaluator.errorResult` (público) e o `ClipboardController` compara contra ele
+
+### Testes
+
+- `calculator_view_model_test.dart` (2.399 linhas) fatiado em 7 arquivos focados sob `test/unit/ui/calculator/` — input, backspace, percentage/parentheses, session, clipboard, timeline, cursor (171–502 linhas cada) — nenhum cenário descartado
+- Testes diretos novos: `session_recorder_test.dart` (245 linhas — criação/update, add em voo, gerações, adoção de sessão, cadeia de escrita) e `clipboard_controller_test.dart` (175 linhas — copiar histórico, hasText, round-trip copiar→colar, rejeições)
+
+### Verificador
+
+- **Allowlist zerada** (`const _allowlist = <String>{}`): nenhum arquivo de `lib/`/`test/` acima de 600 linhas; mensagens deixaram de citar a Etapa 21
+- `check_file_length_test.dart`: os cenários de tolerância e de entrada obsoleta saíram (inalcançáveis com a lista `const` vazia — voltam se a lista voltar a ter entradas); entrou o cenário dos ex-allowlisted dentro do limite
+
+### Documentação
+
+- `docs/fundacao/arquitetura.md`: nova seção "Controllers da Calculadora" (tabela dos 4 controllers + decisão da timeline + DIP), `ExpressionComposer` na tabela do domínio e na árvore de pastas, snippet do GetIt atualizado ao wiring real
+
+### Estado final
+
+- `flutter analyze` — zero issues; `dart format` — limpo
+- `flutter test` — 751 testes, 100% verde
+- `dart run tool/check_file_length.dart` — ✅ sem violações e sem allowlist
