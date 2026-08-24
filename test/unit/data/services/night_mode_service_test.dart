@@ -1,10 +1,9 @@
-import 'package:flutter/foundation.dart';
-import 'package:flutter/services.dart';
-import 'package:flutter_test/flutter_test.dart';
-
 import 'package:decima/data/services/night_mode_service.dart';
 import 'package:decima/data/services/night_mode_service_impl.dart';
 import 'package:decima/domain/enums/theme_mode_option.dart';
+import 'package:flutter/foundation.dart';
+import 'package:flutter/services.dart';
+import 'package:flutter_test/flutter_test.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();

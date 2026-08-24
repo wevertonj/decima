@@ -1,7 +1,6 @@
-import 'package:flutter/material.dart';
-
 import 'package:decima/config/theme/app_colors.dart';
 import 'package:decima/config/theme/app_layout.dart';
+import 'package:flutter/material.dart';
 
 /// A row of colored circles for selecting the accent/seed color.
 /// Shows a check icon on the selected color.

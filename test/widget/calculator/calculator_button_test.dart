@@ -1,7 +1,6 @@
+import 'package:decima/ui/calculator/widgets/calculator_button.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-
-import 'package:decima/ui/calculator/widgets/calculator_button.dart';
 
 import '../../helpers/pump_app.dart';
 

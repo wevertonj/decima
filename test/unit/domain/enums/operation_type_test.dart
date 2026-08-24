@@ -1,5 +1,5 @@
-import 'package:flutter_test/flutter_test.dart';
 import 'package:decima/domain/enums/operation_type.dart';
+import 'package:flutter_test/flutter_test.dart';
 
 void main() {
   group('OperationType', () {

@@ -1,7 +1,6 @@
-import 'package:flutter/widgets.dart';
-
 import 'package:decima/ui/core/widgets/app_title_bar.dart';
 import 'package:decima/utils/platform_info.dart';
+import 'package:flutter/widgets.dart';
 
 /// Envolve o conteúdo do app com a [AppTitleBar] em plataformas desktop.
 ///

@@ -1,11 +1,10 @@
 import 'dart:async';
 
+import 'package:decima/ui/core/desktop/window_close_handler.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:window_manager/window_manager.dart';
-
-import 'package:decima/ui/core/desktop/window_close_handler.dart';
 
 import '../../../helpers/pump_app.dart';
 

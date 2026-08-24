@@ -1,9 +1,8 @@
 import 'dart:async';
 
+import 'package:decima/utils/platform_info.dart';
 import 'package:flutter/widgets.dart';
 import 'package:window_manager/window_manager.dart';
-
-import 'package:decima/utils/platform_info.dart';
 
 /// Ponte com o `window_manager` usada pelo [WindowCloseHandler].
 ///

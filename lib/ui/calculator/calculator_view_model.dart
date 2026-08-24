@@ -1,7 +1,5 @@
 import 'dart:collection';
 
-import 'package:flutter/foundation.dart';
-
 import 'package:decima/data/repositories/history_repository.dart';
 import 'package:decima/data/repositories/settings_repository.dart';
 import 'package:decima/data/services/clipboard_service.dart';
@@ -14,6 +12,7 @@ import 'package:decima/domain/enums/decimal_separator.dart';
 import 'package:decima/domain/expression_evaluator.dart';
 import 'package:decima/utils/formatters/number_formatter.dart';
 import 'package:decima/utils/paste_input_parser.dart';
+import 'package:flutter/foundation.dart';
 
 class CalculatorViewModel extends ChangeNotifier {
   CalculatorViewModel({

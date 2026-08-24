@@ -1,10 +1,9 @@
 import 'dart:math' as math;
 import 'dart:ui';
 
-import 'package:screen_retriever/screen_retriever.dart';
-
 import 'package:decima/domain/entities/window_position.dart';
 import 'package:decima/ui/core/desktop/desktop_window_config.dart';
+import 'package:screen_retriever/screen_retriever.dart';
 
 /// Largura mínima da title bar que precisa continuar visível para a janela
 /// ser considerada alcançável — o bastante para arrastá-la de volta.

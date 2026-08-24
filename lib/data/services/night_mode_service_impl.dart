@@ -1,9 +1,8 @@
+import 'package:decima/data/services/night_mode_service.dart';
+import 'package:decima/domain/enums/theme_mode_option.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
-
-import 'package:decima/data/services/night_mode_service.dart';
-import 'package:decima/domain/enums/theme_mode_option.dart';
 
 class NightModeServiceImpl implements NightModeService {
   static const _channel = MethodChannel('com.wevasoft.decima/night_mode');

@@ -1,9 +1,8 @@
-import 'package:flutter/material.dart';
-import 'package:flutter_test/flutter_test.dart';
-
 import 'package:decima/domain/entities/calculation.dart';
 import 'package:decima/ui/calculator/widgets/animated_input_display.dart';
 import 'package:decima/ui/calculator/widgets/timeline_display.dart';
+import 'package:flutter/material.dart';
+import 'package:flutter_test/flutter_test.dart';
 
 import '../../helpers/pump_app.dart';
 

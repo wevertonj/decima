@@ -1,12 +1,11 @@
+import 'package:decima/ui/core/desktop/desktop_window_config.dart';
+import 'package:decima/ui/core/widgets/app_logo.dart';
+import 'package:decima/ui/core/widgets/app_title_bar.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:window_manager/window_manager.dart';
-
-import 'package:decima/ui/core/desktop/desktop_window_config.dart';
-import 'package:decima/ui/core/widgets/app_logo.dart';
-import 'package:decima/ui/core/widgets/app_title_bar.dart';
 
 import '../../../helpers/pump_app.dart';
 

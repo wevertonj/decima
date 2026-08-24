@@ -1,14 +1,11 @@
 import 'dart:ui' show AppExitResponse;
 
-import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
-
 import 'package:decima/config/dependencies.dart';
 import 'package:decima/config/routes.dart';
-import 'package:decima/data/database/app_database.dart';
-import 'package:decima/data/repositories/settings_repository.dart';
 import 'package:decima/config/theme/app_colors.dart';
 import 'package:decima/config/theme/app_theme.dart';
+import 'package:decima/data/database/app_database.dart';
+import 'package:decima/data/repositories/settings_repository.dart';
 import 'package:decima/domain/entities/window_position.dart';
 import 'package:decima/domain/enums/theme_mode_option.dart';
 import 'package:decima/ui/calculator/calculator_view_model.dart';
@@ -19,6 +16,8 @@ import 'package:decima/ui/core/widgets/desktop_shell.dart';
 import 'package:decima/ui/settings/settings_view_model.dart';
 import 'package:decima/utils/l10n/app_localizations.dart';
 import 'package:decima/utils/platform_info.dart';
+import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();

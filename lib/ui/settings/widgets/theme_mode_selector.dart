@@ -1,8 +1,7 @@
-import 'package:flutter/material.dart';
-
 import 'package:decima/domain/enums/theme_mode_option.dart';
 import 'package:decima/ui/widgets/flat_segmented_control.dart';
 import 'package:decima/utils/extensions/l10n_extension.dart';
+import 'package:flutter/material.dart';
 
 /// A flat selector to select the theme mode (light, dark, system).
 class ThemeModeSelector extends StatelessWidget {

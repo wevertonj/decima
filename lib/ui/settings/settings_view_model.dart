@@ -1,11 +1,10 @@
 import 'dart:async';
 
-import 'package:flutter/foundation.dart';
-
 import 'package:decima/data/repositories/settings_repository.dart';
 import 'package:decima/data/services/night_mode_service.dart';
 import 'package:decima/domain/enums/decimal_separator.dart';
 import 'package:decima/domain/enums/theme_mode_option.dart';
+import 'package:flutter/foundation.dart';
 
 class SettingsViewModel extends ChangeNotifier {
   SettingsViewModel({

@@ -1,11 +1,10 @@
-import 'package:flutter/material.dart';
-
 import 'package:decima/config/theme/app_layout.dart';
 import 'package:decima/domain/entities/history_selection.dart';
 import 'package:decima/ui/history/history_view_model.dart';
 import 'package:decima/ui/history/widgets/history_list_item.dart';
 import 'package:decima/ui/widgets/flat_segmented_control.dart';
 import 'package:decima/utils/extensions/l10n_extension.dart';
+import 'package:flutter/material.dart';
 
 /// History screen showing a paginated list of saved calculations.
 ///

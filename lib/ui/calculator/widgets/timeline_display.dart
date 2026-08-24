@@ -1,9 +1,8 @@
-import 'package:flutter/material.dart';
-
 import 'package:decima/config/theme/app_layout.dart';
 import 'package:decima/domain/entities/calculation.dart';
 import 'package:decima/ui/calculator/widgets/animated_input_display.dart';
 import 'package:decima/utils/extensions/l10n_extension.dart';
+import 'package:flutter/material.dart';
 
 class TimelineDisplay extends StatefulWidget {
   final List<Calculation> entries;

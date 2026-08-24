@@ -1,8 +1,8 @@
 import 'dart:convert';
 
+import 'package:decima/data/models/history_model.dart';
 import 'package:decima/domain/entities/history_entry.dart';
 import 'package:decima/domain/entities/history_line.dart';
-import 'package:decima/data/models/history_model.dart';
 
 class HistoryFixtures {
   HistoryFixtures._();

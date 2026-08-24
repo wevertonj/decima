@@ -1,18 +1,17 @@
 import 'dart:async';
 
-import 'package:flutter_test/flutter_test.dart';
-import 'package:mocktail/mocktail.dart';
-
 import 'package:decima/domain/entities/history_entry.dart';
 import 'package:decima/domain/entities/history_line.dart';
 import 'package:decima/domain/entities/history_selection.dart';
 import 'package:decima/domain/enums/decimal_separator.dart';
 import 'package:decima/ui/calculator/calculator_view_model.dart';
+import 'package:flutter_test/flutter_test.dart';
+import 'package:mocktail/mocktail.dart';
 
+import '../../../fixtures/history_fixtures.dart';
 import '../../../mocks/mock_clipboard_service.dart';
 import '../../../mocks/mock_history_repository.dart';
 import '../../../mocks/mock_settings_repository.dart';
-import '../../../fixtures/history_fixtures.dart';
 
 void main() {
   late CalculatorViewModel viewModel;

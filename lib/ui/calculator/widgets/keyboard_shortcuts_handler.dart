@@ -1,10 +1,9 @@
-import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
-
 import 'package:decima/ui/calculator/calculator_view_model.dart';
 import 'package:decima/ui/calculator/keyboard_shortcuts.dart';
 import 'package:decima/ui/calculator/widgets/calculator_keypad.dart';
 import 'package:decima/ui/calculator/widgets/key_flash_controller.dart';
+import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 /// Habilita a operação da calculadora por teclado físico.
 ///

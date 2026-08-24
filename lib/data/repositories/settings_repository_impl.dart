@@ -1,9 +1,8 @@
-import 'package:shared_preferences/shared_preferences.dart';
-
 import 'package:decima/data/repositories/settings_repository.dart';
 import 'package:decima/domain/entities/window_position.dart';
 import 'package:decima/domain/enums/decimal_separator.dart';
 import 'package:decima/domain/enums/theme_mode_option.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class SettingsRepositoryImpl implements SettingsRepository {
   static const _keyThemeMode = 'theme_mode';

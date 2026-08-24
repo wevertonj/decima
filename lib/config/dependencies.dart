@@ -1,5 +1,3 @@
-import 'package:get_it/get_it.dart';
-
 import 'package:decima/data/database/app_database.dart';
 import 'package:decima/data/database/database_factory_resolver.dart';
 import 'package:decima/data/repositories/history_repository.dart';
@@ -13,6 +11,7 @@ import 'package:decima/data/services/night_mode_service_impl.dart';
 import 'package:decima/ui/calculator/calculator_view_model.dart';
 import 'package:decima/ui/history/history_view_model.dart';
 import 'package:decima/ui/settings/settings_view_model.dart';
+import 'package:get_it/get_it.dart';
 
 final getIt = GetIt.instance;
 
