@@ -13,10 +13,11 @@ import 'package:flutter_test/flutter_test.dart';
 /// Invariantes exercitadas:
 ///   - exit 0 quando todos os arquivos estão dentro do limite de 600 linhas;
 ///   - exit 1 listando cada arquivo fora da allowlist que estoura o limite;
-///   - allowlist tolera (mas reporta) os arquivos que aguardam a Etapa 21;
-///   - gerados (`lib/utils/l10n/`) e não-Dart ficam fora da contagem;
-///   - entrada da allowlist com arquivo já dentro do limite falha (obsoleta);
-///   - entrada da allowlist sem arquivo correspondente é inerte.
+///   - gerados (`lib/utils/l10n/`) e não-Dart ficam fora da contagem.
+///
+/// Os ramos de tolerância e de entrada obsoleta da allowlist deixaram de ser
+/// exercitáveis com a lista zerada na Etapa 21 (ela é `const` no tool); os
+/// cenários voltam se a lista voltar a ter entradas.
 void main() {
   final toolPath = File('tool/check_file_length.dart').absolute.path;
 
@@ -63,31 +64,6 @@ void main() {
       expect(out, contains('padroes-codigo.md'));
     });
 
-    test('should tolerate allowlisted files over the limit but still report '
-        'them', () {
-      // Arrange
-      _writeDart(
-        root,
-        'lib/ui/calculator/calculator_view_model.dart',
-        lines: 1526,
-      );
-      _writeDart(
-        root,
-        'test/unit/ui/calculator/calculator_view_model_test.dart',
-        lines: 2583,
-      );
-
-      // Act
-      final result = _runCheck(root, toolPath);
-
-      // Assert
-      expect(result.exitCode, 0, reason: _output(result));
-      final out = _output(result);
-      expect(out, contains('calculator_view_model.dart: 1526 linhas'));
-      expect(out, contains('calculator_view_model_test.dart: 2583 linhas'));
-      expect(out, contains('allowlist'));
-    });
-
     test('should ignore generated l10n files and non-Dart files', () {
       // Arrange
       _writeDart(root, 'lib/utils/l10n/app_localizations.dart', lines: 5000);
@@ -104,26 +80,14 @@ void main() {
       expect(_output(result), contains('✅'));
     });
 
-    test('should exit 1 when an allowlisted file is back within the limit '
-        '(stale entry)', () {
-      // Arrange
+    test('should stay green for the former allowlisted paths now that the '
+        'list is empty', () {
+      // Arrange: os dois arquivos que saíram da allowlist, dentro do limite.
       _writeDart(
         root,
         'lib/ui/calculator/calculator_view_model.dart',
-        lines: 400,
+        lines: 561,
       );
-
-      // Act
-      final result = _runCheck(root, toolPath);
-
-      // Assert
-      expect(result.exitCode, 1, reason: _output(result));
-      expect(_output(result), contains('obsoleta'));
-      expect(_output(result), contains('calculator_view_model.dart'));
-    });
-
-    test('should treat allowlist entries without a matching file as inert', () {
-      // Arrange: nenhum arquivo da allowlist existe na árvore.
       _writeDart(root, 'lib/main.dart', lines: 50);
 
       // Act

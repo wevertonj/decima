@@ -1,5 +1,8 @@
 class ExpressionEvaluator {
-  static const _divisionByZeroError = 'Error';
+  /// Resultado sentinela para expressões que avaliam para um valor não
+  /// finito (divisão por zero). Exposto para quem precisa distinguir um
+  /// resultado inavaliável de um numérico (ex.: validação de colagem).
+  static const errorResult = 'Error';
 
   String? evaluate(String expression) {
     final trimmed = expression.trim();
@@ -233,7 +236,7 @@ class ExpressionEvaluator {
   }
 
   String _formatResult(double value) {
-    if (value.isInfinite || value.isNaN) return _divisionByZeroError;
+    if (value.isInfinite || value.isNaN) return errorResult;
 
     return value.toStringAsFixed(2);
   }

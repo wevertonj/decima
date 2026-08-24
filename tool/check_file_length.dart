@@ -26,13 +26,10 @@ const _roots = ['lib', 'test'];
 /// Prefixos de caminho excluídos (código gerado).
 const _excludedPrefixes = ['lib/utils/l10n/'];
 
-/// Arquivos que aguardam a decomposição da Etapa 21 (a Etapa 20 extraiu o
-/// motor de edição, mas ambos seguem acima do limite). Cada entrada deve
-/// ser removida assim que o arquivo voltar ao limite; a lista zera na Etapa 21.
-const _allowlist = {
-  'lib/ui/calculator/calculator_view_model.dart',
-  'test/unit/ui/calculator/calculator_view_model_test.dart',
-};
+/// Exceções temporárias ao limite. Zerada na Etapa 21 (fim do ciclo de
+/// refatoração 19–21); qualquer entrada nova precisa apontar a etapa que a
+/// remove — a lista só encolhe.
+const _allowlist = <String>{};
 
 void main() {
   final lineCounts = <String, int>{};
@@ -60,16 +57,13 @@ void main() {
   final violations = overLimit.where((e) => !_allowlist.contains(e.key));
   final tolerated = overLimit.where((e) => _allowlist.contains(e.key));
   // Obsoleta = o arquivo existe e já está dentro do limite. Entradas de
-  // arquivos inexistentes (renomeados/removidos) não falham: são inertes e
-  // saem no zeramento da Etapa 21.
+  // arquivos inexistentes (renomeados/removidos) não falham: são inertes.
   final stale = _allowlist.where(
     (path) => lineCounts.containsKey(path) && lineCounts[path]! <= _limit,
   );
 
   for (final e in tolerated) {
-    stdout.writeln(
-      '⚠️  ${e.key}: ${e.value} linhas (allowlist — aguarda a Etapa 21)',
-    );
+    stdout.writeln('⚠️  ${e.key}: ${e.value} linhas (tolerado pela allowlist)');
   }
   for (final e in violations) {
     stdout.writeln('❌ ${e.key}: ${e.value} linhas (limite: $_limit)');

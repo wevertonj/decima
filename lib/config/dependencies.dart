@@ -8,6 +8,8 @@ import 'package:decima/data/services/clipboard_service.dart';
 import 'package:decima/data/services/clipboard_service_impl.dart';
 import 'package:decima/data/services/night_mode_service.dart';
 import 'package:decima/data/services/night_mode_service_impl.dart';
+import 'package:decima/domain/add2_engine.dart';
+import 'package:decima/domain/expression_evaluator.dart';
 import 'package:decima/ui/calculator/calculator_view_model.dart';
 import 'package:decima/ui/history/history_view_model.dart';
 import 'package:decima/ui/settings/settings_view_model.dart';
@@ -38,12 +40,19 @@ void setupDependencies() {
   getIt.registerLazySingleton<ClipboardService>(() => ClipboardServiceImpl());
   getIt.registerLazySingleton<NightModeService>(() => NightModeServiceImpl());
 
+  // Domain — Add2Engine é stateful (guarda o operando ativo), então cada
+  // consumidor recebe a própria instância; o avaliador é stateless
+  getIt.registerFactory<Add2Engine>(Add2Engine.new);
+  getIt.registerLazySingleton<ExpressionEvaluator>(ExpressionEvaluator.new);
+
   // ViewModels
   getIt.registerLazySingleton<CalculatorViewModel>(
     () => CalculatorViewModel(
       historyRepository: getIt<HistoryRepository>(),
       settingsRepository: getIt<SettingsRepository>(),
       clipboardService: getIt<ClipboardService>(),
+      add2Engine: getIt<Add2Engine>(),
+      evaluator: getIt<ExpressionEvaluator>(),
     ),
   );
   getIt.registerFactory<HistoryViewModel>(
