@@ -72,6 +72,9 @@ jobs:
       - name: Análise estática (zero warnings)
         run: flutter analyze
 
+      - name: Limite de linhas por arquivo (600)
+        run: dart run tool/check_file_length.dart
+
   test:
     name: test
     runs-on: ubuntu-latest
