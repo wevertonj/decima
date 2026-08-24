@@ -2002,3 +2002,51 @@ Terceira etapa do ciclo de refatoração 19–23 (sem mudança de comportamento 
 - `flutter analyze` — zero issues; `dart format` — limpo
 - `flutter test` — 751 testes, 100% verde
 - `dart run tool/check_file_length.dart` — ✅ sem violações e sem allowlist
+
+---
+
+## [Concluída] Etapa 22 — Refatoração da UI: widgets enxutos
+
+Quarta etapa do ciclo de refatoração 19–23 (sem mudança de comportamento observável). Aplica responsabilidade única aos widgets que misturavam lógica além de renderização; nenhum novo widget recebe lógica de negócio — apenas apresentação + callbacks.
+
+### `AnimatedInputDisplay` (538 → 409 linhas)
+
+- `lib/ui/calculator/char_slot_differ.dart` (91 linhas) — o diffing de caracteres/slots virou o helper puro `CharSlotDiffer` (`build`, `diff`, `settle`), com `CharSlot` e `CharAnimType` públicos; testável sem árvore de widgets (só `foundation.dart`, pela `UniqueKey`)
+- `lib/ui/calculator/widgets/blinking_cursor.dart` (55 linhas) — o cursor piscante virou o widget público `BlinkingCursor` (Timer 530ms, mesma justificativa de não usar `AnimationController`)
+- O widget principal ficou com layout, animação (pop-in/roll), scroll e agrupamento de tokens do modo multiline
+
+### `HistoryListItem` (390 → 359 linhas)
+
+- `lib/ui/history/widgets/rename_entry_dialog.dart` (68 linhas) — `_showRenameDialog` virou `RenameEntryDialog` (`static show` → `Future<String?>`: texto ao salvar, vazio limpa o nome, `null` ao cancelar; o mapeamento vazio→null segue no chamador)
+- De quebra, o `TextEditingController` que era criado e nunca descartado agora tem `dispose` no `State` do diálogo
+- **Decisão registrada: header/linhas expandidas/footer mantidos** como builders privados — apresentação pura sem reuso, e o arquivo ficou confortável após a extração do diálogo
+
+### `history_page.dart` (281 → 225 linhas)
+
+- `_AnimatedListItem` virou o widget público `AnimatedListItem` em `lib/ui/history/widgets/animated_list_item.dart` (60 linhas) — entrada staggered slide + fade inalterada
+
+### `main.dart` (161 → 141 linhas)
+
+- **Decisão registrada: extraído** — o observer de ciclo de vida virou `AppLifecycleFlushHandler` em `lib/ui/core/mobile/app_lifecycle_flush_handler.dart` (60 linhas), espelhando o `WindowCloseHandler` do desktop: registra `AppLifecycleListener` (`onHide`/`onPause`/`onExitRequested`) apenas fora do desktop e é montado no mesmo `MaterialApp.builder`
+- `main.dart` ficou só com bootstrap, wiring dos handlers e resolução de tema/locale
+
+### Testes (751 → 780, +29)
+
+- `char_slot_differ_test.dart` (13) — cenários de diff antes cobertos só via widget test: prefixo/sufixo comuns, roll com caractere antigo, pop-in, encolhimento, keys únicas, settle
+- `blinking_cursor_test.dart` (3) — barra visível com altura configurada, blink em dois períodos, dispose sem timer pendente
+- `rename_entry_dialog_test.dart` (5) — nome inicial, cancelar → `null`, salvar → texto, campo vazio → string vazia, submit pelo teclado
+- `animated_list_item_test.dart` (4) — fade 0→1 com slide a `Offset.zero`, stagger por índice, clamp do delay, child renderizado
+- `app_lifecycle_flush_handler_test.dart` (5) — flush em `paused` no mobile, flush + `AppExitResponse.exit` no pedido de saída, inerte em desktop
+- Widget tests existentes (display, cursor, alinhamento, história) — verdes sem alteração de expectativa
+
+### Documentação
+
+- `docs/features/calculadora.md`: `BlinkingCursor` e `CharSlotDiffer` nas seções "Visual do cursor" e "Implementação"
+- `docs/features/historico.md`: `RenameEntryDialog` e `AnimatedListItem` na seção de UI
+- `docs/fundacao/arquitetura.md`: `char_slot_differ.dart` e `ui/core/mobile/` na árvore; seção da infra de desktop aponta o `AppLifecycleFlushHandler` como equivalente mobile
+
+### Estado final
+
+- `flutter analyze` — zero issues; `dart format` — limpo
+- `flutter test` — 780 testes, 100% verde
+- `dart run tool/check_file_length.dart` — ✅ sem violações e sem allowlist

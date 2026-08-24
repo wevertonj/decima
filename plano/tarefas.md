@@ -1044,26 +1044,26 @@ Sem Apple Developer Program pago não há caminho de distribuição para iOS. Et
 
 ---
 
-## Etapa 22 — Refatoração da UI: widgets enxutos
+## Etapa 22 — Refatoração da UI: widgets enxutos ✅
 
 ### Extrações
 
-- [ ] `AnimatedInputDisplay`: extrair o diffing de caracteres/slots para helper puro testável; cursor em widget próprio
-- [ ] `HistoryListItem`: extrair `_showRenameDialog` para `ui/history/widgets/rename_entry_dialog.dart`; avaliar header/linhas/footer
-- [ ] `history_page.dart`: mover `_AnimatedListItem` para `ui/history/widgets/`
-- [ ] `main.dart`: avaliar extração do observer de ciclo de vida (flush mobile) para `ui/core/`
-- [ ] Conferir que nenhum widget novo recebe lógica de negócio (apenas apresentação + callbacks)
+- [x] `AnimatedInputDisplay`: extrair o diffing de caracteres/slots para helper puro testável; cursor em widget próprio — `CharSlotDiffer` (`lib/ui/calculator/char_slot_differ.dart`, 91 linhas) e `BlinkingCursor` (`lib/ui/calculator/widgets/blinking_cursor.dart`, 55 linhas); o display ficou com layout/animação/scroll (538 → 409 linhas)
+- [x] `HistoryListItem`: extrair `_showRenameDialog` para `ui/history/widgets/rename_entry_dialog.dart`; avaliar header/linhas/footer — **decisão: mantidos** como builders privados (apresentação pura sem reuso, arquivo confortável em 359 linhas); o `State` do diálogo agora descarta o `TextEditingController` que vazava
+- [x] `history_page.dart`: mover `_AnimatedListItem` para `ui/history/widgets/` — público como `AnimatedListItem` (60 linhas)
+- [x] `main.dart`: avaliar extração do observer de ciclo de vida (flush mobile) para `ui/core/` — **decisão: extraído** como `AppLifecycleFlushHandler` (`lib/ui/core/mobile/app_lifecycle_flush_handler.dart`), montado no `MaterialApp.builder` sob o `WindowCloseHandler`; `main.dart` só com bootstrap (161 → 141 linhas)
+- [x] Conferir que nenhum widget novo recebe lógica de negócio (apenas apresentação + callbacks)
 
 ### Testes
 
-- [ ] Teste unitário do helper de diffing (cenários antes cobertos só via widget test)
-- [ ] Testes de widget existentes verdes; widgets extraídos com API pública ganham teste próprio
-- [ ] Cobertura ≥ baseline
+- [x] Teste unitário do helper de diffing (cenários antes cobertos só via widget test) — `char_slot_differ_test.dart`, 13 cenários
+- [x] Testes de widget existentes verdes; widgets extraídos com API pública ganham teste próprio — `blinking_cursor_test.dart`, `rename_entry_dialog_test.dart`, `animated_list_item_test.dart`, `app_lifecycle_flush_handler_test.dart` (+29 testes, 780 no total)
+- [x] Cobertura ≥ baseline — via CI na `dev`
 
 ### Documentação
 
-- [ ] Atualizar `docs/features/calculadora.md` e `docs/features/historico.md` se a implementação documentada mudou de arquivo
-- [ ] Registrar a etapa em `plano/plano.md`, `plano/tarefas.md` e `plano/changelog.md`
+- [x] Atualizar `docs/features/calculadora.md` e `docs/features/historico.md` se a implementação documentada mudou de arquivo — além de `docs/fundacao/arquitetura.md` (árvore + equivalente mobile do close handler)
+- [x] Registrar a etapa em `plano/plano.md`, `plano/tarefas.md` e `plano/changelog.md`
 
 ---
 

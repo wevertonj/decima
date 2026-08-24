@@ -981,6 +981,8 @@ O único bug novo da revisão — a moldura verde que o Android desenhava na bor
 
 **Entregável**: Widgets com uma responsabilidade cada, lógica pura testável fora da árvore de widgets.
 
+**Status (2026-08-24)**: entregue integralmente. `AnimatedInputDisplay` (538 → 409 linhas) cedeu o diff de caracteres ao helper puro `CharSlotDiffer` (`ui/calculator/char_slot_differ.dart` — `build`/`diff`/`settle`, testável sem árvore de widgets) e o cursor ao widget público `BlinkingCursor`. `HistoryListItem` (390 → 359) cedeu o diálogo de renomear a `RenameEntryDialog` (`static show` → texto ao salvar, `null` ao cancelar), que de quebra passou a descartar o `TextEditingController` que vazava; header/linhas expandidas/footer **mantidos** como builders privados (apresentação pura, sem reuso). `_AnimatedListItem` saiu da `history_page.dart` como `AnimatedListItem` público. Em `main.dart` (161 → 141) a decisão foi **extrair**: o observer de ciclo de vida virou `AppLifecycleFlushHandler` (`ui/core/mobile/`), espelho mobile do `WindowCloseHandler`, montado no mesmo `MaterialApp.builder` — `main.dart` ficou só com bootstrap. Nenhum widget novo recebeu lógica de negócio. 780 testes verdes (+29: 13 do differ e 16 dos widgets extraídos), zero warnings, verificador sem violações. **Etapa concluída.**
+
 ---
 
 ## Etapa 23 — Comentários → Documentação e revisão SOLID final
