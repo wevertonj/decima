@@ -23,6 +23,10 @@ lib/
 │   └── models/                # Models para serialização do banco
 │
 ├── domain/                    # Regras de negócio
+│   ├── add2_engine.dart       # Motor de entrada Add2 (dígitos → valor fixo)
+│   ├── expression_editor.dart # Motor de edição por cursor (EditorState imutável)
+│   ├── expression_evaluator.dart # Avaliador de expressões (precedência, %, parênteses)
+│   ├── paste_input_parser.dart   # Texto colado → tokens normalizados
 │   ├── entities/              # Entidades puras (Calculation, HistoryEntry)
 │   └── enums/                 # OperationType, CalculatorMode, etc.
 │
@@ -88,6 +92,19 @@ Database (SQLite)
 - **Repositories** encapsulam o acesso ao **banco de dados**
 - **ViewModels** nunca acessam o banco diretamente
 - **ViewModels** não importam Flutter — são Dart puro
+
+## Domínio da Calculadora
+
+Dart puro, sem import de Flutter, testável sem árvore de widgets.
+
+| Artefato | Responsabilidade |
+|----------|------------------|
+| `Add2Engine` | Entrada de dígitos no estilo Add2 (cada dígito desloca centavos) |
+| `ExpressionEditor` | Edição por cursor da expressão: operações estáticas puras sobre `EditorState(text, cursor)` imutável — inserir dígitos, operador (split de bloco), parêntese, `%`, backspace (merge de blocos) — todas Add2-aware; `DecimalSeparator` chega por parâmetro (o editor não conhece Settings) |
+| `ExpressionEvaluator` | Avaliação com precedência, `%` literal e parênteses; devolve `null` para expressão malformada |
+| `PasteInputParser` | Texto colado → tokens normalizados (allowlist de caracteres; movido de `utils/` na Etapa 20 pela regra "é regra de negócio? → `domain/`") |
+
+`ExpressionEditor.normalizeForEvaluator` ficou no **editor** (não no `ExpressionEvaluator`): a normalização desfaz a formatação de exibição que o próprio editor mantém (separador de milhar, separador decimal configurado), e o avaliador permanece sem conhecer `DecimalSeparator`. O `CalculatorViewModel` delega o modo de edição ao editor e apenas aplica o `EditorState` devolvido + `notifyListeners`.
 
 ## Injeção de Dependência
 

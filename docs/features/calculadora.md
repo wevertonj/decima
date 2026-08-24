@@ -168,7 +168,7 @@ Regras:
 ### Implementação
 
 - `ClipboardService` (interface em `lib/data/services/`) abstrai o `Clipboard` do Flutter, permitindo mock nos testes
-- `PasteInputParser` (em `lib/utils/`) converte texto bruto em tokens normalizados (`x.yy`, operadores, parênteses, `%`)
+- `PasteInputParser` (em `lib/domain/`) converte texto bruto em tokens normalizados (`x.yy`, operadores, parênteses, `%`)
 - `CalculatorViewModel` expõe `copyExpression()`, `copyResult()`, `copyHistory()`, `pasteFromClipboard()` e os getters `hasExpression`, `hasResult`, `hasHistory` para a UI
 - `CalculatorContextMenu` (widget) renderiza o menu via `showMenu`, ancorado na posição global do gesto que o abriu
 
@@ -205,11 +205,12 @@ Em modo **multiline** (quando a expressão estoura a largura e o display usa `Wr
 
 ### Implementação
 
-- `CalculatorViewModel` mantém `cursorPosition` (int), `_editText` (String?) e `_atEnd` (bool)
-- `openParenCount` conta os parênteses do `_editText` quando o modo de edição está ativo — a lista de tokens commitados fica obsoleta nesse modo, e contá-la reportaria um balanço diferente do que o usuário vê
-- O bloco numérico sob o cursor é detectado pela faixa máxima de caracteres `[0-9.,%]` contígua (`_findNumberBlock`); inserções e remoções operam sobre os dígitos brutos do bloco e o resultado é re-formatado via `NumberFormatter.format` aplicando Add2
+- A manipulação de texto do modo de edição vive no **`ExpressionEditor`** (`lib/domain/expression_editor.dart`, Etapa 20): operações estáticas puras que recebem um `EditorState(text, cursor)` imutável e devolvem o novo — inserir dígitos, operador (split de bloco), parêntese, `%` e backspace (merge de blocos)
+- `CalculatorViewModel` mantém `cursorPosition` (int), `_editText` (String?) e `_atEnd` (bool); no modo de edição delega ao editor e apenas aplica o `EditorState` devolvido (`_applyEditorState`) + `notifyListeners`
+- `openParenCount` conta os parênteses do `_editText` (`ExpressionEditor.countOpenParens`) quando o modo de edição está ativo — a lista de tokens commitados fica obsoleta nesse modo, e contá-la reportaria um balanço diferente do que o usuário vê
+- O bloco numérico sob o cursor é detectado pela faixa máxima de caracteres `[0-9.,%]` contígua; inserções e remoções operam sobre os dígitos brutos do bloco e o resultado é re-formatado via `NumberFormatter.format` aplicando Add2
 - **Ancoragem do cursor por dígitos-à-direita**: após cada reformatação Add2, o cursor é restaurado de modo a preservar exatamente o mesmo número de dígitos à sua direita dentro do bloco. Como Add2 padroniza com zero à esquerda (raw `20` → `0.20`), o lado direito é a referência estável; ancorar pela esquerda faria o cursor pular a cada padding/depadding
-- `_normalizeForEvaluator` converte o texto formatado para a forma canônica esperada pelo `ExpressionEvaluator`
+- `ExpressionEditor.normalizeForEvaluator` converte o texto formatado para a forma canônica esperada pelo `ExpressionEvaluator` — fica no editor porque desfaz a formatação de exibição que o próprio editor mantém, e o avaliador segue sem conhecer `DecimalSeparator`
 - `AnimatedInputDisplay` recebe `cursorPosition`, `cursorColor` e `onCharTap` e renderiza o cursor entre os widgets de caractere
 - `TimelineDisplay` envolve o display em `GestureDetector.onHorizontalDragEnd` para o swipe
 
