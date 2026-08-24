@@ -205,3 +205,37 @@ Cada etapa foi dimensionada para caber confortavelmente na janela de contexto de
 | Title bar customizada quebrar convenções do macOS | Manter semáforo nativo e ajustar `AppTitleBar` por plataforma |
 | Atalhos de teclado conflitarem com `TextField` | Escopo de `Shortcuts` apenas no `CalculatorPage`, fora de campos de edição |
 | Geração de ícones desatualizada após mudança de arte | Reexecutar `flutter_launcher_icons` e versionar |
+
+---
+
+## Ciclo de Refatoração (Etapas 19–23)
+
+Revisão de manutenibilidade de 2026-08-23, pós-v0.9.1. O app está completo e 100% testado (715 testes, cobertura 88,4%), mas a revisão identificou violações de SOLID concentradas em poucos arquivos e ~700 linhas de comentário em `lib/` cujo conteúdo, em grande parte, pertence à documentação. As Etapas 19–23 corrigem isso **sem mudança de comportamento** — a suíte existente é a rede de segurança.
+
+### Inventário baseline (2026-08-23)
+
+| Arquivo | Linhas | Problema | Destino |
+|---------|--------|----------|---------|
+| `lib/ui/calculator/calculator_view_model.dart` | 1.526 | God class: fila de ações + entrada Add2 + editor de cursor (~500 ln de manipulação pura de string) + persistência de sessão + clipboard + timeline | Etapas 20 e 21 |
+| `test/unit/ui/calculator/calculator_view_model_test.dart` | 2.583 | Espelho do god class — tudo testado através da fachada | Etapas 20 e 21 |
+| `lib/ui/calculator/widgets/animated_input_display.dart` | 538 | Diffing de caracteres + cursor + autoscroll + layout num único widget | Etapa 22 |
+| `lib/ui/history/widgets/history_list_item.dart` | 390 | Item de lista com diálogo de renomear embutido | Etapa 22 |
+| `lib/utils/paste_input_parser.dart` | 326 | Regra de negócio em `utils/` — pela regra de classificação da arquitetura, é `domain/` | Etapa 20 |
+| `lib/ui/core/desktop/window_position.dart` | 87 | Nome colide com a entity `domain/entities/window_position.dart` | Etapa 23 (rename) |
+
+### Densidade de comentários (linhas `///` + `//`, fora l10n)
+
+| Arquivo | Doc | Inline | Observação |
+|---------|-----|--------|------------|
+| `calculator_view_model.dart` | 214 | 69 | Maioria explica invariantes de estado do god class; somem com a decomposição ou migram para docs |
+| `paste_input_parser.dart` | 33 | 18 | Mistura pt-BR e inglês no mesmo arquivo |
+| `window_close_handler.dart` | 43 | 6 | Rationale de `setPreventClose`/flush já documentado em `calculadora.md` § Flush |
+| `animated_input_display.dart` | 21 | 23 | Narrativa do algoritmo de diffing — vira código nomeado + doc |
+| `keyboard_shortcuts.dart` | 35 | 3 | Decisões de mapeamento já documentadas em `calculadora.md` § Atalhos |
+
+### Decisões
+
+- **Limite ideal de 600 linhas por arquivo** (`lib/` e `test/`, excluindo gerados), verificado por `tool/check_file_length.dart` no CI com allowlist que encolhe a cada etapa e zera na Etapa 21. O limite serve sobretudo para **identificar cedo** onde a atenção de refatoração deve ir
+- **Refatoração ≠ reescrita de testes**: cenários são movidos para as novas unidades, nunca descartados nem com expectativas alteradas; cobertura nunca abaixo do baseline
+- **Comentários**: política definida na Etapa 19 (contrato de API em 1–3 linhas; inline só para invariante local; "porquê" → docs), aplicada em massa na Etapa 23, depois que o código já mudou de lugar — migrar comentários antes da decomposição geraria retrabalho
+- **Idioma dos comentários**: `padroes-codigo.md` manda pt-BR, mas ~95% do código está em inglês. Recomendação registrada: manter a regra pt-BR (consistente com `docs/`) e traduzir apenas os sobreviventes da triagem — decisão final na Etapa 19
