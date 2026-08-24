@@ -902,6 +902,8 @@ O único bug novo da revisão — a moldura verde que o Android desenhava na bor
 - Unitários: `test/tool/check_file_length_test.dart` (limite, allowlist, exclusão de gerados, saída de erro)
 - Regressão: suíte completa verde, `flutter analyze` zero warnings com o novo conjunto de lints, cobertura ≥ baseline
 
+**Status (2026-08-23)**: entregue integralmente. O verificador nasceu com detecção de entrada obsoleta na allowlist (arquivo que voltou ao limite falha o check até a entrada ser removida — a lista só encolhe). As seis lints candidatas foram ativadas, nenhuma descartada; três já estavam 100% conformes e as demais geraram 83 avisos, todos corrigidos (80 de ordenação de imports via `dart fix`, 2 no `pubspec.yaml`, 1 `unawaited` explícito no `loadSettings` de `calculator_page.dart`). A ordenação alfabética do `directives_ordering` pôs `package:decima` antes de `package:flutter` — a seção Imports de `padroes-codigo.md` foi atualizada. Decisão de idioma: **pt-BR mantido**, tradução só dos comentários sobreviventes na Etapa 23. Inventário publicado em `plano/observacoes.md`. **Etapa concluída.**
+
 **Entregável**: Limite de 600 linhas documentado e verificado no CI, lints rígidos ativos, política de comentários publicada e inventário registrado. Nenhum comportamento alterado.
 
 ---

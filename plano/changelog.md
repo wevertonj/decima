@@ -1896,3 +1896,34 @@ Medição por script (`PostMessage WM_CLOSE` → janela invisível): **155 ms**.
 - `flutter analyze` — zero issues; `flutter test` — 715 testes, 100% verde
 - Builds de release nas quatro plataformas publicados no GitHub Release (APK, instalador Inno, `.deb`, zip macOS + `.sha256`)
 - Documentação fechada: copiar/colar, cursor editável e atalhos de teclado em `docs/features/calculadora.md`; infra de desktop em `docs/fundacao/arquitetura.md`
+
+---
+
+## [Concluída] Etapa 19 — Fundação da Refatoração: limites, lints e inventário
+
+Primeira etapa do ciclo de refatoração 19–23 (sem mudança de comportamento). Estabelece a infraestrutura de qualidade que orienta as Etapas 20–23.
+
+### Limite de linhas e verificador
+
+- Limite ideal de **≤ 600 linhas** por arquivo Dart (`lib/` e `test/`, excluindo `lib/utils/l10n/`) documentado em `docs/fundacao/padroes-codigo.md` com a tabela de decomposição por camada (ViewModel → sub-controllers; Page/Widget > ~500 → extração; Domain/Service > ~400 → colaboradores)
+- `tool/check_file_length.dart` criado no padrão do `bump_version.dart` (Dart puro, `dart:io`): reporta os arquivos acima do limite e sai com erro quando algum fora da allowlist estoura; allowlist nasce com `calculator_view_model.dart` (1.525) e `calculator_view_model_test.dart` (2.582), zera na Etapa 21. Entrada obsoleta (arquivo que voltou ao limite) também falha o check — a lista só encolhe
+- `test/tool/check_file_length_test.dart`: 6 cenários de integração leve (limite, violação, allowlist, exclusão de gerados/não-Dart, entrada obsoleta, entrada inerte)
+- Novo step "Limite de linhas por arquivo (600)" no job `analyze` do `ci.yml`
+
+### Lints
+
+- As seis candidatas foram ativadas em `analysis_options.yaml` — **nenhuma descartada**: `always_use_package_imports`, `directives_ordering`, `prefer_final_locals`, `prefer_single_quotes`, `sort_pub_dependencies`, `unawaited_futures`. Três já estavam 100% conformes antes da ativação (`always_use_package_imports`, `prefer_single_quotes`, `prefer_final_locals`)
+- 83 avisos corrigidos: 80 de `directives_ordering` (via `dart fix --apply`, 77 arquivos — imports agora em bloco `package:` único alfabético, o que põe `package:decima` **antes** de `package:flutter`; seção Imports de `padroes-codigo.md` atualizada), 2 de `sort_pub_dependencies` (blocos `dependencies`/`dev_dependencies` do `pubspec.yaml` reordenados, comentários acompanhando as dependências), 1 de `unawaited_futures` (`unawaited(widget.viewModel.loadSettings())` no retorno da tela de configurações em `calculator_page.dart`, com `import 'dart:async'`)
+
+### Política de comentários e decisões
+
+- Política registrada em `padroes-codigo.md`: doc comment (`///`) só em API pública como contrato de 1–3 linhas (o quê, nunca o como); inline (`//`) só para invariante local inexpressável em código; "porquê"/história/trade-off migram para `docs/`; proibido narrar o óbvio
+- **Idioma: pt-BR mantido** (consistente com `docs/` e a seção Naming); o legado em inglês só é traduzido na triagem da Etapa 23, e apenas os comentários sobreviventes
+- `padroes-codigo.md` ganhou blockquote descritivo e as seções `Segurança e Cibersegurança`, `Desenvolvimento & Gotchas` e `TDD` (alinhado aos demais docs)
+- Inventário baseline publicado em `plano/observacoes.md` (seção "Ciclo de Refatoração"): maiores arquivos, responsabilidades misturadas, densidade de comentários e destino planejado de cada um
+
+### Estado final
+
+- `flutter analyze` — zero issues com o novo conjunto de lints; `dart format` — limpo
+- `flutter test` — suíte completa verde (715 + 6 do verificador); cobertura ≥ baseline (88,4%)
+- `dart run tool/check_file_length.dart` — nenhuma violação; os dois arquivos da allowlist reportados como ⚠️ aguardando as Etapas 20–21

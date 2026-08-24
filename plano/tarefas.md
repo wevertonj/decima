@@ -971,26 +971,26 @@ Sem Apple Developer Program pago não há caminho de distribuição para iOS. Et
 
 ### Limite de linhas e verificador
 
-- [ ] Documentar o limite ideal de ≤ 600 linhas por arquivo (`lib/` e `test/`, excluindo `lib/utils/l10n/`) em `docs/fundacao/padroes-codigo.md`, com a tabela de decomposição por camada (ViewModel → sub-controllers; Page/Widget > ~500 → extração; Domain/Service > ~400 → colaboradores)
-- [ ] Criar `tool/check_file_length.dart` com allowlist explícita (`calculator_view_model.dart`, `calculator_view_model_test.dart`) e exclusão de gerados
-- [ ] Criar `test/tool/check_file_length_test.dart` (limite, allowlist, exclusões, código de saída)
-- [ ] Adicionar step do verificador ao job `analyze` do `ci.yml`
+- [x] Documentar o limite ideal de ≤ 600 linhas por arquivo (`lib/` e `test/`, excluindo `lib/utils/l10n/`) em `docs/fundacao/padroes-codigo.md`, com a tabela de decomposição por camada (ViewModel → sub-controllers; Page/Widget > ~500 → extração; Domain/Service > ~400 → colaboradores) — seção "Limite de Linhas por Arquivo"
+- [x] Criar `tool/check_file_length.dart` com allowlist explícita (`calculator_view_model.dart`, `calculator_view_model_test.dart`) e exclusão de gerados — inclui detecção de entrada obsoleta (arquivo da allowlist que voltou ao limite falha o check)
+- [x] Criar `test/tool/check_file_length_test.dart` (limite, allowlist, exclusões, código de saída) — 6 cenários no padrão do `bump_version_test.dart`
+- [x] Adicionar step do verificador ao job `analyze` do `ci.yml` — step "Limite de linhas por arquivo (600)"
 
 ### Lints
 
-- [ ] Avaliar e ativar em `analysis_options.yaml`: `directives_ordering`, `always_use_package_imports`, `prefer_single_quotes`, `unawaited_futures`, `prefer_final_locals`, `sort_pub_dependencies` (registrar as descartadas e o porquê)
-- [ ] Corrigir todos os avisos resultantes (incluindo `unawaited(...)` explícito nos fire-and-forget da persistência)
+- [x] Avaliar e ativar em `analysis_options.yaml`: `directives_ordering`, `always_use_package_imports`, `prefer_single_quotes`, `unawaited_futures`, `prefer_final_locals`, `sort_pub_dependencies` (registrar as descartadas e o porquê) — **todas as seis ativadas, nenhuma descartada**; três já estavam 100% conformes (`always_use_package_imports`, `prefer_single_quotes`, `prefer_final_locals`)
+- [x] Corrigir todos os avisos resultantes (incluindo `unawaited(...)` explícito nos fire-and-forget da persistência) — 83 avisos: 80 de `directives_ordering` via `dart fix --apply` (77 arquivos), 2 de `sort_pub_dependencies` no `pubspec.yaml`, 1 de `unawaited_futures` no `loadSettings` pós-navegação de `calculator_page.dart`
 
 ### Política de comentários e inventário
 
-- [ ] Registrar a política de comentários em `docs/fundacao/padroes-codigo.md` (doc comment = contrato 1–3 linhas; inline só para invariante local; "porquê" → docs; proibido narrar o óbvio)
-- [ ] Decidir e registrar o idioma dos comentários (recomendação: manter pt-BR e traduzir os sobreviventes na Etapa 23)
-- [ ] Publicar o inventário baseline em `plano/observacoes.md` (maiores arquivos, responsabilidades misturadas, densidade de comentários, destino planejado)
+- [x] Registrar a política de comentários em `docs/fundacao/padroes-codigo.md` (doc comment = contrato 1–3 linhas; inline só para invariante local; "porquê" → docs; proibido narrar o óbvio) — seção "Política de Comentários"
+- [x] Decidir e registrar o idioma dos comentários — **decisão: pt-BR mantido**; legado em inglês só é traduzido na triagem da Etapa 23 (apenas sobreviventes)
+- [x] Publicar o inventário baseline em `plano/observacoes.md` (maiores arquivos, responsabilidades misturadas, densidade de comentários, destino planejado) — seção "Ciclo de Refatoração (Etapas 19–23)"
 
 ### Validação
 
-- [ ] `flutter test` verde, `flutter analyze` zero warnings, cobertura ≥ baseline
-- [ ] Registrar a etapa em `plano/plano.md`, `plano/tarefas.md` e `plano/changelog.md`
+- [x] `flutter test` verde, `flutter analyze` zero warnings, cobertura ≥ baseline
+- [x] Registrar a etapa em `plano/plano.md`, `plano/tarefas.md` e `plano/changelog.md`
 
 ---
 
