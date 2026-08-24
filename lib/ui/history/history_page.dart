@@ -1,6 +1,7 @@
 import 'package:decima/config/theme/app_layout.dart';
 import 'package:decima/domain/entities/history_selection.dart';
 import 'package:decima/ui/history/history_view_model.dart';
+import 'package:decima/ui/history/widgets/animated_list_item.dart';
 import 'package:decima/ui/history/widgets/history_list_item.dart';
 import 'package:decima/ui/widgets/flat_segmented_control.dart';
 import 'package:decima/utils/extensions/l10n_extension.dart';
@@ -143,7 +144,7 @@ class _HistoryPageState extends State<HistoryPage> {
 
         final entry = vm.entries[index];
 
-        return _AnimatedListItem(
+        return AnimatedListItem(
           index: index,
           child: HistoryListItem(
             entry: entry,
@@ -220,62 +221,5 @@ class _HistoryPageState extends State<HistoryPage> {
         widget.viewModel.clearAll();
       }
     });
-  }
-}
-
-/// Animates each list item with a staggered slide + fade entrance.
-class _AnimatedListItem extends StatefulWidget {
-  final int index;
-  final Widget child;
-
-  const _AnimatedListItem({required this.index, required this.child});
-
-  @override
-  State<_AnimatedListItem> createState() => _AnimatedListItemState();
-}
-
-class _AnimatedListItemState extends State<_AnimatedListItem>
-    with SingleTickerProviderStateMixin {
-  late final AnimationController _controller;
-  late final Animation<Offset> _slideAnimation;
-  late final Animation<double> _fadeAnimation;
-
-  @override
-  void initState() {
-    super.initState();
-    _controller = AnimationController(
-      duration: const Duration(milliseconds: 300),
-      vsync: this,
-    );
-
-    _slideAnimation = Tween<Offset>(
-      begin: const Offset(0, 0.15),
-      end: Offset.zero,
-    ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeOutCubic));
-
-    _fadeAnimation = Tween<double>(
-      begin: 0.0,
-      end: 1.0,
-    ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeOutCubic));
-
-    // Stagger: each item starts slightly after the previous one (max 10 items)
-    final delay = Duration(milliseconds: (widget.index.clamp(0, 10)) * 40);
-    Future.delayed(delay, () {
-      if (mounted) _controller.forward();
-    });
-  }
-
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return SlideTransition(
-      position: _slideAnimation,
-      child: FadeTransition(opacity: _fadeAnimation, child: widget.child),
-    );
   }
 }

@@ -1,7 +1,7 @@
 import 'package:decima/config/theme/app_layout.dart';
 import 'package:decima/domain/entities/history_entry.dart';
 import 'package:decima/domain/entities/history_line.dart';
-import 'package:decima/utils/extensions/l10n_extension.dart';
+import 'package:decima/ui/history/widgets/rename_entry_dialog.dart';
 import 'package:flutter/material.dart';
 
 /// A single item in the history list showing a session preview.
@@ -241,44 +241,14 @@ class _HistoryListItemState extends State<HistoryListItem> {
     );
   }
 
-  void _showRenameDialog(BuildContext context) {
-    final l10n = context.l10n;
-    final controller = TextEditingController(text: widget.entry.name ?? '');
-
-    showDialog<String>(
-      context: context,
-      builder: (dialogContext) => AlertDialog(
-        title: Text(l10n.rename),
-        content: TextField(
-          controller: controller,
-          decoration: InputDecoration(
-            hintText: l10n.renameHint,
-            border: const OutlineInputBorder(),
-          ),
-          autofocus: true,
-          textCapitalization: TextCapitalization.sentences,
-          onSubmitted: (value) {
-            Navigator.of(dialogContext).pop(value);
-          },
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(dialogContext).pop(),
-            child: Text(l10n.cancel),
-          ),
-          FilledButton(
-            onPressed: () {
-              Navigator.of(dialogContext).pop(controller.text);
-            },
-            child: Text(l10n.renameSave),
-          ),
-        ],
-      ),
-    ).then((newName) {
-      if (newName != null) {
-        widget.onRename(newName.isEmpty ? null : newName);
-      }
-    });
+  Future<void> _showRenameDialog(BuildContext context) async {
+    final newName = await RenameEntryDialog.show(
+      context,
+      initialName: widget.entry.name,
+    );
+    if (newName != null) {
+      widget.onRename(newName.isEmpty ? null : newName);
+    }
   }
 
   String _formatDateTime(DateTime dateTime) {

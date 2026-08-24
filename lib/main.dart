@@ -1,5 +1,3 @@
-import 'dart:ui' show AppExitResponse;
-
 import 'package:decima/config/dependencies.dart';
 import 'package:decima/config/routes.dart';
 import 'package:decima/config/theme/app_colors.dart';
@@ -12,6 +10,7 @@ import 'package:decima/ui/calculator/calculator_view_model.dart';
 import 'package:decima/ui/core/desktop/desktop_window_initializer.dart';
 import 'package:decima/ui/core/desktop/window_close_handler.dart';
 import 'package:decima/ui/core/desktop/window_position.dart';
+import 'package:decima/ui/core/mobile/app_lifecycle_flush_handler.dart';
 import 'package:decima/ui/core/widgets/desktop_shell.dart';
 import 'package:decima/ui/settings/settings_view_model.dart';
 import 'package:decima/utils/l10n/app_localizations.dart';
@@ -49,13 +48,6 @@ class _DecimaAppState extends State<DecimaApp> with WidgetsBindingObserver {
   late final CalculatorViewModel _calculatorVM;
   late final SettingsRepository _settingsRepository;
 
-  /// Grava a sessão quando o app vai para segundo plano em mobile. O Android
-  /// encerra o processo sem garantir `detached`, então o flush precisa
-  /// acontecer já em `hidden`/`paused`. Em desktop quem cuida disso é o
-  /// [WindowCloseHandler] — ali `onHide` também dispara ao minimizar, e
-  /// fechar o cálculo em andamento nesse caso surpreenderia o usuário.
-  AppLifecycleListener? _lifecycleListener;
-
   @override
   void initState() {
     super.initState();
@@ -63,20 +55,12 @@ class _DecimaAppState extends State<DecimaApp> with WidgetsBindingObserver {
     _settingsVM.addListener(_onSettingsChanged);
     _calculatorVM = getIt<CalculatorViewModel>();
     _settingsRepository = getIt<SettingsRepository>();
-    if (!DesktopShell.isDesktop) {
-      _lifecycleListener = AppLifecycleListener(
-        onHide: _flushSession,
-        onPause: _flushSession,
-        onExitRequested: _onExitRequested,
-      );
-    }
     WidgetsBinding.instance.addObserver(this);
   }
 
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
-    _lifecycleListener?.dispose();
     _settingsVM.removeListener(_onSettingsChanged);
     super.dispose();
   }
@@ -102,12 +86,6 @@ class _DecimaAppState extends State<DecimaApp> with WidgetsBindingObserver {
     }
 
     await _settingsRepository.setWindowPosition(x, y);
-  }
-
-  Future<AppExitResponse> _onExitRequested() async {
-    await _flushSession();
-
-    return AppExitResponse.exit;
   }
 
   @override
@@ -152,7 +130,10 @@ class _DecimaAppState extends State<DecimaApp> with WidgetsBindingObserver {
         return WindowCloseHandler(
           onFlush: _flushSession,
           onSavePosition: _saveWindowPosition,
-          child: DesktopShell(child: child ?? const SizedBox.shrink()),
+          child: AppLifecycleFlushHandler(
+            onFlush: _flushSession,
+            child: DesktopShell(child: child ?? const SizedBox.shrink()),
+          ),
         );
       },
     );
