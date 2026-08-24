@@ -199,7 +199,7 @@ A prévia de resultado (`previewResult`) é recalculada em tempo real a partir d
 
 ### Visual do cursor
 
-O cursor é uma barra vertical fina (2 px de largura) na cor `colorScheme.primary`, com altura proporcional ao `fontSize` atual do display. O blink usa `Timer.periodic(530ms)` em vez de `AnimationController`, evitando que widget tests com `pumpAndSettle` fiquem bloqueados.
+O cursor é o widget `BlinkingCursor` (`lib/ui/calculator/widgets/blinking_cursor.dart`, Etapa 22): uma barra vertical fina (2 px de largura) na cor `colorScheme.primary`, com altura proporcional ao `fontSize` atual do display. O blink usa `Timer.periodic(530ms)` em vez de `AnimationController`, evitando que widget tests com `pumpAndSettle` fiquem bloqueados.
 
 Em modo **multiline** (quando a expressão estoura a largura e o display usa `Wrap`), o cursor continua sendo renderizado: ele é injetado no fluxo de tokens de modo a ficar preso ao grupo numérico atual (impede quebra de linha entre dígito e cursor) ou como token próprio em fronteiras (espaço/operador, ponto natural de quebra).
 
@@ -211,7 +211,7 @@ Em modo **multiline** (quando a expressão estoura a largura e o display usa `Wr
 - O bloco numérico sob o cursor é detectado pela faixa máxima de caracteres `[0-9.,%]` contígua; inserções e remoções operam sobre os dígitos brutos do bloco e o resultado é re-formatado via `NumberFormatter.format` aplicando Add2
 - **Ancoragem do cursor por dígitos-à-direita**: após cada reformatação Add2, o cursor é restaurado de modo a preservar exatamente o mesmo número de dígitos à sua direita dentro do bloco. Como Add2 padroniza com zero à esquerda (raw `20` → `0.20`), o lado direito é a referência estável; ancorar pela esquerda faria o cursor pular a cada padding/depadding
 - `ExpressionEditor.normalizeForEvaluator` converte o texto formatado para a forma canônica esperada pelo `ExpressionEvaluator` — fica no editor porque desfaz a formatação de exibição que o próprio editor mantém, e o avaliador segue sem conhecer `DecimalSeparator`
-- `AnimatedInputDisplay` recebe `cursorPosition`, `cursorColor` e `onCharTap` e renderiza o cursor entre os widgets de caractere
+- `AnimatedInputDisplay` recebe `cursorPosition`, `cursorColor` e `onCharTap` e renderiza o cursor (`BlinkingCursor`) entre os widgets de caractere; o diff que decide qual caractere anima (pop-in, roll ou estático) é o helper puro `CharSlotDiffer` (`lib/ui/calculator/char_slot_differ.dart`, Etapa 22), testável sem árvore de widgets — o widget fica só com layout, animação e scroll
 - `TimelineDisplay` envolve o display em `GestureDetector.onHorizontalDragEnd` para o swipe
 
 ## Atalhos de Teclado

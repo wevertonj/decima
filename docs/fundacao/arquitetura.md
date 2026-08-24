@@ -35,8 +35,9 @@ lib/
 │   ├── calculator/            # Feature: calculadora
 │   │   ├── calculator_page.dart
 │   │   ├── calculator_view_model.dart  # Fachada: única API para a UI
+│   │   ├── char_slot_differ.dart  # Diff puro dos caracteres do display (decide as animações)
 │   │   ├── controllers/       # Sub-controllers do ViewModel (sessão, clipboard, cursor, timeline)
-│   │   └── widgets/           # Widgets específicos (display, keypad, buttons)
+│   │   └── widgets/           # Widgets específicos (display, keypad, buttons, cursor)
 │   ├── history/               # Feature: histórico
 │   │   ├── history_page.dart
 │   │   ├── history_view_model.dart
@@ -48,6 +49,7 @@ lib/
 │   └── core/                  # Widgets e utilitários globais da UI
 │       ├── theme/
 │       ├── desktop/           # Infra de janela (config, init, close handler, posição)
+│       ├── mobile/            # Flush da sessão no ciclo de vida mobile
 │       └── widgets/
 │
 ├── utils/                     # Utilitários
@@ -217,7 +219,7 @@ No Windows o `PostQuitMessage` só enfileira `WM_QUIT`: nenhuma janela é destru
 
 O preço é um eco: o plugin emite o evento `close` **antes** de consultar o `preventClose`, então esse `close()` reentra no handler como um novo `onWindowClose`. A trava `_closing` absorve o eco — e, de quebra, cliques repetidos no `X` enquanto as gravações rodam.
 
-O handler é montado no `MaterialApp.builder` do `_DecimaAppState`, acima do `DesktopShell`. Em mobile o papel equivalente é do `AppLifecycleListener` (`onHide` / `onPause` / `onExitRequested`) registrado no mesmo state.
+O handler é montado no `MaterialApp.builder` do `_DecimaAppState`, acima do `DesktopShell`. Em mobile o papel equivalente é do `AppLifecycleFlushHandler` (`ui/core/mobile/app_lifecycle_flush_handler.dart`, Etapa 22): registra um `AppLifecycleListener` (`onHide` / `onPause` / `onExitRequested`) apenas fora do desktop e é montado no mesmo `builder`, logo abaixo do `WindowCloseHandler` — `main.dart` fica só com o bootstrap.
 
 As duas gravações do fechamento — sessão e posição — rodam em `Future.wait` (sem `eagerError`) sob o mesmo `flushTimeout`: uma travada ou com erro não impede a outra, e nenhuma impede o `destroy()`.
 
