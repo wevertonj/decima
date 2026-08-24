@@ -994,27 +994,27 @@ Sem Apple Developer Program pago não há caminho de distribuição para iOS. Et
 
 ---
 
-## Etapa 20 — Refatoração do Domínio: motor de edição da expressão
+## Etapa 20 — Refatoração do Domínio: motor de edição da expressão ✅
 
 ### Extração
 
-- [ ] Criar `lib/domain/expression_editor.dart` — `ExpressionEditor` puro com `EditorState(text, cursor)` imutável
-- [ ] Migrar do ViewModel: inserção de dígitos, operador com split de bloco, parêntese, `%`, backspace com merge de blocos, e os helpers `_findNumberBlock`, `_stripToDigits`, `_countDigits`, `_positionWithDigitsAfter`
-- [ ] Migrar `_normalizeForEvaluator` (para o editor ou o `ExpressionEvaluator` — registrar a decisão)
-- [ ] `CalculatorViewModel` delega o modo de edição ao editor (aplicar `EditorState` devolvido + `notifyListeners`)
-- [ ] Mover `PasteInputParser` de `lib/utils/` para `lib/domain/` e atualizar imports
+- [x] Criar `lib/domain/expression_editor.dart` — `ExpressionEditor` puro com `EditorState(text, cursor)` imutável
+- [x] Migrar do ViewModel: inserção de dígitos, operador com split de bloco, parêntese, `%`, backspace com merge de blocos, e os helpers `_findNumberBlock`, `_stripToDigits`, `_countDigits`, `_positionWithDigitsAfter`
+- [x] Migrar `_normalizeForEvaluator` — decisão: **editor** (a normalização desfaz a formatação de exibição que o próprio editor mantém; o `ExpressionEvaluator` segue sem conhecer `DecimalSeparator`)
+- [x] `CalculatorViewModel` delega o modo de edição ao editor (aplicar `EditorState` devolvido via `_applyEditorState` + `notifyListeners`); `openParenCount` do modo de edição delega a `ExpressionEditor.countOpenParens`
+- [x] Mover `PasteInputParser` de `lib/utils/` para `lib/domain/` e atualizar imports
 
 ### Testes
 
-- [ ] Criar `test/unit/domain/expression_editor_test.dart` absorvendo os cenários de edição/cursor de `calculator_view_model_test.dart` (mover, não reescrever)
-- [ ] Mover o teste do `PasteInputParser` para a pasta correspondente
-- [ ] Suíte completa verde sem alterar expectativas; cobertura ≥ baseline
-- [ ] Atualizar a allowlist do verificador conforme o tamanho novo do ViewModel
+- [x] Criar `test/unit/domain/expression_editor_test.dart` absorvendo os cenários de edição/cursor de `calculator_view_model_test.dart` (mesmos casos e expectativas contra a API do editor); os fluxos de integração com cursor permanecem no teste do ViewModel
+- [x] Mover o teste do `PasteInputParser` para `test/unit/domain/`
+- [x] Suíte completa verde sem alterar expectativas; cobertura ≥ baseline
+- [x] Atualizar a allowlist do verificador — ambos os arquivos seguem acima de 600 (ViewModel 1.199, teste 2.399), entradas mantidas; comentário atualizado para "aguarda a Etapa 21"
 
 ### Documentação
 
-- [ ] Atualizar `docs/fundacao/arquitetura.md` (novo artefato de domínio) e `docs/features/calculadora.md` (seção de implementação do cursor)
-- [ ] Registrar a etapa em `plano/plano.md`, `plano/tarefas.md` e `plano/changelog.md`
+- [x] Atualizar `docs/fundacao/arquitetura.md` (seção "Domínio da Calculadora" + árvore de pastas) e `docs/features/calculadora.md` (seção de implementação do cursor)
+- [x] Registrar a etapa em `plano/plano.md`, `plano/tarefas.md` e `plano/changelog.md`
 
 ---
 

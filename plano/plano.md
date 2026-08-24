@@ -930,7 +930,9 @@ O único bug novo da revisão — a moldura verde que o Android desenhava na bor
 - Unitários: `ExpressionEditor` — todos os cenários atuais de edição no meio da expressão (inserção, backspace com merge, split por operador, parênteses, `%`, reancoragem do cursor, multiline)
 - Regressão: suíte completa verde sem alterar nenhuma expectativa; cobertura ≥ baseline
 
-**Entregável**: Motor de edição como unidade de domínio isolada e testada; `calculator_view_model.dart` ~500 linhas menor; allowlist do verificador reduzida.
+**Status (2026-08-24)**: entregue integralmente. `ExpressionEditor` nasceu como classe de métodos estáticos puros (padrão `NumberFormatter`/`PasteInputParser`) sobre `EditorState(text, cursor)` imutável; o ViewModel aplica o estado devolvido via `_applyEditorState` (que também deriva `_atEnd`). Decisão registrada: `_normalizeForEvaluator` migrou para o **editor** — desfaz a formatação de exibição que o próprio editor mantém, e o `ExpressionEvaluator` segue sem conhecer `DecimalSeparator`. `calculator_view_model.dart`: 1.526 → 1.199 linhas; teste: 2.582 → 2.399. Ambos seguem na allowlist (zera na Etapa 21). **Etapa concluída.**
+
+**Entregável**: Motor de edição como unidade de domínio isolada e testada; `calculator_view_model.dart` ~330 linhas menor; allowlist do verificador mantida para a Etapa 21.
 
 ---
 

@@ -1927,3 +1927,36 @@ Primeira etapa do ciclo de refatoração 19–23 (sem mudança de comportamento)
 - `flutter analyze` — zero issues com o novo conjunto de lints; `dart format` — limpo
 - `flutter test` — suíte completa verde (715 + 6 do verificador); cobertura ≥ baseline (88,4%)
 - `dart run tool/check_file_length.dart` — nenhuma violação; os dois arquivos da allowlist reportados como ⚠️ aguardando as Etapas 20–21
+
+---
+
+## [Concluída] Etapa 20 — Refatoração do Domínio: motor de edição da expressão
+
+Segunda etapa do ciclo de refatoração 19–23 (sem mudança de comportamento). Extrai do `CalculatorViewModel` o motor de edição por cursor para uma unidade de domínio isolada.
+
+### Extração
+
+- `lib/domain/expression_editor.dart` criado — `ExpressionEditor` como classe de métodos estáticos puros (padrão `NumberFormatter`/`PasteInputParser`), sem import de Flutter, operando sobre `EditorState(text, cursor)` imutável: cada operação recebe um estado e devolve o novo
+- Operações migradas do ViewModel: `insertDigits`, `insertOperator` (split de bloco com o cursor no meio de um número), `insertParenthesis`, `applyPercent` e `backspace` (merge de blocos ao apagar operador) — todas Add2-aware, preservando a reancoragem do cursor pela contagem de dígitos à direita; helpers `_findNumberBlock`, `_stripToDigits`, `_countDigits`, `_positionWithDigitsAfter`, `_insertLiteral`, `_tryMergeBlocksAtCursor` e `_replaceBlockWithFormatted` foram junto
+- `DecimalSeparator` chega por parâmetro — o editor não conhece Settings
+- **Decisão registrada**: `_normalizeForEvaluator` migrou para o **editor** (`ExpressionEditor.normalizeForEvaluator`), não para o `ExpressionEvaluator` — a normalização desfaz a formatação de exibição que o próprio editor mantém (separador de milhar, separador decimal configurado), e o avaliador segue sem conhecer `DecimalSeparator`
+- `CalculatorViewModel` delega o modo de edição: cada despacho vira "chamar o editor e aplicar o `EditorState` devolvido" (`_applyEditorState`, que também deriva `_atEnd`); `openParenCount` do modo de edição delega a `ExpressionEditor.countOpenParens`. Arquivo: 1.526 → 1.199 linhas
+- `PasteInputParser` movido de `lib/utils/` para `lib/domain/` pela regra de classificação da arquitetura ("é regra de negócio? → `domain/`"); imports atualizados
+
+### Testes
+
+- `test/unit/domain/expression_editor_test.dart` criado (22 cenários) absorvendo os cenários puros de edição/cursor de `calculator_view_model_test.dart` — mesmos casos e expectativas, agora contra a API do editor; ganhou também os cenários de `%` em modo de edição, guardas (`backspace` em 0, `%` sem bloco) e `normalizeForEvaluator`/`countOpenParens` diretos
+- Fluxos de integração com cursor permanecem no teste do ViewModel (delegação, `=`/preview sobre texto editado, `flushSession` em modo de edição, reancoragem em sequência de toques); teste: 2.582 → 2.399 linhas
+- `paste_input_parser_test.dart` movido para `test/unit/domain/` acompanhando o arquivo
+
+### Verificador e documentação
+
+- Allowlist do `check_file_length.dart` mantida — os dois arquivos seguem acima de 600 linhas; comentários e mensagem atualizados para "aguarda a Etapa 21"
+- `docs/fundacao/arquitetura.md`: nova seção "Domínio da Calculadora" (tabela dos 4 artefatos + decisão do `normalizeForEvaluator`) e árvore de pastas com os arquivos de `domain/`
+- `docs/features/calculadora.md`: seção "Implementação" do cursor atualizada (editor como dono da manipulação de texto; `PasteInputParser` em `lib/domain/`)
+
+### Estado final
+
+- `flutter analyze` — zero issues; `dart format` — limpo
+- `flutter test` — 729 testes, 100% verde (eram 721: 14 cenários migraram para o editor e a cobertura direta somou 8 novos)
+- `dart run tool/check_file_length.dart` — nenhuma violação; allowlist reportada como ⚠️ aguardando a Etapa 21
