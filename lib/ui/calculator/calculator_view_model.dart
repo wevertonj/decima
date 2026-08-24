@@ -9,9 +9,10 @@ import 'package:decima/domain/entities/history_entry.dart';
 import 'package:decima/domain/entities/history_line.dart';
 import 'package:decima/domain/entities/history_selection.dart';
 import 'package:decima/domain/enums/decimal_separator.dart';
+import 'package:decima/domain/expression_editor.dart';
 import 'package:decima/domain/expression_evaluator.dart';
+import 'package:decima/domain/paste_input_parser.dart';
 import 'package:decima/utils/formatters/number_formatter.dart';
-import 'package:decima/utils/paste_input_parser.dart';
 import 'package:flutter/foundation.dart';
 
 class CalculatorViewModel extends ChangeNotifier {
@@ -132,16 +133,7 @@ class CalculatorViewModel extends ChangeNotifier {
   int get openParenCount {
     final text = _editText;
     if (text != null) {
-      var n = 0;
-      for (var i = 0; i < text.length; i++) {
-        if (text[i] == '(') {
-          n++;
-        } else if (text[i] == ')') {
-          n--;
-        }
-      }
-
-      return n;
+      return ExpressionEditor.countOpenParens(text);
     }
 
     var n = 0;
@@ -214,7 +206,10 @@ class CalculatorViewModel extends ChangeNotifier {
 
   String? get previewResult {
     if (_editText != null) {
-      final raw = _normalizeForEvaluator(_editText!);
+      final raw = ExpressionEditor.normalizeForEvaluator(
+        _editText!,
+        _decimalSeparator,
+      );
       if (raw.trim().isEmpty) return null;
       final result = _evaluator.evaluate(raw);
       if (result == null) return null;
@@ -275,7 +270,9 @@ class CalculatorViewModel extends ChangeNotifier {
   void inputDigit(String digit) {
     _runAction(() {
       if (_editText != null) {
-        _editInsertDigits(digit);
+        _applyEditorState(
+          ExpressionEditor.insertDigits(_editorState, digit, _decimalSeparator),
+        );
         notifyListeners();
 
         return;
@@ -291,7 +288,9 @@ class CalculatorViewModel extends ChangeNotifier {
   void inputDoubleZero() {
     _runAction(() {
       if (_editText != null) {
-        _editInsertDigits('00');
+        _applyEditorState(
+          ExpressionEditor.insertDigits(_editorState, '00', _decimalSeparator),
+        );
         notifyListeners();
 
         return;
@@ -307,7 +306,9 @@ class CalculatorViewModel extends ChangeNotifier {
   void inputTripleZero() {
     _runAction(() {
       if (_editText != null) {
-        _editInsertDigits('000');
+        _applyEditorState(
+          ExpressionEditor.insertDigits(_editorState, '000', _decimalSeparator),
+        );
         notifyListeners();
 
         return;
@@ -353,7 +354,13 @@ class CalculatorViewModel extends ChangeNotifier {
   void setOperator(String operator) {
     _runAction(() {
       if (_editText != null) {
-        _editSplitBlockWithOperator(operator);
+        _applyEditorState(
+          ExpressionEditor.insertOperator(
+            _editorState,
+            operator,
+            _decimalSeparator,
+          ),
+        );
         notifyListeners();
 
         return;
@@ -381,7 +388,7 @@ class CalculatorViewModel extends ChangeNotifier {
   void applyPercentage() {
     _runAction(() {
       if (_editText != null) {
-        _editApplyPercentInBlock();
+        _applyEditorState(ExpressionEditor.applyPercent(_editorState));
         notifyListeners();
 
         return;
@@ -403,7 +410,7 @@ class CalculatorViewModel extends ChangeNotifier {
   void inputParenthesis() {
     _runAction(() {
       if (_editText != null) {
-        _editInsertParenthesis();
+        _applyEditorState(ExpressionEditor.insertParenthesis(_editorState));
         notifyListeners();
 
         return;
@@ -533,7 +540,7 @@ class CalculatorViewModel extends ChangeNotifier {
   /// the evaluator handles it gracefully.
   String? _pendingRawExpression() {
     final raw = _editText != null
-        ? _normalizeForEvaluator(_editText!)
+        ? ExpressionEditor.normalizeForEvaluator(_editText!, _decimalSeparator)
         : _buildFullExpression();
     if (raw.trim().isEmpty) return null;
     if (!_operatorRegExp.hasMatch(raw)) return null;
@@ -568,7 +575,9 @@ class CalculatorViewModel extends ChangeNotifier {
   void backspace() {
     _runAction(() {
       if (_editText != null) {
-        _editBackspace();
+        _applyEditorState(
+          ExpressionEditor.backspace(_editorState, _decimalSeparator),
+        );
         notifyListeners();
 
         return;
@@ -762,356 +771,21 @@ class CalculatorViewModel extends ChangeNotifier {
     _cursorPos = 0;
   }
 
-  static final RegExp _digitRegExp = RegExp(r'[0-9]');
-  static final RegExp _numberCharRegExp = RegExp(r'[0-9.,%]');
+  /// Snapshot do modo de edição para o [ExpressionEditor]. Só é válido
+  /// enquanto [_editText] é não-nulo.
+  EditorState get _editorState =>
+      EditorState(text: _editText!, cursor: _cursorPos);
+
+  /// Aplica o estado devolvido por uma operação do [ExpressionEditor].
+  void _applyEditorState(EditorState state) {
+    _editText = state.text;
+    _cursorPos = state.cursor;
+    _atEnd = _cursorPos >= state.text.length;
+  }
 
   /// Binary operators as they appear in an expression. Note the minus is the
   /// U+2212 sign, never the hyphen a negative result is formatted with.
   static final RegExp _operatorRegExp = RegExp(r'[+−×÷]');
-
-  /// Inserts the digit string [digits] (only `0-9` chars) at the current
-  /// cursor position, applying Add2 formatting to the surrounding number
-  /// block. The block is detected from contiguous number-like chars
-  /// (digits, decimal/thousand separators, optional trailing `%`).
-  void _editInsertDigits(String digits) {
-    final text = _editText!;
-    final block = _findNumberBlock(text, _cursorPos);
-    final raw = _stripToDigits(text.substring(block.start, block.end));
-    final hasPercent = block.end > block.start && text[block.end - 1] == '%';
-    final digitsBeforeCursor = _countDigits(text, block.start, _cursorPos);
-    final digitsAfterCursor = raw.length - digitsBeforeCursor;
-
-    final newRaw =
-        raw.substring(0, digitsBeforeCursor) +
-        digits +
-        raw.substring(digitsBeforeCursor);
-    // Preserve digitsAfterCursor: the cursor lands immediately after the
-    // newly inserted digits, keeping the same number of digits to its right
-    // as before the insertion. This is robust to Add2's leading-zero padding.
-    final newDigitsAfterCursor = digitsAfterCursor;
-
-    _replaceBlockWithFormatted(
-      text,
-      block.start,
-      block.end,
-      newRaw,
-      hasPercent,
-      newDigitsAfterCursor,
-    );
-  }
-
-  /// Inserts the literal string [s] (operators, parentheses, spaces) at the
-  /// current cursor position without re-formatting. Used for non-digit input.
-  void _editInsertLiteral(String s) {
-    final text = _editText!;
-    _editText = text.substring(0, _cursorPos) + s + text.substring(_cursorPos);
-    _cursorPos += s.length;
-    _atEnd = _cursorPos >= _editText!.length;
-  }
-
-  /// Removes one digit from the surrounding number block (re-formatting
-  /// the block via Add2). When the char immediately before the cursor is an
-  /// operator (` op `), removes the entire operator-with-spaces and merges
-  /// the two surrounding number blocks via Add2 (concatenated raw digits).
-  /// Outside number blocks, falls back to deleting the literal char.
-  void _editBackspace() {
-    if (_cursorPos <= 0) return;
-    final text = _editText!;
-    final block = _findNumberBlock(text, _cursorPos);
-    final raw = _stripToDigits(text.substring(block.start, block.end));
-    final digitsBeforeCursor = _countDigits(text, block.start, _cursorPos);
-
-    if (raw.isEmpty || digitsBeforeCursor == 0) {
-      // Cursor is at a non-digit boundary. Detect the operator-with-spaces
-      // pattern (` op ` where op ∈ +−×÷) immediately before the cursor and
-      // merge the surrounding blocks if present.
-      final merged = _tryMergeBlocksAtCursor();
-      if (merged) return;
-
-      // Plain literal char delete.
-      _editText =
-          text.substring(0, _cursorPos - 1) + text.substring(_cursorPos);
-      _cursorPos--;
-      _atEnd = _cursorPos >= _editText!.length;
-
-      return;
-    }
-
-    final hasPercent = block.end > block.start && text[block.end - 1] == '%';
-    final digitsAfterCursor = raw.length - digitsBeforeCursor;
-    final newRaw =
-        raw.substring(0, digitsBeforeCursor - 1) +
-        raw.substring(digitsBeforeCursor);
-    // Preserve digitsAfterCursor: removing a digit BEFORE the cursor does
-    // not change how many digits are AFTER it, so the cursor stays anchored
-    // to the same trailing digit (immune to Add2's leading-zero padding).
-    final newDigitsAfterCursor = digitsAfterCursor;
-
-    _replaceBlockWithFormatted(
-      text,
-      block.start,
-      block.end,
-      newRaw,
-      hasPercent,
-      newDigitsAfterCursor,
-    );
-  }
-
-  /// Inserts an operator at the current cursor position. When the cursor
-  /// lies in the middle of a number block (digits on both sides), the block
-  /// is split into two Add2-formatted halves with ` op ` between them.
-  /// At block boundaries (start, end, or outside any block), the operator
-  /// is inserted as a literal ` op ` without splitting.
-  ///
-  /// Cursor lands immediately after the inserted operator.
-  void _editSplitBlockWithOperator(String operator) {
-    final text = _editText!;
-    final block = _findNumberBlock(text, _cursorPos);
-    final raw = _stripToDigits(text.substring(block.start, block.end));
-    final digitsBeforeCursor = _countDigits(text, block.start, _cursorPos);
-    final digitsAfterCursor = raw.length - digitsBeforeCursor;
-
-    // No surrounding block, or cursor at a boundary — append literally.
-    if (raw.isEmpty || digitsBeforeCursor == 0 || digitsAfterCursor == 0) {
-      _editInsertLiteral(' $operator ');
-
-      return;
-    }
-
-    final hasPercent = block.end > block.start && text[block.end - 1] == '%';
-    final leftRaw = raw.substring(0, digitsBeforeCursor);
-    final rightRaw = raw.substring(digitsBeforeCursor);
-
-    final leftCore = NumberFormatter.format(
-      int.parse(leftRaw),
-      separator: _decimalSeparator,
-      useThousandsSeparator: true,
-    );
-    final rightCore = NumberFormatter.format(
-      int.parse(rightRaw),
-      separator: _decimalSeparator,
-      useThousandsSeparator: true,
-    );
-
-    // Percent suffix (if any) belongs to the right half — it was at the
-    // tail of the original block.
-    final rightBlock = rightCore + (hasPercent ? '%' : '');
-    final replacement = '$leftCore $operator $rightBlock';
-
-    _editText =
-        text.substring(0, block.start) +
-        replacement +
-        text.substring(block.end);
-
-    // Cursor lands immediately after the inserted operator (after the
-    // trailing space): position = block.start + leftCore.length + 3
-    // (' ' + op + ' ').
-    _cursorPos = block.start + leftCore.length + 3;
-    _atEnd = _cursorPos >= _editText!.length;
-  }
-
-  /// Detects whether the chars immediately before the cursor form an
-  /// operator-with-spaces sequence (` op `) sandwiched between two number
-  /// blocks. If so, removes the operator (and its surrounding spaces) and
-  /// merges the two blocks by concatenating their raw digits and re-applying
-  /// Add2. Returns true on a successful merge, false otherwise.
-  bool _tryMergeBlocksAtCursor() {
-    final text = _editText!;
-    // Pattern is " op " ending exactly at _cursorPos: chars at
-    // _cursorPos-3 = ' ', _cursorPos-2 = op, _cursorPos-1 = ' '.
-    if (_cursorPos < 3) return false;
-    if (text[_cursorPos - 1] != ' ') return false;
-    final op = text[_cursorPos - 2];
-    if (!(op == '+' || op == '−' || op == '×' || op == '÷')) return false;
-    if (text[_cursorPos - 3] != ' ') return false;
-
-    final leftBlock = _findNumberBlock(text, _cursorPos - 3);
-    final rightBlock = _findNumberBlock(text, _cursorPos);
-    if (leftBlock.end == leftBlock.start) return false;
-    if (rightBlock.end == rightBlock.start) return false;
-
-    final leftRawPadded = _stripToDigits(
-      text.substring(leftBlock.start, leftBlock.end),
-    );
-    final rightRawPadded = _stripToDigits(
-      text.substring(rightBlock.start, rightBlock.end),
-    );
-    if (leftRawPadded.isEmpty && rightRawPadded.isEmpty) return false;
-
-    // Normalize each side to its integer value (drops Add2's mandatory
-    // leading-zero padding). Concatenating the un-padded digit strings
-    // gives the user's intuitive merge: '0.12' + '0.50' -> '12.50'.
-    final leftDigits = leftRawPadded.isEmpty
-        ? ''
-        : int.parse(leftRawPadded).toString();
-    final rightDigits = rightRawPadded.isEmpty
-        ? ''
-        : int.parse(rightRawPadded).toString();
-
-    final rightHasPercent =
-        rightBlock.end > rightBlock.start && text[rightBlock.end - 1] == '%';
-    final mergedRaw = leftDigits + rightDigits;
-    // Cursor anchors to the boundary between left and right halves —
-    // i.e., the position with `rightDigits.length` digits to its right.
-    final newDigitsAfterCursor = rightDigits.length;
-
-    _replaceBlockWithFormatted(
-      text,
-      leftBlock.start,
-      rightBlock.end,
-      mergedRaw,
-      rightHasPercent,
-      newDigitsAfterCursor,
-    );
-
-    return true;
-  }
-
-  /// Inserts `(` or `)` at the cursor while editing mid-expression.
-  ///
-  /// Closes only when there is an unmatched `(` in the text **and** the token
-  /// to the left of the closing point is a complete operand (digit, `%` or
-  /// `)`); the `)` lands at the end of the number block under the cursor so a
-  /// number is never split. Otherwise it opens a `(` immediately **before**
-  /// that block, grouping the number the cursor is touching — inserting at the
-  /// end of the block instead would produce an unmatched `)` and break the
-  /// expression.
-  ///
-  /// When opening, the cursor keeps its position relative to the surrounding
-  /// text (it does not jump), since the insertion happens to its left.
-  void _editInsertParenthesis() {
-    final text = _editText!;
-    final block = _findNumberBlock(text, _cursorPos);
-    final hasBlock = block.end > block.start;
-
-    if (openParenCount > 0) {
-      final closeAt = hasBlock ? block.end : _cursorPos;
-      final before = closeAt > 0 ? text[closeAt - 1] : ' ';
-      if (before == ')' || before == '%' || _digitRegExp.hasMatch(before)) {
-        _cursorPos = closeAt;
-        _editInsertLiteral(' )');
-
-        return;
-      }
-    }
-
-    final insertAt = hasBlock ? block.start : _cursorPos;
-    final cursorBefore = _cursorPos;
-    _editText = '${text.substring(0, insertAt)}( ${text.substring(insertAt)}';
-    _cursorPos = cursorBefore + 2;
-    _atEnd = _cursorPos >= _editText!.length;
-  }
-
-  /// Appends a literal `%` to the end of the number block surrounding the
-  /// cursor. No-op when there is no block, or when the block already ends
-  /// with `%`.
-  void _editApplyPercentInBlock() {
-    final text = _editText!;
-    final block = _findNumberBlock(text, _cursorPos);
-    if (block.end == block.start) return;
-    if (text[block.end - 1] == '%') return;
-
-    _editText = '${text.substring(0, block.end)}%${text.substring(block.end)}';
-    _cursorPos = block.end + 1;
-    _atEnd = _cursorPos >= _editText!.length;
-  }
-
-  /// Replaces the substring [text] [start..end) with the Add2-formatted
-  /// representation of [newRaw] (digit-only string), restoring the optional
-  /// `%` suffix and positioning the cursor so that exactly
-  /// [newDigitsAfterCursor] digit characters of the new block lie after it.
-  ///
-  /// Anchoring the cursor by digits-after (rather than digits-before) keeps
-  /// it visually stable when Add2 pads the block with a leading zero — the
-  /// trailing digits are the stable reference, not the volatile leading edge.
-  void _replaceBlockWithFormatted(
-    String text,
-    int start,
-    int end,
-    String newRaw,
-    bool hasPercent,
-    int newDigitsAfterCursor,
-  ) {
-    final newCore = newRaw.isEmpty
-        ? ''
-        : NumberFormatter.format(
-            int.parse(newRaw),
-            separator: _decimalSeparator,
-            useThousandsSeparator: true,
-          );
-    final newBlock = newCore + (hasPercent ? '%' : '');
-
-    _editText = text.substring(0, start) + newBlock + text.substring(end);
-
-    final cursorOffsetInBlock = newCore.isEmpty
-        ? 0
-        : _positionWithDigitsAfter(newCore, newDigitsAfterCursor);
-    _cursorPos = start + cursorOffsetInBlock;
-    _atEnd = _cursorPos >= _editText!.length;
-  }
-
-  /// Finds the maximal range of contiguous number-like characters
-  /// containing position [pos] in [text]. Returns a zero-length range at
-  /// [pos] when the cursor is not adjacent to any number-like char.
-  ({int start, int end}) _findNumberBlock(String text, int pos) {
-    var s = pos;
-    var e = pos;
-    while (s > 0 && _numberCharRegExp.hasMatch(text[s - 1])) {
-      s--;
-    }
-    while (e < text.length && _numberCharRegExp.hasMatch(text[e])) {
-      e++;
-    }
-
-    return (start: s, end: e);
-  }
-
-  String _stripToDigits(String s) {
-    final buffer = StringBuffer();
-    for (var i = 0; i < s.length; i++) {
-      if (_digitRegExp.hasMatch(s[i])) buffer.write(s[i]);
-    }
-
-    return buffer.toString();
-  }
-
-  int _countDigits(String text, int start, int end) {
-    var n = 0;
-    for (var i = start; i < end; i++) {
-      if (_digitRegExp.hasMatch(text[i])) n++;
-    }
-
-    return n;
-  }
-
-  /// Returns the offset in [formatted] such that exactly [digitCount] digit
-  /// characters follow it. Clamps to `[0, formatted.length]`.
-  int _positionWithDigitsAfter(String formatted, int digitCount) {
-    if (digitCount <= 0) return formatted.length;
-    var seen = 0;
-    for (var i = formatted.length - 1; i >= 0; i--) {
-      if (_digitRegExp.hasMatch(formatted[i])) {
-        seen++;
-        if (seen >= digitCount) return i;
-      }
-    }
-
-    return 0;
-  }
-
-  /// Normalizes the formatted edit text into a string the
-  /// [ExpressionEvaluator] can parse: removes thousand separators and
-  /// converts the configured decimal separator back to a dot.
-  String _normalizeForEvaluator(String text) {
-    final thousands = _decimalSeparator == DecimalSeparator.dot ? ',' : '.';
-    final decimal = _decimalSeparator.character;
-    var t = text.replaceAll(thousands, '');
-    if (decimal != '.') {
-      t = t.replaceAll(decimal, '.');
-    }
-
-    return t;
-  }
 
   /// Loads a history session into the calculator, restoring the timeline
   /// up to (and including) the specified [selection.lineIndex].

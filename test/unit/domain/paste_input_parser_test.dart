@@ -1,4 +1,4 @@
-import 'package:decima/utils/paste_input_parser.dart';
+import 'package:decima/domain/paste_input_parser.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {

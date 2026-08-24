@@ -26,7 +26,8 @@ const _roots = ['lib', 'test'];
 /// Prefixos de caminho excluídos (código gerado).
 const _excludedPrefixes = ['lib/utils/l10n/'];
 
-/// Arquivos que aguardam a decomposição das Etapas 20–21. Cada entrada deve
+/// Arquivos que aguardam a decomposição da Etapa 21 (a Etapa 20 extraiu o
+/// motor de edição, mas ambos seguem acima do limite). Cada entrada deve
 /// ser removida assim que o arquivo voltar ao limite; a lista zera na Etapa 21.
 const _allowlist = {
   'lib/ui/calculator/calculator_view_model.dart',
@@ -67,7 +68,7 @@ void main() {
 
   for (final e in tolerated) {
     stdout.writeln(
-      '⚠️  ${e.key}: ${e.value} linhas (allowlist — aguarda as Etapas 20–21)',
+      '⚠️  ${e.key}: ${e.value} linhas (allowlist — aguarda a Etapa 21)',
     );
   }
   for (final e in violations) {

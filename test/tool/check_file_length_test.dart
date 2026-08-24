@@ -13,7 +13,7 @@ import 'package:flutter_test/flutter_test.dart';
 /// Invariantes exercitadas:
 ///   - exit 0 quando todos os arquivos estão dentro do limite de 600 linhas;
 ///   - exit 1 listando cada arquivo fora da allowlist que estoura o limite;
-///   - allowlist tolera (mas reporta) os arquivos das Etapas 20–21;
+///   - allowlist tolera (mas reporta) os arquivos que aguardam a Etapa 21;
 ///   - gerados (`lib/utils/l10n/`) e não-Dart ficam fora da contagem;
 ///   - entrada da allowlist com arquivo já dentro do limite falha (obsoleta);
 ///   - entrada da allowlist sem arquivo correspondente é inerte.
