@@ -32,7 +32,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0
 
@@ -62,7 +62,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - uses: ./.github/actions/setup-flutter
 
@@ -80,7 +80,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - uses: ./.github/actions/setup-flutter
 
@@ -103,7 +103,7 @@ jobs:
           }
 
       - name: Publicar lcov.info
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: coverage-lcov
           path: coverage/lcov.info
@@ -115,9 +115,9 @@ jobs:
     timeout-minutes: 40
     needs: [analyze, test]
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
-      - uses: actions/setup-java@v4
+      - uses: actions/setup-java@v6
         with:
           distribution: temurin
           java-version: '17'
@@ -161,7 +161,7 @@ jobs:
         run: flutter build apk --release
 
       - name: Publicar APK
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: decima-android-apk
           path: build/app/outputs/flutter-apk/app-release.apk
@@ -175,7 +175,7 @@ jobs:
     # Pushes em dev (artefato de teste) e PRs para main (gate de release).
     if: github.event_name != 'pull_request' || github.base_ref == 'main'
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - uses: ./.github/actions/setup-flutter
 
@@ -209,7 +209,7 @@ jobs:
           tool/deb/build_deb.sh --skip-build --version "${{ steps.ver.outputs.base }}${suffix}"
 
       - name: Publicar .deb
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: decima-linux-deb
           path: dist/*
@@ -223,7 +223,7 @@ jobs:
     # Pushes em dev (artefato de teste) e PRs para main (gate de release).
     if: github.event_name != 'pull_request' || github.base_ref == 'main'
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - uses: ./.github/actions/setup-flutter
 
@@ -262,7 +262,7 @@ jobs:
           Compress-Archive -Path 'build/windows/x64/runner/Release/*' -DestinationPath "decima-$suffix-windows-x64.zip"
 
       - name: Publicar bundle
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: decima-windows-bundle
           path: decima-*-windows-x64.zip
@@ -276,7 +276,7 @@ jobs:
     # Pushes em dev (artefato de teste) e PRs para main (gate de release).
     if: github.event_name != 'pull_request' || github.base_ref == 'main'
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - uses: ./.github/actions/setup-flutter
 
@@ -309,7 +309,7 @@ jobs:
           tool/macos/build_zip.sh --skip-build --version "${{ steps.ver.outputs.base }}${suffix}"
 
       - name: Publicar bundle
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: decima-macos-app
           path: dist/*
