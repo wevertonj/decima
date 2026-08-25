@@ -3,6 +3,14 @@
 Todas as mudanças notáveis deste projeto são documentadas aqui.
 O formato segue [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/) e o projeto adere ao [Versionamento Semântico](https://semver.org/lang/pt-BR/).
 
+## [1.0.0] - 2026-08-25
+
+### ⚠️ Mudanças importantes
+- **License:** Add BSD 3-Clause license and ship it with the artifacts
+
+### ⚙️ Correções
+- **Settings:** Stop the theme selector from overflowing on translated labels
+
 ## [0.9.1] - 2026-08-23
 
 ### ⚙️ Correções
@@ -47,6 +55,7 @@ O formato segue [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/) e o 
 
 ### ⚙️ Correções
 - **Icon:** Round Windows app icon corners to match brand squircle
+
 
 
 
