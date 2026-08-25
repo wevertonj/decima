@@ -81,6 +81,9 @@ Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{
 ; Bundle completo do Flutter: decima.exe, flutter_windows.dll, DLLs de plugin,
 ; runtime C++ (staged pelo build_installer.sh) e data\ (icudtl.dat, assets, app.so).
 Source: "{#BuildDir}\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
+; Licença instalada junto do app, sem página de aceite no wizard: a BSD não
+; exige concordância prévia, só que o texto acompanhe a distribuição binária.
+Source: "..\..\LICENSE"; DestDir: "{app}"; DestName: "LICENSE.txt"; Flags: ignoreversion
 
 [Icons]
 Name: "{autoprograms}\{#AppName}"; Filename: "{app}\{#AppExeName}"

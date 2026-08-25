@@ -79,6 +79,11 @@ fi
   exit 1
 }
 
+[[ -f "$REPO_ROOT/LICENSE" ]] || {
+  echo "ERRO: LICENSE não encontrado — é a fonte do copyright do pacote." >&2
+  exit 1
+}
+
 # --- Staging ------------------------------------------------------------------
 step "Montando a árvore do pacote"
 STAGING="$(mktemp -d)"
@@ -113,13 +118,30 @@ sed -e "s/@VERSION@/$VERSION/" -e "s/@DATE@/$(date -u +%F)/" \
   "$PACKAGING_DIR/$APP_ID.metainfo.xml" \
   > "$PKG/usr/share/metainfo/$APP_ID.metainfo.xml"
 
-cat > "$PKG/usr/share/doc/decima/copyright" <<EOF
-Decima — Add2 calculator
-Copyright (c) $(date -u +%Y) Wevasoft (Weverton J. da Silva)
+# copyright no formato DEP-5, com o texto da licença vindo do LICENSE da raiz —
+# o arquivo do repositório é a única fonte da verdade (ano e titular inclusos).
+# Corpo indentado por um espaço e linhas vazias como " ." é o exigido pelo DEP-5.
+COPYRIGHT_HOLDER="$(sed -n 's/^Copyright (c) //p' "$REPO_ROOT/LICENSE" | head -1)"
+[[ -n "$COPYRIGHT_HOLDER" ]] || {
+  echo "ERRO: linha 'Copyright (c) ...' não encontrada em LICENSE." >&2
+  exit 1
+}
+{
+  cat <<EOF
+Format: https://www.debian.org/doc/packaging-manuals/copyright-format/1.0/
+Upstream-Name: decima
+Upstream-Contact: Wevasoft <19512397+wevertonj@users.noreply.github.com>
+Source: https://github.com/wevertonj/decima
 
-All rights reserved. Distributed as a convenience package; source available
-at https://github.com/wevertonj/decima under the repository's terms.
+Files: *
+Copyright: $COPYRIGHT_HOLDER
+License: BSD-3-Clause
+
+License: BSD-3-Clause
 EOF
+  sed -n '/^Redistribution and use/,$p' "$REPO_ROOT/LICENSE" \
+    | sed -e 's/[[:space:]]*$//' -e 's/^$/./' -e 's/^/ /'
+} > "$PKG/usr/share/doc/decima/copyright"
 chmod 644 "$PKG/usr/share/doc/decima/copyright"
 
 # --- control ------------------------------------------------------------------
