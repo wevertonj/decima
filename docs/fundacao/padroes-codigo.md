@@ -149,9 +149,9 @@ class Calculation {
 Tipos simples para estados e operações:
 
 ```dart
-enum OperationType { add, subtract, multiply, divide }
+enum DecimalSeparator { dot, comma }
 
-enum CalculatorMode { standard, addMode }
+enum ThemeModeOption { system, light, dark }
 ```
 
 ## Camada de UI

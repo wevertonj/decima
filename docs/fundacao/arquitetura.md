@@ -29,7 +29,7 @@ lib/
 │   ├── expression_evaluator.dart # Avaliador de expressões (precedência, %, parênteses)
 │   ├── paste_input_parser.dart   # Texto colado → tokens normalizados
 │   ├── entities/              # Entidades puras (Calculation, HistoryEntry)
-│   └── enums/                 # OperationType, CalculatorMode, etc.
+│   └── enums/                 # ThemeModeOption, DecimalSeparator
 │
 ├── ui/                        # Camada visual
 │   ├── calculator/            # Feature: calculadora
@@ -188,8 +188,8 @@ Compartilhada entre Windows, Linux e macOS. Fica em `lib/ui/core/desktop/` (lóg
 | `AppTitleBar` | Title bar customizada: `DragToMoveArea` + logo/nome à esquerda, minimizar/fechar à direita |
 | `DesktopShell` | Envolve o app com a `AppTitleBar` **apenas** em desktop; em mobile devolve o `child` intacto |
 | `WindowCloseHandler` | Intercepta o fechamento da janela para gravar a sessão e a posição antes de o processo terminar |
-| `isWindowPositionReachable()` | Função pura: valida a posição salva contra os monitores atuais (`window_position.dart`) |
-| `isWindowPositionStorable()` | Função pura: decide se a posição lida do plugin merece ser gravada (`window_position.dart`) |
+| `isWindowPositionReachable()` | Função pura: valida a posição salva contra os monitores atuais (`window_position_validator.dart`) |
+| `isWindowPositionStorable()` | Função pura: decide se a posição lida do plugin merece ser gravada (`window_position_validator.dart`) |
 | `PlatformInfo.isDesktop` / `.isLinux` / `.isWindows` / `.isMacOS` | Detecção de plataforma via `defaultTargetPlatform` (e não `Platform`), sobrescritível nos testes |
 
 ### Fechamento da janela
