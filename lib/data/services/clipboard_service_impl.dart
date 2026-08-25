@@ -1,6 +1,5 @@
-import 'package:flutter/services.dart';
-
 import 'package:decima/data/services/clipboard_service.dart';
+import 'package:flutter/services.dart';
 
 class ClipboardServiceImpl implements ClipboardService {
   @override

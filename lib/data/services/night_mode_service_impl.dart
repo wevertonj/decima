@@ -1,9 +1,8 @@
+import 'package:decima/data/services/night_mode_service.dart';
+import 'package:decima/domain/enums/theme_mode_option.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
-
-import 'package:decima/data/services/night_mode_service.dart';
-import 'package:decima/domain/enums/theme_mode_option.dart';
 
 class NightModeServiceImpl implements NightModeService {
   static const _channel = MethodChannel('com.wevasoft.decima/night_mode');
@@ -28,11 +27,11 @@ class NightModeServiceImpl implements NightModeService {
         'dark': dark,
       });
     } on PlatformException {
-      // Best-effort sync — a failure here only means the next launch's
-      // splash may briefly show the wrong color, not a functional bug.
+      // Sync best-effort — falhar só significa que a splash do próximo
+      // launch pode abrir na cor errada, não um bug funcional.
     } on MissingPluginException {
-      // No native handler registered (e.g. running on an older/unsupported
-      // embedding) — nothing to sync.
+      // Sem handler nativo registrado (embedding antigo/sem suporte) —
+      // nada a sincronizar.
     }
   }
 }

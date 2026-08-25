@@ -23,14 +23,21 @@ lib/
 │   └── models/                # Models para serialização do banco
 │
 ├── domain/                    # Regras de negócio
+│   ├── add2_engine.dart       # Motor de entrada Add2 (dígitos → valor fixo)
+│   ├── expression_composer.dart  # Composição por digitação (modo append)
+│   ├── expression_editor.dart # Motor de edição por cursor (EditorState imutável)
+│   ├── expression_evaluator.dart # Avaliador de expressões (precedência, %, parênteses)
+│   ├── paste_input_parser.dart   # Texto colado → tokens normalizados
 │   ├── entities/              # Entidades puras (Calculation, HistoryEntry)
-│   └── enums/                 # OperationType, CalculatorMode, etc.
+│   └── enums/                 # ThemeModeOption, DecimalSeparator
 │
 ├── ui/                        # Camada visual
 │   ├── calculator/            # Feature: calculadora
 │   │   ├── calculator_page.dart
-│   │   ├── calculator_view_model.dart
-│   │   └── widgets/           # Widgets específicos (display, keypad, buttons)
+│   │   ├── calculator_view_model.dart  # Fachada: única API para a UI
+│   │   ├── char_slot_differ.dart  # Diff puro dos caracteres do display (decide as animações)
+│   │   ├── controllers/       # Sub-controllers do ViewModel (sessão, clipboard, cursor, timeline)
+│   │   └── widgets/           # Widgets específicos (display, keypad, buttons, cursor)
 │   ├── history/               # Feature: histórico
 │   │   ├── history_page.dart
 │   │   ├── history_view_model.dart
@@ -42,6 +49,7 @@ lib/
 │   └── core/                  # Widgets e utilitários globais da UI
 │       ├── theme/
 │       ├── desktop/           # Infra de janela (config, init, close handler, posição)
+│       ├── mobile/            # Flush da sessão no ciclo de vida mobile
 │       └── widgets/
 │
 ├── utils/                     # Utilitários
@@ -89,6 +97,33 @@ Database (SQLite)
 - **ViewModels** nunca acessam o banco diretamente
 - **ViewModels** não importam Flutter — são Dart puro
 
+## Domínio da Calculadora
+
+Dart puro, sem import de Flutter, testável sem árvore de widgets.
+
+| Artefato | Responsabilidade |
+|----------|------------------|
+| `Add2Engine` | Entrada de dígitos no estilo Add2 (cada dígito desloca centavos) |
+| `ExpressionComposer` | Composição da expressão em digitação (modo append): tokens confirmados + operador pendente + operando ativo no `Add2Engine`; contraponto do `ExpressionEditor` — aqui a expressão só cresce/encolhe pela ponta. Tokens crus (`x.yy`, `%`, `+ − × ÷`, parênteses), sem formatação de exibição |
+| `ExpressionEditor` | Edição por cursor da expressão: operações estáticas puras sobre `EditorState(text, cursor)` imutável — inserir dígitos, operador (split de bloco), parêntese, `%`, backspace (merge de blocos) — todas Add2-aware; `DecimalSeparator` chega por parâmetro (o editor não conhece Settings) |
+| `ExpressionEvaluator` | Avaliação com precedência, `%` literal e parênteses; devolve `null` para expressão malformada |
+| `PasteInputParser` | Texto colado → tokens normalizados (allowlist de caracteres; movido de `utils/` na Etapa 20 pela regra "é regra de negócio? → `domain/`") |
+
+`ExpressionEditor.normalizeForEvaluator` ficou no **editor** (não no `ExpressionEvaluator`): a normalização desfaz a formatação de exibição que o próprio editor mantém (separador de milhar, separador decimal configurado), e o avaliador permanece sem conhecer `DecimalSeparator`. O `CalculatorViewModel` delega o modo de edição ao editor e apenas aplica o `EditorState` devolvido + `notifyListeners`.
+
+## Controllers da Calculadora
+
+Etapa 21: o `CalculatorViewModel` virou **fachada** (≤ 600 linhas) — única API que os widgets consomem — orquestrando colaboradores de responsabilidade única em `ui/calculator/controllers/`. Cada controller recebe repositórios/serviços via construtor e é mockável em teste.
+
+| Controller | Responsabilidade |
+|------------|------------------|
+| `SessionRecorder` | Persistência da sessão como uma única `HistoryEntry`: criação no primeiro `=` e update nos seguintes, encadeamento de escritas (`pendingWrite`), gerações de sessão (um `add` em voo de sessão descartada não contamina a próxima), flush idempotente. `_trackWrite` chama `write.ignore()` antes de encadear — sem isso, uma escrita que falha antes do microtask do encadeamento vira erro não tratado na zone |
+| `ClipboardController` | Copiar/colar: I/O com `ClipboardService`, parse via `PasteInputParser`, reavaliação de cada linha resolvida (`PastedSession`). Colagem inteira é rejeitada (`null`) se qualquer linha for inavaliável — inclusive divisão por zero, detectada por `ExpressionEvaluator.errorResult` |
+| `CursorController` | Estado do cursor e do modo de edição: buffer editável (`editText`), posição, flag `atEnd`; roteia operações pelo `ExpressionEditor` |
+| `TimelineController` | Janela de visibilidade das linhas da sessão (`visibleEntries`, `hasMore`, `loadMore` em lotes de 20) — **decisão registrada**: extraído (em vez de mantido no ViewModel) para o estado da timeline não se misturar à orquestração da fachada |
+
+O fluxo composição/edição fica em `domain/` (`ExpressionComposer`/`ExpressionEditor`); os controllers guardam estado de UI e I/O. **DIP**: `Add2Engine` e `ExpressionEvaluator` são injetados no ViewModel via construtor (com default) e registrados no GetIt — `Add2Engine` como factory (é stateful: guarda o operando ativo), `ExpressionEvaluator` como lazy singleton (stateless).
+
 ## Injeção de Dependência
 
 Todas as dependências são registradas no **GetIt** em `lib/config/dependencies.dart`:
@@ -105,9 +140,20 @@ void setupDependencies() {
     HistoryRepositoryImpl(database: getIt<AppDatabase>()),
   );
 
+  // Domain — Add2Engine é factory (stateful: guarda o operando ativo);
+  // o avaliador é lazy singleton (stateless)
+  getIt.registerFactory<Add2Engine>(Add2Engine.new);
+  getIt.registerLazySingleton<ExpressionEvaluator>(ExpressionEvaluator.new);
+
   // ViewModels
-  getIt.registerFactory<CalculatorViewModel>(
-    () => CalculatorViewModel(historyRepository: getIt<HistoryRepository>()),
+  getIt.registerLazySingleton<CalculatorViewModel>(
+    () => CalculatorViewModel(
+      historyRepository: getIt<HistoryRepository>(),
+      settingsRepository: getIt<SettingsRepository>(),
+      clipboardService: getIt<ClipboardService>(),
+      add2Engine: getIt<Add2Engine>(),
+      evaluator: getIt<ExpressionEvaluator>(),
+    ),
   );
   getIt.registerFactory<HistoryViewModel>(
     () => HistoryViewModel(repository: getIt<HistoryRepository>()),
@@ -142,8 +188,8 @@ Compartilhada entre Windows, Linux e macOS. Fica em `lib/ui/core/desktop/` (lóg
 | `AppTitleBar` | Title bar customizada: `DragToMoveArea` + logo/nome à esquerda, minimizar/fechar à direita |
 | `DesktopShell` | Envolve o app com a `AppTitleBar` **apenas** em desktop; em mobile devolve o `child` intacto |
 | `WindowCloseHandler` | Intercepta o fechamento da janela para gravar a sessão e a posição antes de o processo terminar |
-| `isWindowPositionReachable()` | Função pura: valida a posição salva contra os monitores atuais (`window_position.dart`) |
-| `isWindowPositionStorable()` | Função pura: decide se a posição lida do plugin merece ser gravada (`window_position.dart`) |
+| `isWindowPositionReachable()` | Função pura: valida a posição salva contra os monitores atuais (`window_position_validator.dart`) |
+| `isWindowPositionStorable()` | Função pura: decide se a posição lida do plugin merece ser gravada (`window_position_validator.dart`) |
 | `PlatformInfo.isDesktop` / `.isLinux` / `.isWindows` / `.isMacOS` | Detecção de plataforma via `defaultTargetPlatform` (e não `Platform`), sobrescritível nos testes |
 
 ### Fechamento da janela
@@ -173,7 +219,7 @@ No Windows o `PostQuitMessage` só enfileira `WM_QUIT`: nenhuma janela é destru
 
 O preço é um eco: o plugin emite o evento `close` **antes** de consultar o `preventClose`, então esse `close()` reentra no handler como um novo `onWindowClose`. A trava `_closing` absorve o eco — e, de quebra, cliques repetidos no `X` enquanto as gravações rodam.
 
-O handler é montado no `MaterialApp.builder` do `_DecimaAppState`, acima do `DesktopShell`. Em mobile o papel equivalente é do `AppLifecycleListener` (`onHide` / `onPause` / `onExitRequested`) registrado no mesmo state.
+O handler é montado no `MaterialApp.builder` do `_DecimaAppState`, acima do `DesktopShell`. Em mobile o papel equivalente é do `AppLifecycleFlushHandler` (`ui/core/mobile/app_lifecycle_flush_handler.dart`, Etapa 22): registra um `AppLifecycleListener` (`onHide` / `onPause` / `onExitRequested`) apenas fora do desktop e é montado no mesmo `builder`, logo abaixo do `WindowCloseHandler` — `main.dart` fica só com o bootstrap.
 
 As duas gravações do fechamento — sessão e posição — rodam em `Future.wait` (sem `eagerError`) sob o mesmo `flushTimeout`: uma travada ou com erro não impede a outra, e nenhuma impede o `destroy()`.
 

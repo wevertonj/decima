@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+import 'dart:async';
 
 import 'package:decima/config/routes.dart';
 import 'package:decima/config/theme/app_layout.dart';
@@ -10,6 +10,7 @@ import 'package:decima/ui/calculator/widgets/key_flash_controller.dart';
 import 'package:decima/ui/calculator/widgets/keyboard_shortcuts_handler.dart';
 import 'package:decima/ui/calculator/widgets/timeline_display.dart';
 import 'package:decima/utils/extensions/l10n_extension.dart';
+import 'package:flutter/material.dart';
 
 class CalculatorPage extends StatefulWidget {
   final CalculatorViewModel viewModel;
@@ -60,7 +61,7 @@ class _CalculatorPageState extends State<CalculatorPage> {
     final oldOffset = _displayController.selection.baseOffset;
 
     if (oldText != text) {
-      // Calculate new cursor position based on the diff
+      // Nova posição do cursor derivada do diff de tamanho.
       final lengthDiff = text.length - oldText.length;
       final newOffset = (oldOffset + lengthDiff).clamp(0, text.length);
 
@@ -198,7 +199,7 @@ class _CalculatorPageState extends State<CalculatorPage> {
             icon: Icon(Icons.settings_rounded, color: dimmedColor),
             onPressed: () async {
               await Navigator.of(context).pushNamed(AppRoutes.settings);
-              widget.viewModel.loadSettings();
+              unawaited(widget.viewModel.loadSettings());
             },
           ),
           const Spacer(),

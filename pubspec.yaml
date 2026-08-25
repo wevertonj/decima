@@ -1,5 +1,5 @@
 name: decima
-description: "A new Flutter project."
+description: "Calculadora Add2 — 2 casas decimais automáticas, timeline de cálculos e histórico persistente."
 # The following line prevents the package from being accidentally published to
 # pub.dev using `flutter pub publish`. This is preferred for private packages.
 publish_to: 'none' # Remove this line if you wish to publish to pub.dev
@@ -31,31 +31,31 @@ dependencies:
     sdk: flutter
   flutter_localizations:
     sdk: flutter
-  intl: any
   get_it: ^9.2.1
-  sqflite: ^2.4.2
+  intl: any
   path: ^1.9.1
-  shared_preferences: ^2.5.5
-  sqflite_common_ffi: ^2.4.0+2
-  window_manager: ^0.5.1
-  # Já vinha como transitiva do window_manager; declarada porque a validação
-  # da posição salva da janela importa `Display` diretamente.
-  screen_retriever: ^0.2.2
   path_provider: ^2.1.6
   # A partir da 2.3.0 a implementação Android do path_provider passou a usar
   # package:jni, que ainda aplica o Kotlin Gradle Plugin e quebra o Built-in
   # Kotlin. O app só chama path_provider no desktop, então prende-se na última
   # 2.2.x. Reavaliar quando jni migrar para Built-in Kotlin.
   path_provider_android: '>=2.2.23 <2.3.0'
+  # Já vinha como transitiva do window_manager; declarada porque a validação
+  # da posição salva da janela importa `Display` diretamente.
+  screen_retriever: ^0.2.2
+  shared_preferences: ^2.5.5
+  sqflite: ^2.4.2
+  sqflite_common_ffi: ^2.4.0+2
+  window_manager: ^0.5.1
 
 dev_dependencies:
+  commitlint_cli: ^0.8.1
+  flutter_launcher_icons: ^0.14.3
+  flutter_lints: ^6.0.0
+  flutter_native_splash: ^2.4.5
   flutter_test:
     sdk: flutter
-  flutter_lints: ^6.0.0
   mocktail: ^1.0.5
-  flutter_launcher_icons: ^0.14.3
-  flutter_native_splash: ^2.4.5
-  commitlint_cli: ^0.8.1
 
 # For information on the generic Dart part of this file, see the
 # following page: https://dart.dev/tools/pub/pubspec

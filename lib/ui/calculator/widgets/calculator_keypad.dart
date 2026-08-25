@@ -1,9 +1,8 @@
-import 'package:flutter/foundation.dart';
-import 'package:flutter/material.dart';
-
 import 'package:decima/config/theme/app_layout.dart';
 import 'package:decima/ui/calculator/widgets/calculator_button.dart';
 import 'package:decima/ui/calculator/widgets/key_flash_controller.dart';
+import 'package:flutter/foundation.dart';
+import 'package:flutter/material.dart';
 
 class CalculatorKeypad extends StatelessWidget {
   /// Rótulos dos botões não numéricos. Compartilhados com o

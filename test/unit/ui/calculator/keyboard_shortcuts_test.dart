@@ -1,7 +1,6 @@
+import 'package:decima/ui/calculator/keyboard_shortcuts.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
-
-import 'package:decima/ui/calculator/keyboard_shortcuts.dart';
 
 void main() {
   CalculatorKeyCommand? resolve(

@@ -1,8 +1,7 @@
+import 'package:decima/ui/core/desktop/window_close_handler.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
-
-import 'package:decima/ui/core/desktop/window_close_handler.dart';
 
 /// Canal do plugin `window_manager`, espionado para verificar por qual
 /// caminho nativo o fechamento passa em cada plataforma.

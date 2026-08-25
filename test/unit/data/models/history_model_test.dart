@@ -1,9 +1,9 @@
 import 'dart:convert';
 
-import 'package:flutter_test/flutter_test.dart';
 import 'package:decima/data/models/history_model.dart';
 import 'package:decima/domain/entities/history_entry.dart';
 import 'package:decima/domain/entities/history_line.dart';
+import 'package:flutter_test/flutter_test.dart';
 
 import '../../../fixtures/history_fixtures.dart';
 
@@ -181,7 +181,7 @@ void main() {
 
         expect(model.id, 1);
         expect(model.linesJson, isNotEmpty);
-        // Verify the JSON round-trip
+        // Verifica o round-trip do JSON
         final decoded = jsonDecode(model.linesJson) as List;
         expect(decoded, hasLength(1));
         expect(decoded.first['expression'], '12.50 + 3.00');

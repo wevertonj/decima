@@ -1,10 +1,9 @@
 import 'dart:ui';
 
+import 'package:decima/domain/entities/window_position.dart';
+import 'package:decima/ui/core/desktop/window_position_validator.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:screen_retriever/screen_retriever.dart';
-
-import 'package:decima/domain/entities/window_position.dart';
-import 'package:decima/ui/core/desktop/window_position.dart';
 
 /// Display de teste. `visiblePosition`/`visibleSize` descrevem a área útil
 /// (fora da barra de tarefas) — é contra ela que a validação roda.

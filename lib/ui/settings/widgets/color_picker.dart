@@ -1,10 +1,9 @@
-import 'package:flutter/material.dart';
-
 import 'package:decima/config/theme/app_colors.dart';
 import 'package:decima/config/theme/app_layout.dart';
+import 'package:flutter/material.dart';
 
-/// A row of colored circles for selecting the accent/seed color.
-/// Shows a check icon on the selected color.
+/// Fileira de círculos coloridos para escolher a seed color, com check na
+/// cor selecionada.
 class ColorPicker extends StatelessWidget {
   final int selectedIndex;
   final ValueChanged<int> onChanged;
@@ -82,7 +81,7 @@ class _ColorCircle extends StatelessWidget {
     );
   }
 
-  /// Returns black or white depending on the luminance of [color].
+  /// Preto ou branco conforme a luminância de [color].
   Color _contrastColor(Color color) {
     return color.computeLuminance() > 0.5 ? Colors.black : Colors.white;
   }

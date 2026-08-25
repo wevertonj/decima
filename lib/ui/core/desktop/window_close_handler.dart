@@ -1,9 +1,8 @@
 import 'dart:async';
 
+import 'package:decima/utils/platform_info.dart';
 import 'package:flutter/widgets.dart';
 import 'package:window_manager/window_manager.dart';
-
-import 'package:decima/utils/platform_info.dart';
 
 /// Ponte com o `window_manager` usada pelo [WindowCloseHandler].
 ///
@@ -44,15 +43,9 @@ class WindowManagerCloseBridge implements WindowCloseBridge {
   @override
   Future<Offset> getPosition() => windowManager.getPosition();
 
-  /// No Windows, `windowManager.destroy()` é apenas `PostQuitMessage(0)`:
-  /// enfileira `WM_QUIT` e **não** destrói a janela, que fica na tela os
-  /// segundos que o engine leva para desligar — o app parece travado depois
-  /// do clique no `X`. Desligar o `preventClose` e mandar um `close()` real
-  /// faz o novo `WM_CLOSE` chegar ao `DefWindowProc`, que chama
-  /// `DestroyWindow` e some com a janela na hora.
-  ///
-  /// Linux e macOS não precisam do desvio: lá `destroy()` já é
-  /// `gtk_window_close` e `NSApp.terminate`, que fecham a janela na hora.
+  /// No Windows, `destroy()` do plugin não destrói a janela na hora — o
+  /// desvio via `preventClose(false)` + `close()` real destrói. Rationale
+  /// completo em `docs/fundacao/arquitetura.md` § Infra de Desktop.
   @override
   Future<void> destroy() async {
     if (!PlatformInfo.isWindows) {
@@ -67,17 +60,9 @@ class WindowManagerCloseBridge implements WindowCloseBridge {
 }
 
 /// Intercepta o fechamento da janela em desktop para gravar a sessão e a
-/// posição da janela antes de o processo terminar.
-///
-/// Com `setPreventClose(true)`, o `X` da title bar, o `Alt+F4` e o "Fechar
-/// janela" da barra de tarefas chegam como [WindowListener.onWindowClose]
-/// em vez de encerrarem o app. O handler chama [onFlush] e [onSavePosition]
-/// — **em paralelo**, para que um travar não impeça o outro — e só então
-/// destrói a janela. A destruição acontece **sempre**, mesmo que as
-/// gravações falhem ou estourem [flushTimeout], para que o app nunca fique
-/// impossível de fechar.
-///
-/// Em mobile e web nada é registrado: [child] é renderizado direto.
+/// posição antes de o processo terminar. A destruição acontece **sempre**,
+/// mesmo com falha ou timeout nas gravações. Em mobile e web nada é
+/// registrado: [child] é renderizado direto.
 class WindowCloseHandler extends StatefulWidget {
   const WindowCloseHandler({
     super.key,
@@ -114,13 +99,9 @@ class _WindowCloseHandlerState extends State<WindowCloseHandler>
   /// Não-null apenas em desktop — é o que marca o handler como ativo.
   WindowCloseBridge? _bridge;
 
-  /// True do primeiro [onWindowClose] aceito até a janela ser destruída.
-  ///
-  /// No Windows a destruição passa por um `close()` real, que gera um novo
-  /// `WM_CLOSE`; o plugin emite o evento antes de consultar o `preventClose`,
-  /// então o pedido volta como [onWindowClose] no meio do próprio
-  /// fechamento. Também absorve cliques repetidos no `X` enquanto as
-  /// gravações rodam, que de outra forma disparariam um flush por clique.
+  /// `true` do primeiro [onWindowClose] aceito até a destruição. Absorve o
+  /// [onWindowClose] reentrante que o `close()` do Windows gera e cliques
+  /// repetidos no `X` enquanto as gravações rodam.
   bool _closing = false;
 
   @override

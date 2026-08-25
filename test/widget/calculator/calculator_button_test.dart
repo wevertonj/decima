@@ -1,7 +1,6 @@
+import 'package:decima/ui/calculator/widgets/calculator_button.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-
-import 'package:decima/ui/calculator/widgets/calculator_button.dart';
 
 import '../../helpers/pump_app.dart';
 
@@ -109,10 +108,9 @@ void main() {
         );
 
         await tester.tap(find.text('3'));
-        // Pump a few frames to see the glow animation
+        // Avança alguns frames para observar a animação de glow
         await tester.pump(const Duration(milliseconds: 50));
 
-        // The button should still exist and be functional
         expect(find.text('3'), findsOneWidget);
 
         await tester.pumpAndSettle();
@@ -128,7 +126,6 @@ void main() {
         await tester.tap(find.text('8'));
         await tester.pump(const Duration(milliseconds: 100));
 
-        // Button still renders during animation
         expect(find.text('8'), findsOneWidget);
 
         await tester.pumpAndSettle();
@@ -201,7 +198,7 @@ void main() {
           ),
         );
 
-        // Press without releasing yet
+        // Pressiona sem soltar ainda
         final gesture = await tester.startGesture(
           tester.getCenter(find.text('4')),
         );
@@ -224,16 +221,16 @@ void main() {
           ),
         );
 
-        // First tap — triggers glow animation
+        // Primeiro tap — dispara a animação de glow
         await tester.tap(find.text('7'));
-        // Pump briefly so the animation is mid-flight (not settled)
+        // Pump breve para a animação estar no meio do caminho (sem settle)
         await tester.pump(const Duration(milliseconds: 50));
 
-        // Second tap while the glow is still fading
+        // Segundo tap enquanto o glow ainda esmaece
         await tester.tap(find.text('7'));
         await tester.pump(const Duration(milliseconds: 50));
 
-        // Third tap during animation
+        // Terceiro tap durante a animação
         await tester.tap(find.text('7'));
         await tester.pumpAndSettle();
 
@@ -263,7 +260,6 @@ void main() {
       testWidgets(
         'should animate text color toward primary when transitioning out of dimmed state',
         (tester) async {
-          // Initial dimmed state
           await tester.pumpApp(
             Scaffold(
               body: CalculatorButton(
@@ -278,7 +274,6 @@ void main() {
 
           final dimmedColor = tester.widget<Text>(find.text('C')).style?.color;
 
-          // Switch to active
           await tester.pumpApp(
             Scaffold(
               body: CalculatorButton(

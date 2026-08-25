@@ -51,18 +51,10 @@ class CalculatorKeyCommand {
 
 /// Tradutor de eventos de teclado físico em ações da calculadora.
 ///
-/// A resolução é feita em três camadas, nesta ordem:
-///
-/// 1. Combinações com `Ctrl`/`Cmd` (copiar e colar). Qualquer outra
-///    combinação modificada é ignorada, para não roubar atalhos do sistema.
-/// 2. Teclas nomeadas por [LogicalKeyboardKey] (Enter, Backspace, Esc,
-///    Delete, setas e o bloco numérico), que não produzem caractere confiável.
-/// 3. Caractere impresso (`event.character`), com fallback para
-///    [LogicalKeyboardKey.keyLabel].
-///
-/// A camada 3 usa o caractere como fonte primária porque teclas como `%`,
-/// `*`, `(` e `)` dependem de modificadores e do layout do teclado — o
-/// `logicalKey` reportado varia entre plataformas, o caractere não.
+/// Resolve em três camadas: combinações `Ctrl`/`Cmd` (só copiar/colar),
+/// teclas nomeadas por [LogicalKeyboardKey] (Enter, setas, numpad) e
+/// caractere impresso — fonte primária porque o `logicalKey` de `%`, `*`,
+/// `(` varia por plataforma e layout; o caractere não.
 abstract final class KeyboardShortcuts {
   /// Caracteres de operador aceitos → símbolo tipográfico usado pelo
   /// `CalculatorViewModel`.

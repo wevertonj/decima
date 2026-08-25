@@ -1,9 +1,8 @@
-import 'package:flutter/material.dart';
-import 'package:flutter_test/flutter_test.dart';
-
 import 'package:decima/domain/entities/calculation.dart';
 import 'package:decima/ui/calculator/widgets/animated_input_display.dart';
 import 'package:decima/ui/calculator/widgets/timeline_display.dart';
+import 'package:flutter/material.dart';
+import 'package:flutter_test/flutter_test.dart';
 
 import '../../helpers/pump_app.dart';
 
@@ -223,11 +222,11 @@ void main() {
           ),
         );
 
-        // Past entry
+        // Entrada passada
         expect(find.text('5.00 + 5.00'), findsOneWidget);
         expect(find.text('10.00'), findsOneWidget);
 
-        // Current expression (per-character animated display)
+        // Expressão atual (display animado por caractere)
         final display = tester.widget<AnimatedInputDisplay>(
           find.byType(AnimatedInputDisplay),
         );
@@ -319,7 +318,7 @@ void main() {
           ),
         );
 
-        // Rebuild with short text (simulating clear)
+        // Reconstrói com texto curto (simulando o clear)
         await tester.pumpApp(
           Scaffold(
             body: TimelineDisplay(

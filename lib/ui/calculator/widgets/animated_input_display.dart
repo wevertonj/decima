@@ -1,12 +1,13 @@
-import 'dart:async';
-import 'dart:math';
-
+import 'package:decima/ui/calculator/char_slot_differ.dart';
+import 'package:decima/ui/calculator/widgets/blinking_cursor.dart';
 import 'package:flutter/material.dart';
 
-/// A display that renders each character individually with animations:
-/// - New characters pop-in (width 0 → target, pushing others left)
-/// - Changed characters roll (old slides up, new slides up from below)
-/// - Includes a blinking cursor at the end
+/// Display que renderiza cada caractere individualmente com animação:
+/// pop-in para chars novos, roll para chars trocados e cursor piscante.
+///
+/// O diff que decide qual caractere anima vive em [CharSlotDiffer]; o
+/// cursor é o widget [BlinkingCursor]. Aqui ficam layout, animação e
+/// scroll.
 class AnimatedInputDisplay extends StatefulWidget {
   final String text;
   final double fontSize;
@@ -37,13 +38,13 @@ class AnimatedInputDisplay extends StatefulWidget {
 
 class _AnimatedInputDisplayState extends State<AnimatedInputDisplay> {
   final ScrollController _scrollController = ScrollController();
-  List<_CharSlot> _slots = [];
+  List<CharSlot> _slots = [];
   String _previousText = '';
 
   @override
   void initState() {
     super.initState();
-    _slots = _buildSlots(widget.text, animate: false);
+    _slots = CharSlotDiffer.build(widget.text, animate: false);
     _previousText = widget.text;
   }
 
@@ -52,7 +53,7 @@ class _AnimatedInputDisplayState extends State<AnimatedInputDisplay> {
     super.didUpdateWidget(oldWidget);
     if (widget.text != oldWidget.text) {
       setState(() {
-        _slots = _diffAndBuildSlots(_previousText, widget.text);
+        _slots = CharSlotDiffer.diff(_previousText, widget.text);
         _previousText = widget.text;
       });
       _scrollToEnd();
@@ -65,73 +66,6 @@ class _AnimatedInputDisplayState extends State<AnimatedInputDisplay> {
     super.dispose();
   }
 
-  // -- Diff logic --
-
-  List<_CharSlot> _buildSlots(String text, {required bool animate}) {
-    return [
-      for (int i = 0; i < text.length; i++)
-        _CharSlot(
-          char: text[i],
-          type: animate ? _AnimType.popIn : _AnimType.none,
-        ),
-    ];
-  }
-
-  List<_CharSlot> _diffAndBuildSlots(String oldText, String newText) {
-    if (oldText.isEmpty) {
-      return _buildSlots(newText, animate: true);
-    }
-
-    // Find common prefix
-    int prefixLen = 0;
-    final minLen = min(oldText.length, newText.length);
-    while (prefixLen < minLen && oldText[prefixLen] == newText[prefixLen]) {
-      prefixLen++;
-    }
-
-    // Find common suffix (from remaining after prefix)
-    int suffixLen = 0;
-    final maxSuffix = minLen - prefixLen;
-    while (suffixLen < maxSuffix &&
-        oldText[oldText.length - 1 - suffixLen] ==
-            newText[newText.length - 1 - suffixLen]) {
-      suffixLen++;
-    }
-
-    final oldMiddleStart = prefixLen;
-    final oldMiddleLen = oldText.length - suffixLen - prefixLen;
-
-    final slots = <_CharSlot>[];
-
-    for (int i = 0; i < newText.length; i++) {
-      if (i < prefixLen || i >= newText.length - suffixLen) {
-        // Common prefix or suffix — no animation
-        slots.add(_CharSlot(char: newText[i], type: _AnimType.none));
-      } else {
-        final middleOffset = i - prefixLen;
-        if (middleOffset < oldMiddleLen) {
-          final oldChar = oldText[oldMiddleStart + middleOffset];
-          if (oldChar != newText[i]) {
-            slots.add(
-              _CharSlot(
-                char: newText[i],
-                oldChar: oldChar,
-                type: _AnimType.roll,
-              ),
-            );
-          } else {
-            slots.add(_CharSlot(char: newText[i], type: _AnimType.none));
-          }
-        } else {
-          // Extra character — pop in
-          slots.add(_CharSlot(char: newText[i], type: _AnimType.popIn));
-        }
-      }
-    }
-
-    return slots;
-  }
-
   /// Decai um slot animado para texto puro quando sua animação termina.
   ///
   /// Estado de repouso 100% [RichText] plano: wrappers de animação têm
@@ -141,10 +75,10 @@ class _AnimatedInputDisplayState extends State<AnimatedInputDisplay> {
   void _markSettled(UniqueKey key) {
     if (!mounted) return;
     final index = _slots.indexWhere((slot) => slot.key == key);
-    if (index < 0 || _slots[index].type == _AnimType.none) return;
+    if (index < 0 || _slots[index].type == CharAnimType.none) return;
 
     setState(() {
-      _slots[index] = _CharSlot(char: _slots[index].char, type: _AnimType.none);
+      _slots[index] = CharSlotDiffer.settle(_slots[index]);
     });
   }
 
@@ -231,11 +165,10 @@ class _AnimatedInputDisplayState extends State<AnimatedInputDisplay> {
 
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
-      // onTapDown fires immediately for fast cursor placement.
+      // onTapDown dispara imediato — posicionamento de cursor sem latência.
       onTapDown: (_) => widget.onCharTap!(index),
-      // Empty onTap claims the gesture arena so the surrounding
-      // GestureDetector's onTap (e.g., "move cursor to end") does not
-      // fire when a character is tapped.
+      // onTap vazio reivindica a arena de gestos: o onTap do detector
+      // externo ("cursor para o fim") não dispara no toque em caractere.
       onTap: () {},
       child: child,
     );
@@ -244,14 +177,14 @@ class _AnimatedInputDisplayState extends State<AnimatedInputDisplay> {
   Widget _buildCursor(double fontSize) {
     final color = widget.cursorColor ?? widget.textColor;
 
-    return _BlinkingCursor(
+    return BlinkingCursor(
       key: const ValueKey('display-cursor'),
       height: fontSize,
       color: color,
     );
   }
 
-  Widget _buildChar(_CharSlot slot, double fontSize) {
+  Widget _buildChar(CharSlot slot, double fontSize) {
     final isOperator = _isOperator(slot.char);
     final color = isOperator ? widget.operatorColor : widget.textColor;
     final style = TextStyle(
@@ -262,14 +195,14 @@ class _AnimatedInputDisplayState extends State<AnimatedInputDisplay> {
     );
 
     switch (slot.type) {
-      case _AnimType.popIn:
+      case CharAnimType.popIn:
         return _PopInChar(
           key: slot.key,
           char: slot.char,
           style: style,
           onSettled: () => _markSettled(slot.key),
         );
-      case _AnimType.roll:
+      case CharAnimType.roll:
         return _RollingChar(
           key: slot.key,
           newChar: slot.char,
@@ -277,7 +210,7 @@ class _AnimatedInputDisplayState extends State<AnimatedInputDisplay> {
           style: style,
           onSettled: () => _markSettled(slot.key),
         );
-      case _AnimType.none:
+      case CharAnimType.none:
         return _charText(slot.char, style);
     }
   }
@@ -286,12 +219,10 @@ class _AnimatedInputDisplayState extends State<AnimatedInputDisplay> {
     return char == '+' || char == '−' || char == '×' || char == '÷';
   }
 
-  /// Groups individual character widgets into token rows so that Wrap
-  /// only breaks between tokens (operators/spaces), never mid-number.
-  ///
-  /// When [cursor] is non-null, it is inserted at [cursorPos] — kept inside
-  /// the current number group when possible (so the line never breaks
-  /// between a digit and the cursor), or as its own token at boundaries.
+  /// Agrupa os caracteres em tokens para o Wrap só quebrar linha entre
+  /// tokens (operadores/espaços), nunca no meio de um número. O [cursor]
+  /// entra em [cursorPos], preso ao grupo numérico corrente quando
+  /// possível — a linha nunca quebra entre dígito e cursor.
   List<Widget> _groupIntoTokens(
     List<Widget> charWidgets, {
     int? cursorPos,
@@ -309,9 +240,8 @@ class _AnimatedInputDisplayState extends State<AnimatedInputDisplay> {
 
     for (int i = 0; i < _slots.length; i++) {
       if (cursor != null && cursorPos == i) {
-        // Cursor at this index: keep it attached to the next char if we're
-        // inside (or about to start) a number group; otherwise emit as its
-        // own token. Look-ahead: next char is part of a number → group it.
+        // Cursor preso ao próximo char quando dentro (ou no início) de um
+        // grupo numérico; senão vira token próprio.
         final nextChar = _slots[i].char;
         final nextIsNumberLike = nextChar != ' ' && !_isOperator(nextChar);
         if (nextIsNumberLike || currentGroup.isNotEmpty) {
@@ -330,7 +260,7 @@ class _AnimatedInputDisplayState extends State<AnimatedInputDisplay> {
       }
     }
 
-    // Cursor at end of text.
+    // Cursor no fim do texto.
     if (cursor != null && cursorPos == _slots.length) {
       if (currentGroup.isNotEmpty) {
         currentGroup.add(cursor);
@@ -345,27 +275,13 @@ class _AnimatedInputDisplayState extends State<AnimatedInputDisplay> {
   }
 }
 
-/// Renders a single character using RichText to avoid being found by
-/// `find.text()` in widget tests (prevents ambiguity with keypad buttons).
+/// Renderiza um caractere via RichText para não ser encontrado por
+/// `find.text()` nos widget tests (evita ambiguidade com os botões).
 Widget _charText(String char, TextStyle style) {
   return RichText(
     text: TextSpan(text: char, style: style),
     textDirection: TextDirection.ltr,
   );
-}
-
-// -- Data classes --
-
-enum _AnimType { none, popIn, roll }
-
-class _CharSlot {
-  final String char;
-  final String? oldChar;
-  final _AnimType type;
-  final UniqueKey key;
-
-  _CharSlot({required this.char, this.oldChar, required this.type})
-    : key = UniqueKey();
 }
 
 // -- Animated character widgets --
@@ -458,7 +374,7 @@ class _RollingChar extends StatelessWidget {
               // um char estático (qualquer fonte/métrica), eliminando
               // deslocamento vertical em relação aos vizinhos.
               Opacity(opacity: 0.0, child: _charText(newChar, style)),
-              // Old char slides up and fades out
+              // Char antigo sobe e some.
               Positioned.fill(
                 child: Transform.translate(
                   offset: Offset(0, -value * rollDistance),
@@ -468,7 +384,7 @@ class _RollingChar extends StatelessWidget {
                   ),
                 ),
               ),
-              // New char slides up from below
+              // Char novo sobe vindo de baixo.
               Positioned.fill(
                 child: Transform.translate(
                   offset: Offset(0, (1.0 - value) * rollDistance),
@@ -482,57 +398,6 @@ class _RollingChar extends StatelessWidget {
           ),
         );
       },
-    );
-  }
-}
-
-/// Blinking vertical cursor used to indicate the current insertion point.
-/// Uses a [Timer] (not an [AnimationController]) so widget tests using
-/// `pumpAndSettle` are not blocked by the steady-state blink.
-class _BlinkingCursor extends StatefulWidget {
-  final double height;
-  final Color color;
-
-  const _BlinkingCursor({super.key, required this.height, required this.color});
-
-  @override
-  State<_BlinkingCursor> createState() => _BlinkingCursorState();
-}
-
-class _BlinkingCursorState extends State<_BlinkingCursor> {
-  Timer? _timer;
-  bool _visible = true;
-
-  @override
-  void initState() {
-    super.initState();
-    _timer = Timer.periodic(const Duration(milliseconds: 530), (_) {
-      if (mounted) setState(() => _visible = !_visible);
-    });
-  }
-
-  @override
-  void dispose() {
-    _timer?.cancel();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 1),
-      child: SizedBox(
-        width: 2,
-        height: widget.height,
-        child: _visible
-            ? DecoratedBox(
-                decoration: BoxDecoration(
-                  color: widget.color,
-                  borderRadius: BorderRadius.circular(1),
-                ),
-              )
-            : const SizedBox.shrink(),
-      ),
     );
   }
 }

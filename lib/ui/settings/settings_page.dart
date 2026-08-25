@@ -1,5 +1,3 @@
-import 'package:flutter/material.dart';
-
 import 'package:decima/config/theme/app_layout.dart';
 import 'package:decima/ui/settings/settings_view_model.dart';
 import 'package:decima/ui/settings/widgets/color_picker.dart';
@@ -7,10 +5,11 @@ import 'package:decima/ui/settings/widgets/decimal_separator_selector.dart';
 import 'package:decima/ui/settings/widgets/language_selector.dart';
 import 'package:decima/ui/settings/widgets/theme_mode_selector.dart';
 import 'package:decima/utils/extensions/l10n_extension.dart';
+import 'package:flutter/material.dart';
 
-/// Settings screen with sections for theme mode, accent color, number format,
-/// and language. Every change is persisted immediately and reflected in the
-/// app via the shared [SettingsViewModel] singleton.
+/// Tela de configurações: modo do tema, cor de destaque, formato de número
+/// e idioma. Toda mudança é persistida na hora e refletida no app via o
+/// singleton compartilhado de [SettingsViewModel].
 class SettingsPage extends StatefulWidget {
   final SettingsViewModel viewModel;
 
@@ -55,14 +54,12 @@ class _SettingsPageState extends State<SettingsPage> {
           vertical: AppLayout.padding.medium,
         ),
         children: [
-          // Theme mode
           _SectionTitle(title: l10n.theme),
           SizedBox(height: AppLayout.spacing.small),
           ThemeModeSelector(selected: vm.themeMode, onChanged: vm.setThemeMode),
 
           SizedBox(height: AppLayout.spacing.xl),
 
-          // Color
           _SectionTitle(title: l10n.color),
           SizedBox(height: AppLayout.spacing.medium),
           ColorPicker(
@@ -72,7 +69,6 @@ class _SettingsPageState extends State<SettingsPage> {
 
           SizedBox(height: AppLayout.spacing.xl),
 
-          // Number format
           _SectionTitle(title: l10n.numberFormat),
           SizedBox(height: AppLayout.spacing.small),
           DecimalSeparatorSelector(
@@ -82,7 +78,6 @@ class _SettingsPageState extends State<SettingsPage> {
 
           SizedBox(height: AppLayout.spacing.xl),
 
-          // Language
           _SectionTitle(title: l10n.language),
           SizedBox(height: AppLayout.spacing.small),
           LanguageSelector(selected: vm.locale, onChanged: vm.setLocale),

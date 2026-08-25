@@ -1,11 +1,10 @@
 import 'dart:async';
 
-import 'package:flutter/foundation.dart';
-
 import 'package:decima/data/repositories/settings_repository.dart';
 import 'package:decima/data/services/night_mode_service.dart';
 import 'package:decima/domain/enums/decimal_separator.dart';
 import 'package:decima/domain/enums/theme_mode_option.dart';
+import 'package:flutter/foundation.dart';
 
 class SettingsViewModel extends ChangeNotifier {
   SettingsViewModel({
@@ -46,10 +45,10 @@ class SettingsViewModel extends ChangeNotifier {
     notifyListeners();
   }
 
-  /// Re-resolves [ThemeModeOption.system] against the current platform
-  /// brightness and re-syncs it natively. Call when the OS brightness
-  /// changes while the app is open (e.g. `didChangePlatformBrightness`) —
-  /// with an explicit light/dark preference this is a harmless no-op.
+  /// Re-resolve [ThemeModeOption.system] contra o brilho atual da
+  /// plataforma e ressincroniza nativamente. Chamar quando o brilho do SO
+  /// muda com o app aberto (`didChangePlatformBrightness`); com preferência
+  /// explícita clara/escura é um no-op inofensivo.
   void syncNativeNightMode() {
     unawaited(_nightModeService.syncThemeMode(_themeMode));
   }

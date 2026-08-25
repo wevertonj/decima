@@ -2,7 +2,7 @@
 
 ## Resumo
 
-O projeto está dividido em **17 etapas** sequenciais, numeradas até 18 — a **etapa 17 (iOS) foi removida do escopo** e a numeração das demais foi preservada. As **etapas 1-4** cobrem toda a lógica de negócio, dados e infraestrutura (sem UI). As **etapas 5-8** cobrem a UI da calculadora e ajustes de comportamento (porcentagem, fila de toques e parênteses + delete). A **etapa 9** cobre as demais telas (histórico e configurações) e integração de navegação. A **etapa 10** adiciona suporte a copiar e colar via menu de contexto. A **etapa 11** introduz o cursor editável no display. A **etapa 12** substitui o icônico/splash padrão do Flutter pelo logo próprio do Decima. A **etapa 13** habilita operação por teclado físico. As **etapas 14-16** habilitam o suporte multi-plataforma (Windows, Linux, macOS), com janela fixa e title bar customizada nas plataformas desktop. A **etapa 18** é a revisão final, cobrindo polimento de animações, fluxos completos (incluindo clipboard, cursor, teclado físico e title bar) e qualidade geral em todas as plataformas. Cada etapa cabe na janela de contexto de 172k tokens. Todas seguem o fluxo TDD obrigatório (Red → Green → Refactor).
+O projeto está dividido em **22 etapas** sequenciais, numeradas até 23 — a **etapa 17 (iOS) foi removida do escopo** e a numeração das demais foi preservada. As **etapas 1-4** cobrem toda a lógica de negócio, dados e infraestrutura (sem UI). As **etapas 5-8** cobrem a UI da calculadora e ajustes de comportamento (porcentagem, fila de toques e parênteses + delete). A **etapa 9** cobre as demais telas (histórico e configurações) e integração de navegação. A **etapa 10** adiciona suporte a copiar e colar via menu de contexto. A **etapa 11** introduz o cursor editável no display. A **etapa 12** substitui o icônico/splash padrão do Flutter pelo logo próprio do Decima. A **etapa 13** habilita operação por teclado físico. As **etapas 14-16** habilitam o suporte multi-plataforma (Windows, Linux, macOS), com janela fixa e title bar customizada nas plataformas desktop. A **etapa 18** é a revisão final, cobrindo polimento de animações, fluxos completos (incluindo clipboard, cursor, teclado físico e title bar) e qualidade geral em todas as plataformas. As **etapas 19-23** formam o ciclo de refatoração pós-entrega — sem mudança de comportamento: limites de tamanho de arquivo, lints e inventário (19), extração do motor de edição da expressão para o domínio (20), decomposição do `CalculatorViewModel` em sub-controllers (21), decomposição dos widgets grandes (22) e migração de comentários para a documentação com a revisão SOLID final (23). Cada etapa cabe na janela de contexto de 172k tokens. Todas seguem o fluxo TDD obrigatório (Red → Green → Refactor).
 
 ---
 
@@ -868,9 +868,149 @@ O macOS foi mantido justamente porque a assimetria não se aplica a ele — a as
 
 **Status (revisão de 2026-08-23)**: todo o escopo já havia sido entregue e validado nas Etapas 5–16.1 — a checagem item a item, com a etapa de origem de cada validação, está em `plano/tarefas.md`. Os quatro itens que restavam foram confirmados pelo usuário na própria revisão: a transição default do `MaterialPageRoute` e o cross-fade de tema do `MaterialApp` ficam como estão, o teclado externo no Android opera a calculadora corretamente e a paridade visual foi conferida em cada plataforma durante o desenvolvimento (o Linux só não foi visto em instalação nativa, apenas via WSLg).
 
-Pendência única: a moldura verde que o Android desenha na borda da tela ao primeiro toque no teclado físico — realce de foco do sistema sobre a `FlutterView`. Corrigido em `MainActivity.onStart()`, aguardando verificação no device.
+O único bug novo da revisão — a moldura verde que o Android desenhava na borda da tela ao primeiro toque no teclado físico, realce de foco do sistema sobre a `FlutterView` — foi corrigido em `MainActivity.onStart()` e validado no APK do release v0.9.1. **Etapa concluída.**
 
 **Entregável**: App completo, polido, testado e pronto para uso em todas as plataformas suportadas (Android, Windows, Linux, macOS), com identidade visual própria, suporte a teclado físico e todas as features integradas e refinadas.
+
+---
+
+## Etapa 19 — Fundação da Refatoração: limites de tamanho, lints e inventário
+
+> Origem: revisão de manutenibilidade pós-v0.9.1. O app está funcional e 100% testado, mas as violações de SOLID se concentram em poucos arquivos — `calculator_view_model.dart` acumula **1.526 linhas e seis responsabilidades**, e seu teste espelho tem 2.583. As Etapas 19–23 formam um ciclo de refatoração **sem mudança de comportamento**: a suíte existente é a rede de segurança e nenhuma expectativa de teste é alterada, apenas movida.
+
+**Objetivo**: Estabelecer a infraestrutura de qualidade que orienta o ciclo (limite de linhas por arquivo, verificação no CI, lints mais rígidos, política de comentários) e publicar o inventário que as Etapas 20–23 consomem.
+
+**Escopo**:
+
+- **Limite de linhas por arquivo**: ideal de **≤ 600 linhas** por arquivo Dart em `lib/` e `test/` (excluindo gerados: `lib/utils/l10n/`), documentado em `docs/fundacao/padroes-codigo.md` junto com a tabela de decomposição por camada:
+  - ViewModel se aproximando do limite → sub-controllers em `ui/<feature>/controllers/`
+  - Page/Widget > ~500 → widgets extraídos para `widgets/` e lógica pura para helpers testáveis
+  - Domain/Service > ~400 → classes colaboradoras com responsabilidade única
+- **Verificador** (`tool/check_file_length.dart`): lista os arquivos acima do limite e sai com erro quando algum fora da **allowlist** estoura; a allowlist nasce com os arquivos que aguardam as Etapas 20–21 (`calculator_view_model.dart`, `calculator_view_model_test.dart`) e é **zerada ao fim da Etapa 21**. Mesmo padrão do `bump_version.dart`: script Dart com teste próprio
+- **CI**: novo step no job `analyze` rodando o verificador
+- **Lints**: curar e ativar regras extras em `analysis_options.yaml` alinhadas às convenções já documentadas — candidatas: `directives_ordering` (ordem de imports já documentada), `always_use_package_imports`, `prefer_single_quotes`, `unawaited_futures`, `prefer_final_locals`, `sort_pub_dependencies` — corrigindo os avisos resultantes. `unawaited_futures` em particular torna explícito, via `unawaited(...)`, cada fire-and-forget intencional da persistência de sessão
+- **Política de comentários** (definida aqui, aplicada em massa na Etapa 23), registrada em `docs/fundacao/padroes-codigo.md`:
+  - Doc comment (`///`) em API pública: contrato em 1–3 linhas (**o quê**, nunca o como)
+  - Inline (`//`) apenas para invariante local que o código não consegue expressar
+  - "Porquê" de design, história e trade-offs → `docs/` (seções de features ou tabelas de Gotchas)
+  - Proibido comentário que narra o óbvio
+  - **Idioma**: resolver a inconsistência atual — o padrão documenta comentários em pt-BR, mas ~95% do código está em inglês, com arquivos misturando os dois. Recomendação: manter a regra pt-BR (consistente com `docs/`) e traduzir apenas o que sobreviver à triagem da Etapa 23
+- **Inventário baseline** em `plano/observacoes.md`: tabela dos maiores arquivos, responsabilidades misturadas e densidade de comentários, com o destino planejado de cada um
+
+**Testes**:
+
+- Unitários: `test/tool/check_file_length_test.dart` (limite, allowlist, exclusão de gerados, saída de erro)
+- Regressão: suíte completa verde, `flutter analyze` zero warnings com o novo conjunto de lints, cobertura ≥ baseline
+
+**Status (2026-08-23)**: entregue integralmente. O verificador nasceu com detecção de entrada obsoleta na allowlist (arquivo que voltou ao limite falha o check até a entrada ser removida — a lista só encolhe). As seis lints candidatas foram ativadas, nenhuma descartada; três já estavam 100% conformes e as demais geraram 83 avisos, todos corrigidos (80 de ordenação de imports via `dart fix`, 2 no `pubspec.yaml`, 1 `unawaited` explícito no `loadSettings` de `calculator_page.dart`). A ordenação alfabética do `directives_ordering` pôs `package:decima` antes de `package:flutter` — a seção Imports de `padroes-codigo.md` foi atualizada. Decisão de idioma: **pt-BR mantido**, tradução só dos comentários sobreviventes na Etapa 23. Inventário publicado em `plano/observacoes.md`. **Etapa concluída.**
+
+**Entregável**: Limite de 600 linhas documentado e verificado no CI, lints rígidos ativos, política de comentários publicada e inventário registrado. Nenhum comportamento alterado.
+
+---
+
+## Etapa 20 — Refatoração do Domínio: motor de edição da expressão
+
+**Objetivo**: Extrair do `CalculatorViewModel` as ~500 linhas do motor de edição por cursor — manipulação pura de string, sem estado de UI nem persistência — para uma classe de domínio testável isoladamente.
+
+**Motivação (SRP)**: `_editText`/`_cursorPos`/`_atEnd` e a família `_edit*` (`_editInsertDigits`, `_editInsertLiteral`, `_editBackspace`, `_editSplitBlockWithOperator`, `_tryMergeBlocksAtCursor`, `_editInsertParenthesis`, `_editApplyPercentInBlock`, `_replaceBlockWithFormatted`, mais os helpers `_findNumberBlock`, `_stripToDigits`, `_countDigits`, `_positionWithDigitsAfter`) formam um editor de texto completo embutido no ViewModel. Nada disso toca repositório, clipboard ou `notifyListeners` — é domínio puro que hoje só pode ser testado através da fachada.
+
+**Escopo**:
+
+- **`domain/expression_editor.dart`** — `ExpressionEditor` (Dart puro, sem import de Flutter):
+  - Estado imutável `EditorState(text, cursor)`; cada operação recebe um estado e devolve o novo
+  - Operações: inserir dígitos, operador (com split de bloco quando o cursor está no meio de um número), parêntese, `%`, e backspace (com merge de blocos ao apagar operador) — todas Add2-aware, preservando a reancoragem do cursor pela contagem de dígitos à direita
+  - `DecimalSeparator` como parâmetro (o editor não conhece Settings)
+- `_normalizeForEvaluator` migra junto (para o editor ou para o `ExpressionEvaluator` — decidir na implementação e documentar)
+- **`PasteInputParser`**: mover de `utils/` para `domain/` — pela regra de classificação da própria arquitetura ("É regra de negócio? → `domain/`"); imports atualizados
+- **ViewModel delega**: o modo de edição vira "chamar o editor e aplicar o `EditorState` devolvido + `notifyListeners`"
+- **Testes movidos, não reescritos**: nasce `test/unit/domain/expression_editor_test.dart` absorvendo os cenários de edição/cursor hoje dentro de `calculator_view_model_test.dart`; o teste do parser muda de pasta acompanhando o arquivo. Os testes de integração do ViewModel (fluxos completos com cursor) permanecem
+
+**Testes**:
+
+- Unitários: `ExpressionEditor` — todos os cenários atuais de edição no meio da expressão (inserção, backspace com merge, split por operador, parênteses, `%`, reancoragem do cursor, multiline)
+- Regressão: suíte completa verde sem alterar nenhuma expectativa; cobertura ≥ baseline
+
+**Status (2026-08-24)**: entregue integralmente. `ExpressionEditor` nasceu como classe de métodos estáticos puros (padrão `NumberFormatter`/`PasteInputParser`) sobre `EditorState(text, cursor)` imutável; o ViewModel aplica o estado devolvido via `_applyEditorState` (que também deriva `_atEnd`). Decisão registrada: `_normalizeForEvaluator` migrou para o **editor** — desfaz a formatação de exibição que o próprio editor mantém, e o `ExpressionEvaluator` segue sem conhecer `DecimalSeparator`. `calculator_view_model.dart`: 1.526 → 1.199 linhas; teste: 2.582 → 2.399. Ambos seguem na allowlist (zera na Etapa 21). **Etapa concluída.**
+
+**Entregável**: Motor de edição como unidade de domínio isolada e testada; `calculator_view_model.dart` ~330 linhas menor; allowlist do verificador mantida para a Etapa 21.
+
+---
+
+## Etapa 21 — Refatoração do ViewModel: sub-controllers
+
+**Objetivo**: Decompor o restante do `CalculatorViewModel` em colaboradores com responsabilidade única, deixando-o como fachada **≤ 600 linhas** para a UI, e espelhar a mesma divisão no teste de 2.583 linhas.
+
+**Escopo**:
+
+- **`ui/calculator/controllers/session_recorder.dart`** — persistência da sessão: absorve `_sessionLines`, `_currentSessionId`, `_persistedLineCount`, `_pendingAdd`, `_pendingWrite`, `_sessionGeneration`, `_saveOrUpdateSession`, `_trackWrite`, `flushSession` e `_resetSessionTracking`. Encapsula o encadeamento de escritas, as gerações de sessão e a idempotência do flush — invariantes hoje explicados por ~40 linhas de comentário no ViewModel que passam a ser o contrato natural da classe
+- **`ui/calculator/controllers/clipboard_controller.dart`** — copiar/colar: `copyExpression`, `copyResult`, `copyHistory`, `pasteFromClipboard`, `clipboardHasText`, `_applyPastedContent`, `_restoreInputTokens` (usa `ClipboardService` + `PasteInputParser`)
+- **Timeline** (`_visibleCount`, `loadMoreTimelineEntries`, `visibleTimelineEntries`): avaliar extração para `timeline_controller.dart` ou manutenção no ViewModel se o tamanho já ficou confortável — decidir na implementação e registrar
+- **DIP**: `Add2Engine` e `ExpressionEvaluator` deixam de ser instanciados dentro do ViewModel e passam a ser injetados via construtor (com default), como já acontece com os repositórios; wiring em `dependencies.dart`
+- O ViewModel permanece a **única API para a UI** (fachada `ChangeNotifier`); os controllers recebem repositórios/serviços via construtor e são mockáveis nos testes
+- **Testes fatiados por área**: `calculator_view_model_test.dart` é dividido em arquivos focados sob `test/unit/ui/calculator/` (entrada/operadores, parênteses/porcentagem, sessão/persistência, clipboard, timeline, cursor/integração com o editor), mais testes diretos de `SessionRecorder` e `ClipboardController`. Nenhum cenário descartado
+- **Allowlist do verificador zerada**: a partir daqui, nenhum arquivo de `lib/` ou `test/` acima de 600 linhas
+
+**Testes**:
+
+- Unitários: `SessionRecorder` (criação/atualização, escrita em voo, gerações, flush idempotente) e `ClipboardController` (copiar/colar, conteúdo inválido, round-trip com o parser)
+- Regressão: suíte completa verde com as mesmas expectativas; cobertura ≥ baseline
+
+**Entregável**: `CalculatorViewModel` legível de uma sentada, cada responsabilidade em uma classe nomeável, verificador de tamanho sem exceções.
+
+**Status (2026-08-24)**: entregue integralmente. Além dos dois controllers planejados, a decomposição rendeu mais dois colaboradores: `TimelineController` (decisão registrada: **extraído**, 34 linhas — o estado da timeline não se mistura à orquestração da fachada) e `CursorController` (estado do cursor/modo de edição roteando pelo `ExpressionEditor`); e a máquina de composição por digitação saiu do ViewModel para o domínio como `ExpressionComposer` (contraponto append do `ExpressionEditor`). DIP concluído (`Add2Engine` factory, `ExpressionEvaluator` lazy singleton no GetIt). O TDD dos controllers endureceu dois contratos: `SessionRecorder._trackWrite` ganhou `write.ignore()` (escrita que falhava antes do microtask do encadeamento virava erro não tratado na zone — corrida latente herdada do ViewModel antigo) e a colagem passou a rejeitar linha resolvida inavaliável (divisão por zero, detectada por `ExpressionEvaluator.errorResult`, agora público). `calculator_view_model.dart`: 1.199 → 561 linhas; teste fatiado em 7 arquivos (171–502 linhas) + 2 de controllers, nenhum cenário descartado. **Allowlist do verificador zerada** — nenhum arquivo de `lib/`/`test/` acima de 600 linhas. 751 testes verdes. **Etapa concluída.**
+
+---
+
+## Etapa 22 — Refatoração da UI: widgets enxutos
+
+**Objetivo**: Aplicar a disciplina de responsabilidade única aos widgets que concentram lógica além de renderização — nenhum deles viola o limite de 600, mas todos misturam preocupações que dificultam manutenção.
+
+**Escopo**:
+
+- **`AnimatedInputDisplay`** (538 linhas): extrair o diffing de caracteres/slots (comparação entre texto anterior e atual para decidir quais caracteres animam) para um helper puro testável sem árvore de widgets; extrair o cursor para widget próprio. O widget principal fica com layout, animação e scroll
+- **`HistoryListItem`** (390 linhas): extrair o diálogo de renomear (`_showRenameDialog`) para `ui/history/widgets/rename_entry_dialog.dart`; avaliar extração de header/linhas expandidas/footer conforme a leitura ficar
+- **`history_page.dart`**: mover `_AnimatedListItem` para `ui/history/widgets/`
+- **`main.dart`**: avaliar extração do observer de ciclo de vida (flush em `paused`/`hidden` no mobile) para `ui/core/` — `main.dart` fica só com bootstrap
+- Revisão de passagem: nenhum widget novo recebe lógica de negócio (apenas apresentação + callbacks para o ViewModel)
+
+**Testes**:
+
+- Unitários: helper de diffing de caracteres (cenários hoje só cobertos via testes de widget)
+- Widget: testes existentes continuam passando; widgets extraídos com API pública ganham teste próprio
+- Regressão: suíte completa verde; cobertura ≥ baseline
+
+**Entregável**: Widgets com uma responsabilidade cada, lógica pura testável fora da árvore de widgets.
+
+**Status (2026-08-24)**: entregue integralmente. `AnimatedInputDisplay` (538 → 409 linhas) cedeu o diff de caracteres ao helper puro `CharSlotDiffer` (`ui/calculator/char_slot_differ.dart` — `build`/`diff`/`settle`, testável sem árvore de widgets) e o cursor ao widget público `BlinkingCursor`. `HistoryListItem` (390 → 359) cedeu o diálogo de renomear a `RenameEntryDialog` (`static show` → texto ao salvar, `null` ao cancelar), que de quebra passou a descartar o `TextEditingController` que vazava; header/linhas expandidas/footer **mantidos** como builders privados (apresentação pura, sem reuso). `_AnimatedListItem` saiu da `history_page.dart` como `AnimatedListItem` público. Em `main.dart` (161 → 141) a decisão foi **extrair**: o observer de ciclo de vida virou `AppLifecycleFlushHandler` (`ui/core/mobile/`), espelho mobile do `WindowCloseHandler`, montado no mesmo `MaterialApp.builder` — `main.dart` ficou só com bootstrap. Nenhum widget novo recebeu lógica de negócio. 780 testes verdes (+29: 13 do differ e 16 dos widgets extraídos), zero warnings, verificador sem violações. **Etapa concluída.**
+
+---
+
+## Etapa 23 — Comentários → Documentação e revisão SOLID final
+
+**Objetivo**: Aplicar a política de comentários da Etapa 19 a todo o código — migrar o "porquê" para `docs/`, apagar o óbvio, manter o mínimo intencional — e fechar o ciclo com a revisão SOLID final.
+
+**Motivação**: ~700 linhas de comentário em `lib/` (fora l10n gerado), 283 delas no ViewModel pré-refatoração. Boa parte (a) explica invariantes que deixam de existir com as classes menores das Etapas 20–22, (b) duplica o que `docs/features/calculadora.md` já documenta (fila de toques, flush ao fechar, Add2, colar) ou (c) é rationale de design que pertence às tabelas de Gotchas. Além disso, arquivos misturam comentários em inglês e português.
+
+**Escopo**:
+
+- **Triagem arquivo a arquivo** (maiores densidades: `paste_input_parser.dart` 51, `window_close_handler.dart` 49, `animated_input_display.dart` 44, `keyboard_shortcuts.dart` 38, `window_position.dart` 29, além do que restou do ViewModel), classificando cada comentário em:
+  - **Manter** — contrato de API pública em 1–3 linhas ou invariante local inexpressável em código
+  - **Migrar** — rationale/história/trade-off → seção ou Gotcha do doc correspondente
+  - **Apagar** — narração do óbvio ou redundância com nome de método/teste
+- **Destinos das migrações**: `docs/features/calculadora.md` (edição/cursor, fila de toques, flush, clipboard), `docs/features/configuracoes.md` (janela/posição), `docs/fundacao/arquitetura.md` (estrutura pós-refatoração: `domain/expression_editor`, `ui/calculator/controllers/`, thresholds de tamanho) — nada migrado pode se perder: cada fato removido do código precisa existir em `docs/`
+- **Idioma**: uniformizar os comentários sobreviventes conforme a decisão da Etapa 19
+- **Renomear** `ui/core/desktop/window_position.dart` → `window_position_validator.dart` (ou similar): hoje o nome colide com a entity `domain/entities/window_position.dart`
+- **Revisão SOLID final**, classe a classe: uma responsabilidade nomeável por classe; dependências por abstração onde há mais de uma implementação ou necessidade de mock; interfaces mínimas; varredura de dead code
+- Sincronizar `docs/` com o estado final do código; atualizar `plano/changelog.md`
+
+**Testes**:
+
+- Regressão: suíte completa verde (etapa não altera comportamento), `flutter analyze` zero warnings, `dart format` limpo, cobertura ≥ baseline
+- Verificador de tamanho sem exceções
+
+**Entregável**: Código autoexplicativo com comentários mínimos e intencionais, documentação como fonte única do "porquê", nenhum arquivo acima de 600 linhas, projeto pronto para manutenção de longo prazo.
+
+**Status (2026-08-24)**: entregue integralmente. Triagem aplicada a todo `lib/` (941 → 754 linhas de comentário fora do l10n, −20%) e `test/` (336 → 303): contratos encurtados a 1–3 linhas, narração do óbvio apagada, rationale longo condensado com ponteiro para o doc — nenhum fato se perdeu, pois todos já tinham cobertura em `docs/` (flush, fila de toques, colar recalculado, reancoragem do cursor, `destroy()` do Windows, regra Wayland). Idioma 100% pt-BR em `lib/` e `test/` (104 comentários de teste traduzidos, 33 apagados). `window_position.dart` → `window_position_validator.dart` (colisão com a entity resolvida). Revisão SOLID: fronteiras de camada limpas por varredura de imports; indireção `_clipboardHasText` inlined. Dead code: `OperationType` (+ teste) e `AppColors.lightSurface` removidos; membros usados só por testes **mantidos** como costuras de observabilidade (regra do ciclo: cenários nunca descartados). 774 testes verdes, zero warnings, format limpo, verificador sem exceções. **Etapa concluída — ciclo de refatoração 19–23 encerrado.**
 
 ---
 
@@ -938,6 +1078,21 @@ Etapa 16 (macOS)
     │
     ▼
 Etapa 18 (Polimento e Revisão Final)
+    │
+    ▼
+Etapa 19 (Limites, lints e inventário)
+    │
+    ▼
+Etapa 20 (Domínio: motor de edição)
+    │
+    ▼
+Etapa 21 (ViewModel: sub-controllers)
+    │
+    ▼
+Etapa 22 (UI: widgets enxutos)
+    │
+    ▼
+Etapa 23 (Comentários → docs + revisão SOLID)
 ```
 
 ## Resumo da Divisão
@@ -951,6 +1106,7 @@ Etapa 18 (Polimento e Revisão Final)
 | **Multi-plataforma** | 14, 14.1, 14.2, 15, 15.1, 16, 16.1 |
 | **Processo e infraestrutura** | 14.3 |
 | **Polimento Final** | 18 |
+| **Refatoração e manutenibilidade** | 19, 20, 21, 22, 23 |
 
 ## Estimativa de Complexidade por Etapa
 
@@ -979,4 +1135,9 @@ Etapa 18 (Polimento e Revisão Final)
 | 16.1 — Distribuição macOS no CD | Baixa | ~1 (script de empacotamento) | manual |
 | ~~17 — iOS~~ | *removida do escopo* | — | — |
 | 18 — Polimento e Revisão Final | Baixa | ~2 | ~4 |
+| 19 — Limites, lints e inventário | Baixa-Média | ~2 (verificador + config) | ~4 |
+| 20 — Domínio: motor de edição | Alta | ~2 (editor + estado) | movidos + novos |
+| 21 — ViewModel: sub-controllers | Alta | ~3-4 (controllers + fatias de teste) | movidos + novos |
+| 22 — UI: widgets enxutos | Média | ~4-5 (widgets/helpers extraídos) | ~6 |
+| 23 — Comentários → docs + revisão SOLID | Média | ~0-1 (edições e rename) | ~0 |
 | **Total** | | **~70-80** | **~115** |

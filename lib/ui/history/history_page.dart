@@ -1,18 +1,17 @@
-import 'package:flutter/material.dart';
-
 import 'package:decima/config/theme/app_layout.dart';
 import 'package:decima/domain/entities/history_selection.dart';
 import 'package:decima/ui/history/history_view_model.dart';
+import 'package:decima/ui/history/widgets/animated_list_item.dart';
 import 'package:decima/ui/history/widgets/history_list_item.dart';
 import 'package:decima/ui/widgets/flat_segmented_control.dart';
 import 'package:decima/utils/extensions/l10n_extension.dart';
+import 'package:flutter/material.dart';
 
-/// History screen showing a paginated list of saved calculations.
+/// Tela do histórico com a lista paginada de cálculos salvos.
 ///
-/// Supports filtering by favorites, renaming entries via long-press,
-/// toggling favorites, and clearing all history. When an entry is tapped,
-/// it is returned via [Navigator.pop] so the calling page can load the
-/// session — keeping HistoryPage decoupled from CalculatorViewModel (SRP).
+/// Filtro por favoritos, renomear por toque longo e limpar tudo. A entrada
+/// tocada é devolvida via [Navigator.pop] para quem chamou carregar a
+/// sessão — a página não conhece o `CalculatorViewModel`.
 class HistoryPage extends StatefulWidget {
   final HistoryViewModel viewModel;
 
@@ -66,7 +65,6 @@ class _HistoryPageState extends State<HistoryPage> {
       ),
       body: Column(
         children: [
-          // Filter tabs
           Padding(
             padding: EdgeInsets.symmetric(
               horizontal: AppLayout.padding.medium,
@@ -91,7 +89,6 @@ class _HistoryPageState extends State<HistoryPage> {
               },
             ),
           ),
-          // List
           Expanded(child: _buildList(context, vm)),
         ],
       ),
@@ -137,14 +134,13 @@ class _HistoryPageState extends State<HistoryPage> {
       ),
       itemCount: vm.entries.length + (vm.hasMore ? 1 : 0),
       itemBuilder: (context, index) {
-        // Load more button at the end
         if (index == vm.entries.length) {
           return _buildLoadMore(context, vm);
         }
 
         final entry = vm.entries[index];
 
-        return _AnimatedListItem(
+        return AnimatedListItem(
           index: index,
           child: HistoryListItem(
             entry: entry,
@@ -221,62 +217,5 @@ class _HistoryPageState extends State<HistoryPage> {
         widget.viewModel.clearAll();
       }
     });
-  }
-}
-
-/// Animates each list item with a staggered slide + fade entrance.
-class _AnimatedListItem extends StatefulWidget {
-  final int index;
-  final Widget child;
-
-  const _AnimatedListItem({required this.index, required this.child});
-
-  @override
-  State<_AnimatedListItem> createState() => _AnimatedListItemState();
-}
-
-class _AnimatedListItemState extends State<_AnimatedListItem>
-    with SingleTickerProviderStateMixin {
-  late final AnimationController _controller;
-  late final Animation<Offset> _slideAnimation;
-  late final Animation<double> _fadeAnimation;
-
-  @override
-  void initState() {
-    super.initState();
-    _controller = AnimationController(
-      duration: const Duration(milliseconds: 300),
-      vsync: this,
-    );
-
-    _slideAnimation = Tween<Offset>(
-      begin: const Offset(0, 0.15),
-      end: Offset.zero,
-    ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeOutCubic));
-
-    _fadeAnimation = Tween<double>(
-      begin: 0.0,
-      end: 1.0,
-    ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeOutCubic));
-
-    // Stagger: each item starts slightly after the previous one (max 10 items)
-    final delay = Duration(milliseconds: (widget.index.clamp(0, 10)) * 40);
-    Future.delayed(delay, () {
-      if (mounted) _controller.forward();
-    });
-  }
-
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return SlideTransition(
-      position: _slideAnimation,
-      child: FadeTransition(opacity: _fadeAnimation, child: widget.child),
-    );
   }
 }

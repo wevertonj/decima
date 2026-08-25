@@ -53,7 +53,7 @@ O `lib/` é o mesmo das demais plataformas desktop; os dois desvios abaixo são 
 | Ajuste | Onde | Motivo |
 |--------|------|--------|
 | `setMaximizable(false)` **não** é chamado | `desktop_window_initializer.dart` | No GTK o plugin implementa isso como `GDK_WINDOW_TYPE_HINT_DIALOG` — a janela vira diálogo, some da barra de tarefas e do alt-tab e deixa de ser minimizável em vários WMs. `setResizable(false)` já impede maximizar |
-| Posição `(0,0)` não é gravada | `isWindowPositionStorable` (`ui/core/desktop/window_position.dart`) | No Wayland o cliente não conhece a própria posição e `getPosition()` devolve sempre a origem. Gravar isso reabriria a janela no canto superior esquerdo em vez de centralizada |
+| Posição `(0,0)` não é gravada | `isWindowPositionStorable` (`ui/core/desktop/window_position_validator.dart`) | No Wayland o cliente não conhece a própria posição e `getPosition()` devolve sempre a origem. Gravar isso reabriria a janela no canto superior esquerdo em vez de centralizada |
 
 ## Integração com o desktop
 

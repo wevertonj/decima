@@ -81,7 +81,7 @@ class HistoryRepositoryImpl implements HistoryRepository {
 
     final model = HistoryModel.fromEntity(entry);
     final map = model.toMap();
-    // Only update expression (lines JSON) and result.
+    // Atualiza apenas expression (JSON das linhas) e result.
     await _database.database.update(
       _tableName,
       {'expression': map['expression'], 'result': map['result']},

@@ -1,8 +1,7 @@
-import 'package:flutter/foundation.dart';
-import 'package:flutter/material.dart';
-
 import 'package:decima/config/theme/app_layout.dart';
 import 'package:decima/ui/calculator/widgets/key_flash_controller.dart';
+import 'package:flutter/foundation.dart';
+import 'package:flutter/material.dart';
 
 /// Variantes visuais do botão da calculadora.
 /// - [numeric]: dígitos 0-9, 00, 000 — cor onSurface, LED glow branco ao digitar
@@ -15,9 +14,9 @@ class CalculatorButton extends StatefulWidget {
   final VoidCallback onPressed;
   final ButtonVariant variant;
 
-  /// When true, a [ButtonVariant.functional] button uses a dimmed onSurface
-  /// color instead of the primary color. The transition between states is
-  /// animated for a soft visual cue (used by the contextual `C` button).
+  /// Quando `true`, um botão [ButtonVariant.functional] usa onSurface
+  /// esmaecido no lugar do primary, com transição animada (usado pelo `C`
+  /// contextual).
   final bool isDimmed;
 
   /// Sinal de acionamento por teclado físico. Quando o rótulo notificado é
@@ -40,12 +39,11 @@ class CalculatorButton extends StatefulWidget {
 
 class _CalculatorButtonState extends State<CalculatorButton>
     with TickerProviderStateMixin {
-  // LED glow: acende instantaneamente no tap e apaga gradualmente (~600ms)
-  // Simula o efeito "reactive typing" de teclados mecânicos (ex: Logitech MX)
+  // LED glow (reactive typing): acende no tap, apaga em ~600ms.
   late final AnimationController _glowController;
   late final Animation<double> _glowAnimation;
 
-  // Background flash: destaque sutil de superfície que desaparece rápido
+  // Flash de fundo: destaque sutil de superfície que some rápido.
   late final AnimationController _bgController;
   late final Animation<double> _bgAnimation;
 
@@ -62,7 +60,6 @@ class _CalculatorButtonState extends State<CalculatorButton>
       curve: Curves.easeInCubic,
     );
 
-    // Background: fade-in rápido (40ms) no tap, fade-out suave (200ms) ao soltar
     _bgController = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 200),
@@ -108,24 +105,21 @@ class _CalculatorButtonState extends State<CalculatorButton>
   }
 
   void _handleTapDown(TapDownDetails _) {
-    // Despacha a ação IMEDIATAMENTE no toque — sem aguardar tapUp ou
-    // animações. Garante que nenhum toque seja perdido em digitação rápida.
+    // Despacha IMEDIATAMENTE no toque, sem aguardar tapUp nem animação —
+    // nenhum toque se perde em digitação rápida.
     widget.onPressed();
 
-    // LED acende instantaneamente — brilho máximo enquanto o dedo toca
     _glowController.value = 0.0;
-    // Background acende com fade-in rápido (~40ms)
     _bgController.forward();
   }
 
   void _handleTapUp(TapUpDetails _) {
-    // Dedo levantou — inicia o fade out lento do LED e background
     _glowController.forward();
     _bgController.reverse();
   }
 
   void _handleTap() {
-    // A ação já foi despachada no tapDown; aqui não fazemos nada.
+    // A ação já foi despachada no tapDown.
   }
 
   void _handleTapCancel() {
@@ -141,7 +135,6 @@ class _CalculatorButtonState extends State<CalculatorButton>
     return colors.onSurface;
   }
 
-  /// Dimmed counterpart used when [CalculatorButton.isDimmed] is true.
   Color _dimmedTextColor(ColorScheme colors) {
     return colors.onSurface.withValues(alpha: 0.5);
   }
@@ -168,7 +161,7 @@ class _CalculatorButtonState extends State<CalculatorButton>
           child: AnimatedBuilder(
             animation: _bgAnimation,
             builder: (context, child) {
-              // bgAnimation: 0 = apagado, 1 = aceso (forward=in, reverse=out)
+              // bgAnimation: 0 = apagado, 1 = aceso.
               final bgOpacity = _bgAnimation.value * 0.12;
 
               return Container(

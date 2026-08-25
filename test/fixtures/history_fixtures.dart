@@ -1,8 +1,8 @@
 import 'dart:convert';
 
+import 'package:decima/data/models/history_model.dart';
 import 'package:decima/domain/entities/history_entry.dart';
 import 'package:decima/domain/entities/history_line.dart';
-import 'package:decima/data/models/history_model.dart';
 
 class HistoryFixtures {
   HistoryFixtures._();
@@ -11,7 +11,8 @@ class HistoryFixtures {
   static final DateTime timestamp2 = DateTime(2026, 1, 15, 11, 45);
   static final DateTime timestamp3 = DateTime(2026, 1, 16, 9, 0);
 
-  /// Helper to create a single-line entry from an expression/result pair.
+  /// Helper para criar uma entrada de linha única a partir de um par
+  /// expressão/resultado.
   static HistoryEntry singleLine({
     int? id,
     required String expression,

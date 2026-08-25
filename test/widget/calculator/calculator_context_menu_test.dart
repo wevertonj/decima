@@ -1,8 +1,3 @@
-import 'package:flutter/gestures.dart';
-import 'package:flutter/material.dart';
-import 'package:flutter_test/flutter_test.dart';
-import 'package:mocktail/mocktail.dart';
-
 import 'package:decima/domain/entities/history_entry.dart';
 import 'package:decima/domain/entities/history_line.dart';
 import 'package:decima/domain/enums/decimal_separator.dart';
@@ -10,6 +5,10 @@ import 'package:decima/ui/calculator/calculator_page.dart';
 import 'package:decima/ui/calculator/calculator_view_model.dart';
 import 'package:decima/ui/calculator/widgets/timeline_display.dart';
 import 'package:decima/utils/l10n/app_localizations.dart';
+import 'package:flutter/gestures.dart';
+import 'package:flutter/material.dart';
+import 'package:flutter_test/flutter_test.dart';
+import 'package:mocktail/mocktail.dart';
 
 import '../../helpers/pump_app.dart';
 import '../../mocks/mock_clipboard_service.dart';

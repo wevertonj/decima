@@ -1,9 +1,8 @@
-import 'package:flutter/material.dart';
-
 import 'package:decima/config/theme/app_layout.dart';
 import 'package:decima/domain/entities/calculation.dart';
 import 'package:decima/ui/calculator/widgets/animated_input_display.dart';
 import 'package:decima/utils/extensions/l10n_extension.dart';
+import 'package:flutter/material.dart';
 
 class TimelineDisplay extends StatefulWidget {
   final List<Calculation> entries;
@@ -107,9 +106,8 @@ class _TimelineDisplayState extends State<TimelineDisplay>
   Widget build(BuildContext context) {
     final colors = Theme.of(context).colorScheme;
 
-    // Use a reversed ListView so content is anchored at the bottom.
-    // Items are in reversed order: current input first, then past entries
-    // newest to oldest, then load more button at the end.
+    // ListView reverso ancora o conteúdo embaixo: entrada atual primeiro,
+    // depois as entradas passadas (recente → antiga) e o load more no fim.
     final reversedEntries = widget.entries.reversed.toList();
 
     return ListView.builder(
@@ -121,17 +119,16 @@ class _TimelineDisplayState extends State<TimelineDisplay>
       ),
       itemCount: reversedEntries.length + 1 + (widget.hasMore ? 1 : 0),
       itemBuilder: (context, index) {
-        // Index 0 = current input (bottom, because reversed)
+        // Índice 0 = entrada atual (embaixo, por causa do reverse).
         if (index == 0) {
           return _buildCurrentInput(colors);
         }
 
-        // Past entries (1 .. entries.length)
         final entryIndex = index - 1;
         if (entryIndex < reversedEntries.length) {
           final child = _buildPastEntry(reversedEntries[entryIndex], colors);
 
-          // Animate the most recent entry (index 1 in reversed = newest)
+          // Só a entrada mais recente anima.
           if (entryIndex == 0) {
             return SlideTransition(
               position: _slideAnimation,
@@ -142,7 +139,6 @@ class _TimelineDisplayState extends State<TimelineDisplay>
           return child;
         }
 
-        // Load more button at the top
         return _buildLoadMoreButton(colors);
       },
     );
@@ -215,10 +211,9 @@ class _TimelineDisplayState extends State<TimelineDisplay>
       crossAxisAlignment: CrossAxisAlignment.end,
       mainAxisSize: MainAxisSize.min,
       children: [
-        // Full expression with per-character animation. The gesture
-        // detector wraps ONLY this area so taps on the empty space
-        // around the expression move the cursor to the end, while
-        // taps on the preview line below are ignored.
+        // O GestureDetector envolve SÓ a área da expressão: toque no vazio
+        // ao redor dela move o cursor para o fim; toque na linha de prévia
+        // abaixo é ignorado.
         GestureDetector(
           behavior: HitTestBehavior.opaque,
           onTap: widget.onTapOutside,
@@ -256,7 +251,8 @@ class _TimelineDisplayState extends State<TimelineDisplay>
             },
           ),
         ),
-        // Preview line — always reserved, never occupied by the calculation
+        // Linha de prévia — espaço sempre reservado, nunca ocupado pelo
+        // cálculo.
         Padding(
           padding: EdgeInsets.only(
             top: AppLayout.spacing.xs,
@@ -281,7 +277,7 @@ class _TimelineDisplayState extends State<TimelineDisplay>
     );
   }
 
-  /// Threshold to trigger font reduction before text reaches the edge.
+  /// Limiar que reduz a fonte antes de o texto alcançar a borda.
   static const double _shrinkThreshold = 0.88;
 
   ({double fontSize, bool multiline}) _calculateFontLayout(
@@ -306,7 +302,7 @@ class _TimelineDisplayState extends State<TimelineDisplay>
       }
     }
 
-    // At smallest font size, check if it fits in one line
+    // Na menor fonte, verifica se ainda cabe em uma linha.
     final painter = TextPainter(
       text: TextSpan(
         text: text,
@@ -320,7 +316,7 @@ class _TimelineDisplayState extends State<TimelineDisplay>
       return (fontSize: _smallFontSize, multiline: false);
     }
 
-    // Only allow multiline at the smallest font size
+    // Multilinha só na menor fonte.
     return (fontSize: _smallFontSize, multiline: true);
   }
 }

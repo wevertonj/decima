@@ -1,9 +1,8 @@
-import 'package:flutter_test/flutter_test.dart';
-import 'package:mocktail/mocktail.dart';
-
 import 'package:decima/domain/enums/decimal_separator.dart';
 import 'package:decima/domain/enums/theme_mode_option.dart';
 import 'package:decima/ui/settings/settings_view_model.dart';
+import 'package:flutter_test/flutter_test.dart';
+import 'package:mocktail/mocktail.dart';
 
 import '../../../mocks/mock_night_mode_service.dart';
 import '../../../mocks/mock_settings_repository.dart';

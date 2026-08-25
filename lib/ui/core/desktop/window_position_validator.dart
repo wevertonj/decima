@@ -1,28 +1,19 @@
 import 'dart:math' as math;
 import 'dart:ui';
 
-import 'package:screen_retriever/screen_retriever.dart';
-
 import 'package:decima/domain/entities/window_position.dart';
 import 'package:decima/ui/core/desktop/desktop_window_config.dart';
+import 'package:screen_retriever/screen_retriever.dart';
 
 /// Largura mínima da title bar que precisa continuar visível para a janela
 /// ser considerada alcançável — o bastante para arrastá-la de volta.
 const double minGrabWidth = 80.0;
 
-/// True quando a janela posicionada em [position] ainda pode ser alcançada
-/// pelo mouse nos [displays] atuais.
-///
-/// O critério é a **title bar**: é por ela que a janela se move, então basta
-/// que uma fatia dela — [minGrabWidth] × [titleBarHeight] de área — esteja
-/// dentro da área útil de algum monitor. Áreas são **somadas** entre os
-/// displays, para que uma janela repartida entre dois monitores adjacentes
-/// continue válida.
-///
-/// Devolve false para posição corrompida (`NaN`/infinito), lista de displays
-/// vazia, monitor desconectado, e mudança de resolução ou de DPI que tenha
-/// deixado a janela fora da área visível. Em todos esses casos o chamador
-/// abre a janela centralizada.
+/// `true` quando a janela em [position] ainda pode ser alcançada pelo
+/// mouse nos [displays] atuais: uma fatia de [minGrabWidth] ×
+/// [titleBarHeight] da title bar visível, **somada** entre os displays.
+/// `false` (→ o chamador centraliza) para posição não-finita, lista vazia
+/// ou janela fora da área visível.
 bool isWindowPositionReachable({
   required WindowPosition position,
   required List<Display> displays,
@@ -49,16 +40,11 @@ bool isWindowPositionReachable({
   return false;
 }
 
-/// True quando [position] merece ser gravada como a última posição da janela.
-///
-/// No Wayland o cliente não conhece a própria posição — o protocolo não expõe
-/// coordenadas globais, e `getPosition()` devolve sempre a origem. Gravar isso
-/// faria a janela reabrir encostada no canto superior esquerdo em vez de
-/// centralizada, ou seja, pior do que não lembrar nada. Em Linux a origem
-/// exata é então tratada como "desconhecida"; o custo do falso negativo no X11
-/// (janela realmente encostada no canto) é abrir centralizada na próxima vez.
-///
-/// [isLinux] é injetado — ver `PlatformInfo.isLinux`.
+/// `true` quando [position] merece ser gravada como última posição da
+/// janela. No Linux a origem exata é tratada como "desconhecida" — no
+/// Wayland `getPosition()` devolve sempre a origem (rationale em
+/// `docs/fundacao/arquitetura.md` § Memória da posição da janela).
+/// [isLinux] é injetado.
 bool isWindowPositionStorable({
   required WindowPosition position,
   required bool isLinux,

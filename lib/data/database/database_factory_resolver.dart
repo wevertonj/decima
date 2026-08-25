@@ -1,8 +1,7 @@
+import 'package:decima/utils/platform_info.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:sqflite/sqflite.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
-
-import 'package:decima/utils/platform_info.dart';
 
 /// Resolve a [DatabaseFactory] adequada à plataforma.
 ///

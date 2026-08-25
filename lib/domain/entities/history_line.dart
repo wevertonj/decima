@@ -1,4 +1,4 @@
-/// A single calculation line within a history session.
+/// Uma linha de cálculo dentro de uma sessão do histórico.
 class HistoryLine {
   final String expression;
   final String result;

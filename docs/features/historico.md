@@ -98,6 +98,6 @@ A UI nunca acessa o banco diretamente.
   - Resultado (`= valor`)
   - Data/hora inteligente: hora (hoje), "Yesterday, HH:mm" (ontem), "DD/MM/YYYY, HH:mm" (outros)
 - Favorito: `IconButton` com `AnimatedSwitcher` + `ScaleTransition` (200ms) entre `star_outline_rounded` e `star_rounded`
-- Long press (`InkWell.onLongPress`) ou clique com o botão direito (`GestureDetector.onSecondaryTap` envolvendo o `InkWell`, que só reconhece o botão primário) abre `AlertDialog` para renomear (campo de texto, submit via teclado ou botão)
+- Long press (`InkWell.onLongPress`) ou clique com o botão direito (`GestureDetector.onSecondaryTap` envolvendo o `InkWell`, que só reconhece o botão primário) abre o `RenameEntryDialog` (`ui/history/widgets/rename_entry_dialog.dart`, Etapa 22) para renomear — campo de texto, submit via teclado ou botão; devolve o texto ao salvar (vazio limpa o nome) e `null` ao cancelar
 - Botão de limpar (🗑) na AppBar com `AlertDialog` de confirmação (Cancel/Delete)
-- Animação staggered de entrada: cada item anima com slide + fade (300ms, `Curves.easeOutCubic`) com delay progressivo (40ms × index, max 10)
+- Animação staggered de entrada: cada item é envolvido pelo `AnimatedListItem` (`ui/history/widgets/animated_list_item.dart`, Etapa 22) — slide + fade (300ms, `Curves.easeOutCubic`) com delay progressivo (40ms × index, max 10)
