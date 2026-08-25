@@ -74,9 +74,11 @@ class FlatSegmentedControl<T> extends StatelessWidget {
                   child: Container(
                     // Transparente para a área de toque preencher o espaço.
                     color: Colors.transparent,
+                    // Padding horizontal enxuto: rótulos traduzidos ("Sistema",
+                    // "Oscuro") estouram o segmento em janelas estreitas.
                     padding: EdgeInsets.symmetric(
                       vertical: AppLayout.padding.small,
-                      horizontal: AppLayout.padding.medium,
+                      horizontal: AppLayout.padding.small,
                     ),
                     child: Center(
                       child: AnimatedDefaultTextStyle(

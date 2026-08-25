@@ -10,6 +10,7 @@ extension PumpApp on WidgetTester {
     ThemeData? theme,
     ThemeData? darkTheme,
     ThemeMode themeMode = ThemeMode.dark,
+    Locale? locale,
   }) async {
     await pumpWidget(
       MaterialApp(
@@ -17,6 +18,7 @@ extension PumpApp on WidgetTester {
         darkTheme:
             darkTheme ?? AppTheme.dark(seedColor: AppColors.defaultSeedColor),
         themeMode: themeMode,
+        locale: locale,
         localizationsDelegates: AppLocalizations.localizationsDelegates,
         supportedLocales: AppLocalizations.supportedLocales,
         home: widget,

@@ -42,8 +42,17 @@ class ThemeModeSelector extends StatelessWidget {
         }
 
         return Row(
+          mainAxisSize: MainAxisSize.min,
           mainAxisAlignment: MainAxisAlignment.center,
-          children: [Icon(icon), const SizedBox(width: 4), Text(label)],
+          children: [
+            Icon(icon),
+            const SizedBox(width: 4),
+            // Flexible + ellipsis: salvaguarda para rótulos longos em
+            // qualquer idioma.
+            Flexible(
+              child: Text(label, maxLines: 1, overflow: TextOverflow.ellipsis),
+            ),
+          ],
         );
       },
     );
