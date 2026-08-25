@@ -2050,3 +2050,41 @@ Quarta etapa do ciclo de refatoração 19–23 (sem mudança de comportamento ob
 - `flutter analyze` — zero issues; `dart format` — limpo
 - `flutter test` — 780 testes, 100% verde
 - `dart run tool/check_file_length.dart` — ✅ sem violações e sem allowlist
+
+---
+
+## [Concluída] Etapa 23 — Comentários → Documentação e revisão SOLID final
+
+Quinta e última etapa do ciclo de refatoração 19–23 (sem mudança de comportamento observável). Aplica a política de comentários da Etapa 19 a todo o código e fecha o ciclo com a revisão SOLID e a varredura de dead code.
+
+### Triagem de comentários (`lib/`: 941 → 754 linhas, −20%)
+
+- Prioridade executada por densidade: `calculator_view_model.dart` (116), `expression_editor.dart` (90), `expression_composer.dart` (70), `paste_input_parser.dart` (51), `window_close_handler.dart` (49), `session_recorder.dart` (48), `cursor_controller.dart` (41), `animated_input_display.dart` (39), `keyboard_shortcuts.dart` (38), `window_position.dart` (29) + cauda longa (~40 arquivos)
+- **Manter**: contratos de API pública encurtados a 1–3 linhas; inline só para invariante local (reancoragem do cursor por dígitos-à-direita, merge de blocos no backspace, geração de sessão, eco do `onWindowClose` no Windows)
+- **Migrar**: nenhum fato precisou de seção nova — a auditoria confirmou que todos os rationales removidos já tinham cobertura em `docs/` (flush/regra do número solto, fila de toques, colar recalculado, camadas dos atalhos, `destroy()` por plataforma, regra Wayland da posição); comentários longos viraram resumo com ponteiro para o doc (`WindowManagerCloseBridge.destroy` → arquitetura.md § Infra de Desktop, `isWindowPositionStorable` → § Memória da posição da janela)
+- **Apagar**: narração do óbvio (banners estruturais de build, "Favorite toggle", "Load more button", etc.)
+- **Idioma**: 100% pt-BR em `lib/` e `test/` — em `test/`, 104 comentários traduzidos e 33 apagados em 16 arquivos (336 → 303 linhas); os outros 18 arquivos com comentários já estavam conformes
+
+### Consistência e SOLID
+
+- `ui/core/desktop/window_position.dart` → **`window_position_validator.dart`** (+ teste renomeado): fim da colisão com a entity `domain/entities/window_position.dart`
+- Fronteiras de camada verificadas por varredura de imports: ViewModels só importam `foundation.dart`; `domain/` não importa Flutter/`data/`/`ui/`; `data/` não importa `ui/`; controllers da calculadora sem Flutter; única dependência de `utils/` é o enum `DecimalSeparator` no `NumberFormatter` (permitida pela regra de classificação)
+- `CalculatorContextMenu._clipboardHasText` — wrapper de uma linha inlined no chamador
+- `DesktopShell.isDesktop` **mantido**: alias fino de `PlatformInfo.isDesktop`, mas é API usada por `main.dart` e pelos testes de plataforma
+
+### Dead code
+
+- **Removidos**: `lib/domain/enums/operation_type.dart` (+ `operation_type_test.dart`) — legado da Etapa 2, nenhuma referência em `lib/` desde a Etapa 3; `AppColors.lightSurface` — nenhuma referência nem em teste. Exemplo de enum em `padroes-codigo.md` e árvore de `arquitetura.md` atualizados
+- **Decisão registrada — mantidos como costuras de observabilidade** (usados apenas pela suíte; removê-los descartaria cenários, contra a regra do ciclo): `CalculatorViewModel.{decimalSeparator, expression, currentOperator, timelineEntries, maxVisibleEntries}`, `HistoryViewModel.deleteEntry`, `Add2Engine.{rawDigits, doubleValue}`, `AppColors.defaultSeedColor`, `AppDatabase.close`, `HistoryRepository.{getAll, getById}`
+
+### Documentação sincronizada
+
+- `calculadora.md`: gotchas e seção do cursor atualizados para os nomes pós-Etapa 21 (`SessionRecorder.persist`/`pendingWrite`, `CursorController`, `ExpressionEditor.insertParenthesis`, tokens do `ExpressionComposer`)
+- `arquitetura.md` e `empacotamento-linux.md`: referências ao arquivo renomeado; árvore de enums real (`ThemeModeOption`, `DecimalSeparator`)
+
+### Estado final
+
+- `flutter analyze` — zero issues; `dart format` — limpo
+- `flutter test` — 774 testes, 100% verde (−6 do enum removido)
+- `dart run tool/check_file_length.dart` — ✅ sem violações
+- **Ciclo de refatoração 19–23 encerrado**: nenhum arquivo acima de 600 linhas, documentação como fonte única do "porquê", comentários mínimos e intencionais em pt-BR

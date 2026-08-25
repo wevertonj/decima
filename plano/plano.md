@@ -1010,6 +1010,8 @@ O único bug novo da revisão — a moldura verde que o Android desenhava na bor
 
 **Entregável**: Código autoexplicativo com comentários mínimos e intencionais, documentação como fonte única do "porquê", nenhum arquivo acima de 600 linhas, projeto pronto para manutenção de longo prazo.
 
+**Status (2026-08-24)**: entregue integralmente. Triagem aplicada a todo `lib/` (941 → 754 linhas de comentário fora do l10n, −20%) e `test/` (336 → 303): contratos encurtados a 1–3 linhas, narração do óbvio apagada, rationale longo condensado com ponteiro para o doc — nenhum fato se perdeu, pois todos já tinham cobertura em `docs/` (flush, fila de toques, colar recalculado, reancoragem do cursor, `destroy()` do Windows, regra Wayland). Idioma 100% pt-BR em `lib/` e `test/` (104 comentários de teste traduzidos, 33 apagados). `window_position.dart` → `window_position_validator.dart` (colisão com a entity resolvida). Revisão SOLID: fronteiras de camada limpas por varredura de imports; indireção `_clipboardHasText` inlined. Dead code: `OperationType` (+ teste) e `AppColors.lightSurface` removidos; membros usados só por testes **mantidos** como costuras de observabilidade (regra do ciclo: cenários nunca descartados). 774 testes verdes, zero warnings, format limpo, verificador sem exceções. **Etapa concluída — ciclo de refatoração 19–23 encerrado.**
+
 ---
 
 ## Diagrama de Dependências entre Etapas

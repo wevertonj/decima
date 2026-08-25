@@ -1067,22 +1067,22 @@ Sem Apple Developer Program pago não há caminho de distribuição para iOS. Et
 
 ---
 
-## Etapa 23 — Comentários → Documentação e revisão SOLID final
+## Etapa 23 — Comentários → Documentação e revisão SOLID final ✅
 
 ### Triagem de comentários
 
-- [ ] Triar arquivo a arquivo (prioridade: `paste_input_parser.dart`, `window_close_handler.dart`, `animated_input_display.dart`, `keyboard_shortcuts.dart`, `window_position.dart`, restante do ViewModel): manter / migrar / apagar
-- [ ] Migrar cada rationale para o doc correspondente (`calculadora.md`, `configuracoes.md`, `arquitetura.md`) — nenhum fato removido do código pode se perder
-- [ ] Uniformizar o idioma dos comentários sobreviventes conforme a decisão da Etapa 19
+- [x] Triar arquivo a arquivo (prioridade: `paste_input_parser.dart`, `window_close_handler.dart`, `animated_input_display.dart`, `keyboard_shortcuts.dart`, `window_position.dart`, restante do ViewModel): manter / migrar / apagar — `lib/` (fora l10n) de 941 para 754 linhas de comentário (−20%); `test/` de 336 para 303 (33 narrações apagadas)
+- [x] Migrar cada rationale para o doc correspondente (`calculadora.md`, `configuracoes.md`, `arquitetura.md`) — todos os rationales removidos já tinham cobertura em `docs/` (flush/número solto, fila de toques, colar recalculado, reancoragem do cursor, camadas dos atalhos, `destroy()` do Windows, regra Wayland); comentários longos viraram resumo de 1–3 linhas com ponteiro para o doc
+- [x] Uniformizar o idioma dos comentários sobreviventes conforme a decisão da Etapa 19 — pt-BR em 100% de `lib/` e `test/` (104 comentários de teste traduzidos)
 
 ### Consistência e SOLID
 
-- [ ] Renomear `ui/core/desktop/window_position.dart` → `window_position_validator.dart` (colisão com a entity)
-- [ ] Revisão SOLID classe a classe (responsabilidade nomeável, dependências por abstração onde faz sentido, interfaces mínimas)
-- [ ] Varredura de dead code
+- [x] Renomear `ui/core/desktop/window_position.dart` → `window_position_validator.dart` (colisão com a entity) — teste renomeado junto; referências em `docs/` atualizadas
+- [x] Revisão SOLID classe a classe (responsabilidade nomeável, dependências por abstração onde faz sentido, interfaces mínimas) — fronteiras de camada verificadas por varredura de imports (ViewModels só `foundation.dart`; `domain/` sem Flutter/data/ui; `data/` sem ui); indireção `_clipboardHasText` do menu de contexto inlined
+- [x] Varredura de dead code — removidos `OperationType` (+ teste, legado da Etapa 2 sem uso desde a Etapa 3) e `AppColors.lightSurface`; membros usados só por testes mantidos como costuras de observabilidade (decisão registrada no changelog)
 
 ### Fechamento
 
-- [ ] `docs/` sincronizado com o estado final do código
-- [ ] `flutter test` verde, `flutter analyze` zero warnings, `dart format` limpo, cobertura ≥ baseline, verificador sem exceções
-- [ ] Registrar a etapa em `plano/plano.md`, `plano/tarefas.md` e `plano/changelog.md`
+- [x] `docs/` sincronizado com o estado final do código — nomes pós-Etapa 21 nos gotchas de `calculadora.md` (`SessionRecorder.persist`, `CursorController`, `ExpressionEditor.insertParenthesis`), árvore e exemplo de enum atualizados
+- [x] `flutter test` verde (774 testes), `flutter analyze` zero warnings, `dart format` limpo, cobertura ≥ baseline (via CI na `dev`), verificador sem exceções
+- [x] Registrar a etapa em `plano/plano.md`, `plano/tarefas.md` e `plano/changelog.md`
