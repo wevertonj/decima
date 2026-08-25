@@ -181,7 +181,7 @@ void main() {
 
         expect(model.id, 1);
         expect(model.linesJson, isNotEmpty);
-        // Verify the JSON round-trip
+        // Verifica o round-trip do JSON
         final decoded = jsonDecode(model.linesJson) as List;
         expect(decoded, hasLength(1));
         expect(decoded.first['expression'], '12.50 + 3.00');

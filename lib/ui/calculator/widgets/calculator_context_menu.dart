@@ -3,18 +3,14 @@ import 'package:decima/ui/calculator/calculator_view_model.dart';
 import 'package:decima/utils/extensions/l10n_extension.dart';
 import 'package:flutter/material.dart';
 
-/// Long-press context menu attached to the calculator display. Exposes
-/// copy/paste actions whose visibility is driven by the [viewModel] state.
-///
-/// The menu animates in via a smooth fade + scale and dismisses on outside
-/// tap, item selection, or back gesture.
+/// Menu de contexto do display (toque longo): ações de copiar/colar com
+/// visibilidade dirigida pelo estado do `CalculatorViewModel`.
 class CalculatorContextMenu {
   CalculatorContextMenu._();
 
-  /// Opens the context menu anchored at [position] (global coordinates).
-  ///
-  /// Returns once the menu closes. Snackbars for paste failures are shown
-  /// using the closest [ScaffoldMessenger] to [context].
+  /// Abre o menu ancorado em [position] (coordenadas globais) e retorna
+  /// quando ele fecha. Falha de colagem vira snackbar no
+  /// [ScaffoldMessenger] mais próximo de [context].
   static Future<void> show({
     required BuildContext context,
     required CalculatorViewModel viewModel,
@@ -34,7 +30,7 @@ class CalculatorContextMenu {
     final l10n = context.l10n;
     final colors = Theme.of(context).colorScheme;
 
-    final canPaste = await _clipboardHasText(viewModel);
+    final canPaste = await viewModel.clipboardHasText();
 
     if (!context.mounted) return;
 
@@ -100,13 +96,6 @@ class CalculatorContextMenu {
         final ok = await viewModel.pasteFromClipboard();
         if (!ok) _showSnack(messenger, l10n.pasteInvalid);
     }
-  }
-
-  static Future<bool> _clipboardHasText(CalculatorViewModel viewModel) async {
-    // Avoid synchronous platform reads during build by deferring the menu
-    // construction to whoever calls `show`. The menu enables paste based on
-    // a quick clipboard probe via the view model — null means empty.
-    return viewModel.clipboardHasText();
   }
 
   static void _showSnack(ScaffoldMessengerState? messenger, String message) {

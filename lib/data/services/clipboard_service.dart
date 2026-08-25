@@ -1,11 +1,10 @@
-/// Abstraction over the platform clipboard. Allows the calculator to copy
-/// and paste text without depending directly on Flutter's `Clipboard` class
-/// (and to be mocked in tests).
+/// Abstração da área de transferência da plataforma: a calculadora copia
+/// e cola sem depender do `Clipboard` do Flutter (e é mockável em teste).
 abstract class ClipboardService {
-  /// Writes [text] to the system clipboard.
+  /// Escreve [text] na área de transferência do sistema.
   Future<void> copyText(String text);
 
-  /// Reads text from the system clipboard. Returns null when the clipboard
-  /// is empty or contains non-text data.
+  /// Lê o texto da área de transferência. Retorna `null` quando vazia ou
+  /// com conteúdo não textual.
   Future<String?> readText();
 }

@@ -18,13 +18,12 @@ class AppColors {
 
   static const Color defaultSeedColor = Color(0xFF005CEE);
 
-  // Dark theme surface colors
+  // Superfícies do tema escuro
   static const Color darkBackground = Color(0xFF181818);
   static const Color darkSurface = Color(0xFF212121);
   static const Color darkSurfaceContainer = Color(0xFF2D2D2D);
 
-  // Light theme surface colors
+  // Superfícies do tema claro
   static const Color lightBackground = Color(0xFFF4F4F5);
-  static const Color lightSurface = Color(0xFFFFFFFF);
   static const Color lightSurfaceContainer = Color(0xFFE8E8EA);
 }

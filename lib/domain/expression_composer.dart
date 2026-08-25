@@ -14,23 +14,21 @@ class ExpressionComposer {
 
   final Add2Engine _engine;
 
-  /// Committed tokens of the in-progress expression. Each entry is one of:
-  /// a numeric value (optionally suffixed with `%`), an operator
-  /// (`+`, `−`, `×`, `÷`), or a parenthesis (`(`, `)`).
+  /// Tokens confirmados: valor numérico (com `%` opcional), operador
+  /// (`+ − × ÷`) ou parêntese.
   final List<String> _committed = [];
 
-  /// Operator typed but not yet committed (waiting for the right-hand side).
+  /// Operador digitado ainda não confirmado (aguardando o lado direito).
   String? _pendingOperator;
 
-  /// True while the value held by [_engine] represents the operand
-  /// currently being typed (uncommitted).
+  /// `true` enquanto o valor do [_engine] é o operando em digitação.
   bool _engineActive = false;
 
-  /// Indicates the engine value is a stale result (post `=` or session load)
-  /// and the next digit input should reset the engine to start fresh.
+  /// Valor do engine é resultado antigo (pós-`=` ou sessão carregada); o
+  /// próximo dígito reseta o engine e começa número novo.
   bool _shouldResetOnInput = false;
 
-  /// Marks the active engine value as a literal percentage operand.
+  /// Marca o operando ativo como porcentagem literal.
   bool _isPercentage = false;
 
   // ----- Queries --------------------------------------------------------
@@ -46,7 +44,7 @@ class ExpressionComposer {
 
   bool get shouldResetOnInput => _shouldResetOnInput;
 
-  /// Number of unmatched opening parentheses in the committed tokens.
+  /// Parênteses abertos sem fechamento nos tokens confirmados.
   int get openParenCount {
     var n = 0;
     for (final t in _committed) {
@@ -60,8 +58,8 @@ class ExpressionComposer {
     return n;
   }
 
-  /// True when there is anything typed: committed tokens, an active
-  /// operand, or a pending operator.
+  /// `true` quando há algo digitado: tokens confirmados, operando ativo ou
+  /// operador pendente.
   bool get hasExpression {
     if (_committed.isNotEmpty) return true;
     if (_engineActive) return true;
@@ -152,8 +150,8 @@ class ExpressionComposer {
   }
 
   bool _canInputDigit() {
-    // After ')' with no pending operator, digits are ignored — the user must
-    // press an operator first (no implicit multiplication).
+    // Após `)` sem operador pendente, dígitos são ignorados — não há
+    // multiplicação implícita.
     if (!_engineActive && _pendingOperator == null && lastIsClosingParen) {
       return false;
     }
@@ -191,8 +189,8 @@ class ExpressionComposer {
       _committed.add(engineToken());
       _engineActive = false;
     } else if (_pendingOperator == null && _committed.isEmpty) {
-      // No content yet — commit current engine value (e.g., 0.00) so the
-      // expression starts with an operand.
+      // Sem conteúdo ainda — confirma o valor do engine (ex.: 0.00) para a
+      // expressão começar com um operando.
       _committed.add(engineToken());
     }
 
@@ -214,11 +212,9 @@ class ExpressionComposer {
     return true;
   }
 
-  /// Toggle insertion of an opening or closing parenthesis depending on
-  /// the current state. Inserts `(` when at start, after an operator, or
-  /// after another `(`. Inserts `)` when there is at least one unmatched
-  /// `(` and the last token is a complete operand. Devolve `false` quando
-  /// nenhum dos dois é possível.
+  /// Insere `(` no início, após operador ou após outro `(`; insere `)` com
+  /// `(` pendente e operando completo no fim. Devolve `false` quando nenhum
+  /// dos dois é possível.
   bool inputParenthesis() {
     if (_canCloseParen()) {
       _insertCloseParen();
@@ -284,20 +280,20 @@ class ExpressionComposer {
   /// Apaga um passo da expressão (dígito, `%`, operador ou token), na ordem
   /// inversa da digitação. Devolve `false` quando não há o que apagar.
   bool backspace() {
-    // Drop the literal `%` marker first if active.
+    // O marcador `%` ativo cai primeiro.
     if (_isPercentage) {
       _isPercentage = false;
 
       return true;
     }
 
-    // Pending operator with no new digits — remove the operator first.
+    // Operador pendente sem dígito novo — remove o operador primeiro.
     if (_pendingOperator != null && !_engineActive) {
       _pendingOperator = null;
       if (_committed.isNotEmpty) {
         final last = _committed.last;
-        // Keep structural expression tokens intact when the trailing
-        // operator is deleted after a closed group, e.g. "( ... ) +".
+        // Após grupo fechado ("( ... ) +"), os tokens estruturais ficam
+        // intactos quando o operador é apagado.
         if (last != '(' && last != ')' && !isOperator(last)) {
           _committed.removeLast();
           restoreEngineFromToken(last);
@@ -311,10 +307,9 @@ class ExpressionComposer {
       _engine.deleteLastDigit();
       if (_engine.isEmpty) {
         _engineActive = false;
-        // If we just emptied the right-hand operand AND there is no
-        // pending operator, promote a dangling committed operator back
-        // to `_pendingOperator`. Otherwise the display would show an
-        // orphan "0.00" after the operator.
+        // Operando direito esvaziado sem operador pendente: promove o
+        // operador confirmado de volta a `_pendingOperator` — senão o
+        // display mostraria um "0.00" órfão após o operador.
         if (_pendingOperator == null &&
             _committed.isNotEmpty &&
             isOperator(_committed.last)) {
@@ -325,12 +320,12 @@ class ExpressionComposer {
       return true;
     }
 
-    // Engine empty — backspace into committed tokens.
+    // Engine vazio — o backspace consome os tokens confirmados.
     if (_committed.isNotEmpty) {
       final last = _committed.removeLast();
       if (last == ')') {
-        // Removing a closing paren: restore the operand just inside the
-        // group (if any) to the engine so the user can keep editing it.
+        // Ao remover `)`, o operando interno do grupo volta ao engine para
+        // o usuário continuar editando.
         if (_committed.isNotEmpty && isValueToken(_committed.last)) {
           final value = _committed.removeLast();
           restoreEngineFromToken(value);
@@ -340,7 +335,7 @@ class ExpressionComposer {
           _isPercentage = false;
         }
       } else if (last == '(') {
-        // Opening paren removed structurally — engine stays empty.
+        // `(` removido estruturalmente — engine permanece vazio.
         _engine.reset();
         _engineActive = false;
         _isPercentage = false;
@@ -348,7 +343,7 @@ class ExpressionComposer {
         if (_committed.isNotEmpty) {
           final value = _committed.removeLast();
           if (value == '(' || value == ')') {
-            // Don't pop a paren when removing an operator — put it back.
+            // Remoção de operador não consome parêntese — devolve-o.
             _committed.add(value);
             _engine.reset();
             _engineActive = false;
@@ -367,9 +362,9 @@ class ExpressionComposer {
     return false;
   }
 
-  /// Restores the engine state (and the percentage flag) from a committed
-  /// token, which may carry a literal `%` suffix. Operators and parens are
-  /// not restorable as engine values; the caller is responsible for filtering.
+  /// Restaura o engine (e a flag de porcentagem) a partir de um token
+  /// confirmado, que pode carregar sufixo `%`. Operadores e parênteses não
+  /// são restauráveis — o chamador filtra.
   void restoreEngineFromToken(String token) {
     if (token == '(' || token == ')') {
       _engine.reset();
@@ -390,9 +385,8 @@ class ExpressionComposer {
     _engineActive = true;
   }
 
-  /// Distributes pasted expression tokens across the committed list, the
-  /// pending operator and the engine, mirroring how the same expression
-  /// would look had the user typed it.
+  /// Distribui tokens colados entre confirmados, operador pendente e
+  /// engine, espelhando como a expressão ficaria se tivesse sido digitada.
   void restoreInputTokens(List<String> tokens) {
     final last = tokens.last;
     if (isOperator(last)) {
@@ -401,10 +395,9 @@ class ExpressionComposer {
     } else if (last == ')') {
       _committed.addAll(tokens);
     } else {
-      // Last token is a numeric operand (possibly suffixed with `%`).
-      // If the token before it is an operator, promote that operator to
-      // `_pendingOperator` so the engine value represents the right-hand
-      // side of an in-progress binary expression (enables previewResult).
+      // Último token é operando numérico. Operador logo antes vira
+      // `_pendingOperator`, deixando o engine como lado direito da
+      // expressão em andamento (habilita a prévia de resultado).
       var rest = tokens.sublist(0, tokens.length - 1);
       if (rest.isNotEmpty && isOperator(rest.last)) {
         _pendingOperator = rest.last;

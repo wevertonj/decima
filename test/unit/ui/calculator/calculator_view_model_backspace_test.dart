@@ -77,7 +77,7 @@ void main() {
           viewModel.inputDigit('0');
           viewModel.backspace();
 
-          // 100.00 + 0.30 preview
+          // preview de 100.00 + 0.30
           expect(viewModel.previewResult, isNotNull);
         },
       );
@@ -101,7 +101,7 @@ void main() {
         viewModel.inputDigit('3');
         viewModel.inputDigit('0');
         viewModel.inputDigit('0');
-        viewModel.inputParenthesis(); // ) → committed: ( 12.50 + 3.00 )
+        viewModel.inputParenthesis(); // ) → consolidado: ( 12.50 + 3.00 )
 
         expect(viewModel.fullDisplayText, '( 12.50 + 3.00 )');
         expect(viewModel.openParenCount, 0);
@@ -177,11 +177,11 @@ void main() {
         viewModel.backspace();
         viewModel.backspace();
 
-        // Remove trailing + and then )
+        // Remove o + final e depois o )
         viewModel.backspace();
         viewModel.backspace();
 
-        // Remove 2.00 and operator ×
+        // Remove 2.00 e o operador ×
         viewModel.backspace();
         viewModel.backspace();
         viewModel.backspace();
@@ -299,13 +299,13 @@ void main() {
             '( 10.00 × 50.00 ) + 30.00 + ( 48.00 ÷ ( 18.00 × 1.50% ) ) +',
           );
 
-          viewModel.backspace(); // remove trailing +
+          viewModel.backspace(); // remove o + final
           expect(
             viewModel.fullDisplayText,
             '( 10.00 × 50.00 ) + 30.00 + ( 48.00 ÷ ( 18.00 × 1.50% ) )',
           );
 
-          viewModel.backspace(); // remove only the last )
+          viewModel.backspace(); // remove apenas o último )
           expect(
             viewModel.fullDisplayText,
             '( 10.00 × 50.00 ) + 30.00 + ( 48.00 ÷ ( 18.00 × 1.50% )',
@@ -326,7 +326,7 @@ void main() {
           viewModel.inputParenthesis(); // ) → ( 12.50 )
 
           viewModel.backspace(); // remove )
-          viewModel.backspace(); // remove last digit of 12.50
+          viewModel.backspace(); // remove o último dígito de 12.50
 
           expect(viewModel.fullDisplayText, '( 1.25');
         },
@@ -344,9 +344,9 @@ void main() {
         viewModel.inputParenthesis(); // ) → ( 3.26 − 0.04 )
 
         viewModel.backspace(); // remove )
-        viewModel.backspace(); // 0.04 → 0.00 (empty)
+        viewModel.backspace(); // 0.04 → 0.00 (vazio)
 
-        // Display must not include a trailing 0.00 ghost value.
+        // O display não deve incluir um 0.00 fantasma no final.
         expect(viewModel.fullDisplayText, '( 3.26 −');
         expect(viewModel.currentOperator, '−');
       });
@@ -358,31 +358,31 @@ void main() {
         viewModel.inputDigit('0');
         viewModel.setOperator('+');
         viewModel.inputDigit('5');
-        viewModel.setOperator('−'); // commits '+' and '0.05', pending = '−'
+        viewModel.setOperator('−'); // consolida '+' e '0.05', pendente = '−'
         viewModel.inputDigit('2');
-        // committed: [1.00, +, 0.05], pendingOp: −, engine: 0.02
-        viewModel.backspace(); // 0.02 → 0.00 (empty)
+        // consolidados: [1.00, +, 0.05], pendingOp: −, engine: 0.02
+        viewModel.backspace(); // 0.02 → 0.00 (vazio)
 
-        // After clearing the active operand, we should still display the
-        // pending operator without an extra 0.00 token.
+        // Após limpar o operando ativo, o operador pendente ainda deve
+        // aparecer sem um token 0.00 extra.
         expect(viewModel.fullDisplayText, '1.00 + 0.05 −');
       });
     });
 
     group('action queue', () {
       test('should process 50 rapid actions without dropping any', () {
-        // Arrange — count notifications to verify all actions were processed.
+        // Arrange — conta as notificações para verificar que nenhuma ação se perdeu.
         var notifications = 0;
         viewModel.addListener(() => notifications++);
 
-        // Act — fire 50 actions in burst (digit/operator alternated to avoid
-        // Add2Engine integer overflow with a single huge number).
+        // Act — dispara 50 ações em burst (dígito/operador alternados para
+        // evitar overflow de inteiro no Add2Engine com um único número enorme).
         for (var i = 0; i < 25; i++) {
           viewModel.inputDigit('1');
           viewModel.setOperator('+');
         }
 
-        // Assert — every action triggered a notification (no drops).
+        // Assert — cada ação disparou uma notificação (nenhuma descartada).
         expect(notifications, 50);
       });
 
@@ -392,7 +392,7 @@ void main() {
           () => mockHistoryRepository.add(any()),
         ).thenAnswer((_) async => HistoryFixtures.entry1);
 
-        // Act — simulate user typing "12 + 34 ="
+        // Act — simula o usuário digitando "12 + 34 ="
         viewModel.inputDigit('1');
         viewModel.inputDigit('2');
         viewModel.setOperator('+');
@@ -400,7 +400,7 @@ void main() {
         viewModel.inputDigit('4');
         viewModel.equals();
 
-        // Assert — final result must reflect the ordered processing
+        // Assert — o resultado final deve refletir o processamento em ordem
         expect(viewModel.timelineEntries, hasLength(1));
         expect(viewModel.timelineEntries.first.expression, '0.12 + 0.34');
         expect(viewModel.timelineEntries.first.result, '0.46');
@@ -409,8 +409,8 @@ void main() {
       test(
         'should enqueue actions triggered during processing (reentrancy)',
         () {
-          // Arrange — listener that re-dispatches an action while the current
-          // one is still being processed (synchronous notifyListeners).
+          // Arrange — listener que redespacha uma ação enquanto a atual
+          // ainda está sendo processada (notifyListeners síncrono).
           var fired = false;
           viewModel.addListener(() {
             if (!fired) {
@@ -422,31 +422,28 @@ void main() {
           // Act
           viewModel.inputDigit('5');
 
-          // Assert — both digits processed in order: '5' then '9'
+          // Assert — os dois dígitos processados em ordem: '5' depois '9'
           expect(viewModel.currentDisplayValue, '0.59');
         },
       );
 
-      test(
-        'should not drop actions when 50 operators+digits fire in burst',
-        () {
-          // Arrange
-          when(
-            () => mockHistoryRepository.add(any()),
-          ).thenAnswer((_) async => HistoryFixtures.entry1);
+      test('should not drop actions when 50 operators+digits fire in burst', () {
+        // Arrange
+        when(
+          () => mockHistoryRepository.add(any()),
+        ).thenAnswer((_) async => HistoryFixtures.entry1);
 
-          // Act — 1 + 1 + 1 + ... 25 times => result should be 0.25
-          for (var i = 0; i < 25; i++) {
-            viewModel.inputDigit('1');
-            if (i < 24) viewModel.setOperator('+');
-          }
-          viewModel.equals();
+        // Act — 1 + 1 + 1 + ... 25 vezes => resultado deve ser 0.25
+        for (var i = 0; i < 25; i++) {
+          viewModel.inputDigit('1');
+          if (i < 24) viewModel.setOperator('+');
+        }
+        viewModel.equals();
 
-          // Assert — exactly one timeline entry; sum is 25 * 0.01 = 0.25
-          expect(viewModel.timelineEntries, hasLength(1));
-          expect(viewModel.timelineEntries.first.result, '0.25');
-        },
-      );
+        // Assert — exatamente uma entrada na timeline; a soma é 25 * 0.01 = 0.25
+        expect(viewModel.timelineEntries, hasLength(1));
+        expect(viewModel.timelineEntries.first.result, '0.25');
+      });
     });
   });
 }

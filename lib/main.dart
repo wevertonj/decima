@@ -9,7 +9,7 @@ import 'package:decima/domain/enums/theme_mode_option.dart';
 import 'package:decima/ui/calculator/calculator_view_model.dart';
 import 'package:decima/ui/core/desktop/desktop_window_initializer.dart';
 import 'package:decima/ui/core/desktop/window_close_handler.dart';
-import 'package:decima/ui/core/desktop/window_position.dart';
+import 'package:decima/ui/core/desktop/window_position_validator.dart';
 import 'package:decima/ui/core/mobile/app_lifecycle_flush_handler.dart';
 import 'package:decima/ui/core/widgets/desktop_shell.dart';
 import 'package:decima/ui/settings/settings_view_model.dart';

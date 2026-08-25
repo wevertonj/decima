@@ -1,12 +1,11 @@
 import 'package:decima/domain/enums/theme_mode_option.dart';
 
-/// Mirrors the app's chosen theme into the native OS-level night mode
-/// (Android 12+ `UiModeManager`), so the next launch's native splash screen
-/// already opens in the correct color even when it differs from the
-/// device's system-wide dark mode setting.
+/// Espelha o tema escolhido no app no modo noturno nativo do SO
+/// (`UiModeManager`, Android 12+), para a splash nativa do próximo launch
+/// já abrir na cor certa mesmo divergindo do dark mode do sistema.
 abstract class NightModeService {
-  /// Resolves [mode] against the current platform brightness (for
-  /// [ThemeModeOption.system]) and syncs the result natively. No-op on
-  /// platforms/OS versions without native support.
+  /// Resolve [mode] contra o brilho atual da plataforma (para
+  /// [ThemeModeOption.system]) e sincroniza o resultado nativamente.
+  /// No-op em plataformas/versões sem suporte nativo.
   Future<void> syncThemeMode(ThemeModeOption mode);
 }

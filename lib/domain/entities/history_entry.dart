@@ -1,10 +1,10 @@
 import 'package:decima/domain/entities/history_line.dart';
 
-/// A history entry representing an entire calculator session.
+/// Entrada do histórico representando uma sessão inteira da calculadora.
 ///
-/// Each session contains one or more [lines], where each line is a
-/// calculation (expression + result) performed sequentially. The [result]
-/// field holds the final result of the last line for quick preview.
+/// Cada sessão contém uma ou mais [lines] — cálculos (expressão +
+/// resultado) feitos em sequência. [result] guarda o resultado final da
+/// última linha, para prévia rápida.
 class HistoryEntry {
   final int? id;
   final List<HistoryLine> lines;
@@ -22,13 +22,13 @@ class HistoryEntry {
     this.isFavorite = false,
   });
 
-  /// Preview expression: the first line's expression, truncated if long.
+  /// Expressão de prévia: a expressão da primeira linha.
   String get previewExpression {
     if (lines.isEmpty) return '';
     return lines.first.expression;
   }
 
-  /// Total number of calculation lines in this session.
+  /// Total de linhas de cálculo desta sessão.
   int get lineCount => lines.length;
 
   HistoryEntry copyWith({

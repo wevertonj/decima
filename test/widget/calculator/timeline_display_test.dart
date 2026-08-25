@@ -222,11 +222,11 @@ void main() {
           ),
         );
 
-        // Past entry
+        // Entrada passada
         expect(find.text('5.00 + 5.00'), findsOneWidget);
         expect(find.text('10.00'), findsOneWidget);
 
-        // Current expression (per-character animated display)
+        // Expressão atual (display animado por caractere)
         final display = tester.widget<AnimatedInputDisplay>(
           find.byType(AnimatedInputDisplay),
         );
@@ -318,7 +318,7 @@ void main() {
           ),
         );
 
-        // Rebuild with short text (simulating clear)
+        // Reconstrói com texto curto (simulando o clear)
         await tester.pumpApp(
           Scaffold(
             body: TimelineDisplay(

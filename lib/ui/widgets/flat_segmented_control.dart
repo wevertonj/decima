@@ -1,8 +1,8 @@
 import 'package:decima/config/theme/app_layout.dart';
 import 'package:flutter/material.dart';
 
-/// A flat, elegant segmented control inspired by One UI.
-/// Uses smooth animations and no harsh borders.
+/// Segmented control plano inspirado no One UI: animações suaves, sem
+/// bordas duras.
 class FlatSegmentedControl<T> extends StatelessWidget {
   final T value;
   final List<T> items;
@@ -22,7 +22,7 @@ class FlatSegmentedControl<T> extends StatelessWidget {
     final colors = Theme.of(context).colorScheme;
     final int selectedIndex = items.indexOf(value);
 
-    // Calculate alignment: -1.0 is far left, 1.0 is far right
+    // Alinhamento: -1.0 = extrema esquerda, 1.0 = extrema direita.
     final double alignmentX = items.length <= 1
         ? 0.0
         : -1.0 + (selectedIndex * 2.0 / (items.length - 1));
@@ -35,7 +35,7 @@ class FlatSegmentedControl<T> extends StatelessWidget {
       padding: EdgeInsets.all(AppLayout.padding.xs),
       child: Stack(
         children: [
-          // The sliding pill background
+          // Pílula de fundo deslizante.
           Positioned.fill(
             child: AnimatedAlign(
               duration: const Duration(milliseconds: 350),
@@ -61,7 +61,6 @@ class FlatSegmentedControl<T> extends StatelessWidget {
               ),
             ),
           ),
-          // The interactive buttons
           Row(
             mainAxisSize: MainAxisSize.min,
             children: items.map((item) {
@@ -73,8 +72,8 @@ class FlatSegmentedControl<T> extends StatelessWidget {
                   },
                   behavior: HitTestBehavior.opaque,
                   child: Container(
-                    color:
-                        Colors.transparent, // Ensures tap area fills the space
+                    // Transparente para a área de toque preencher o espaço.
+                    color: Colors.transparent,
                     padding: EdgeInsets.symmetric(
                       vertical: AppLayout.padding.small,
                       horizontal: AppLayout.padding.medium,

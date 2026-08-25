@@ -7,12 +7,11 @@ import 'package:decima/ui/widgets/flat_segmented_control.dart';
 import 'package:decima/utils/extensions/l10n_extension.dart';
 import 'package:flutter/material.dart';
 
-/// History screen showing a paginated list of saved calculations.
+/// Tela do histórico com a lista paginada de cálculos salvos.
 ///
-/// Supports filtering by favorites, renaming entries via long-press,
-/// toggling favorites, and clearing all history. When an entry is tapped,
-/// it is returned via [Navigator.pop] so the calling page can load the
-/// session — keeping HistoryPage decoupled from CalculatorViewModel (SRP).
+/// Filtro por favoritos, renomear por toque longo e limpar tudo. A entrada
+/// tocada é devolvida via [Navigator.pop] para quem chamou carregar a
+/// sessão — a página não conhece o `CalculatorViewModel`.
 class HistoryPage extends StatefulWidget {
   final HistoryViewModel viewModel;
 
@@ -66,7 +65,6 @@ class _HistoryPageState extends State<HistoryPage> {
       ),
       body: Column(
         children: [
-          // Filter tabs
           Padding(
             padding: EdgeInsets.symmetric(
               horizontal: AppLayout.padding.medium,
@@ -91,7 +89,6 @@ class _HistoryPageState extends State<HistoryPage> {
               },
             ),
           ),
-          // List
           Expanded(child: _buildList(context, vm)),
         ],
       ),
@@ -137,7 +134,6 @@ class _HistoryPageState extends State<HistoryPage> {
       ),
       itemCount: vm.entries.length + (vm.hasMore ? 1 : 0),
       itemBuilder: (context, index) {
-        // Load more button at the end
         if (index == vm.entries.length) {
           return _buildLoadMore(context, vm);
         }

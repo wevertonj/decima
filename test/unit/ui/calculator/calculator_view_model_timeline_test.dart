@@ -59,7 +59,6 @@ void main() {
           () => mockHistoryRepository.add(any()),
         ).thenAnswer((_) async => HistoryFixtures.entry1);
 
-        // First calculation
         viewModel.inputDigit('1');
         viewModel.inputDigit('2');
         viewModel.inputDigit('5');
@@ -78,13 +77,13 @@ void main() {
           () => mockHistoryRepository.add(any()),
         ).thenAnswer((_) async => HistoryFixtures.entry1);
 
-        // First calculation
+        // Primeiro cálculo
         viewModel.inputDigit('1');
         viewModel.setOperator('+');
         viewModel.inputDigit('2');
         viewModel.equals();
 
-        // Second calculation
+        // Segundo cálculo
         viewModel.setOperator('×');
         viewModel.inputDigit('2');
         viewModel.equals();
@@ -117,7 +116,7 @@ void main() {
           () => mockHistoryRepository.add(any()),
         ).thenAnswer((_) async => HistoryFixtures.entry1);
 
-        // Perform many calculations to exceed visible limit
+        // Executa muitos cálculos para exceder o limite visível
         for (var i = 0; i < 25; i++) {
           viewModel.inputDigit('1');
           viewModel.setOperator('+');

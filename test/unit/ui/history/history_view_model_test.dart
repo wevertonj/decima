@@ -124,12 +124,11 @@ void main() {
 
         await viewModel.loadEntries();
 
-        // At least 2 notifications: loading start + loading end
+        // Ao menos 2 notificações: início e fim do carregamento
         expect(notifyCount, greaterThanOrEqualTo(2));
       });
 
       test('should reset pagination when loading entries', () async {
-        // Load first page
         final firstPage = List.generate(
           20,
           (i) => HistoryEntry(
@@ -149,7 +148,6 @@ void main() {
         await viewModel.loadEntries();
         expect(viewModel.entries.length, 20);
 
-        // Reload from scratch
         final newEntries = [HistoryFixtures.entry1];
         when(
           () => mockRepository.getPaginated(limit: 20, offset: 0),
@@ -162,7 +160,6 @@ void main() {
 
     group('loadMore', () {
       test('should load next page and append to entries', () async {
-        // First page
         final firstPage = List.generate(
           20,
           (i) => HistoryEntry(
@@ -181,7 +178,6 @@ void main() {
 
         await viewModel.loadEntries();
 
-        // Second page
         final secondPage = [
           HistoryEntry(
             id: 21,
@@ -239,7 +235,6 @@ void main() {
 
         await viewModel.loadMore();
 
-        // Should not have called getPaginated again with offset 1
         verifyNever(() => mockRepository.getPaginated(limit: 20, offset: 1));
       });
 
@@ -265,17 +260,15 @@ void main() {
         when(
           () => mockRepository.getPaginated(limit: 20, offset: 20),
         ).thenAnswer((_) async {
-          // Simulate slow load — loadMore called again during this
+          // Simula carregamento lento — loadMore reentra nesse meio-tempo
           return [HistoryFixtures.entry1];
         });
 
-        // Start loading and immediately try again
         final future1 = viewModel.loadMore();
         final future2 = viewModel.loadMore();
 
         await Future.wait([future1, future2]);
 
-        // getPaginated with offset 20 should only have been called once
         verify(
           () => mockRepository.getPaginated(limit: 20, offset: 20),
         ).called(1);
@@ -478,7 +471,6 @@ void main() {
       });
 
       test('should reload entries when toggling filter', () async {
-        // Load all first
         when(
           () => mockRepository.getPaginated(limit: 20, offset: 0),
         ).thenAnswer(
@@ -488,7 +480,6 @@ void main() {
         await viewModel.loadEntries();
         expect(viewModel.entries.length, 2);
 
-        // Toggle to favorites only
         final favorites = [HistoryFixtures.entryFavorite];
         when(
           () => mockRepository.getFavorites(limit: 20, offset: 0),

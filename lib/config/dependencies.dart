@@ -28,7 +28,7 @@ void setupDependencies() {
     ),
   );
 
-  // Repositories
+  // Repositórios
   getIt.registerLazySingleton<HistoryRepository>(
     () => HistoryRepositoryImpl(database: getIt<AppDatabase>()),
   );
@@ -36,7 +36,7 @@ void setupDependencies() {
     () => SettingsRepositoryImpl(),
   );
 
-  // Services
+  // Serviços
   getIt.registerLazySingleton<ClipboardService>(() => ClipboardServiceImpl());
   getIt.registerLazySingleton<NightModeService>(() => NightModeServiceImpl());
 

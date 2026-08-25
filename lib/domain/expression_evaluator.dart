@@ -23,9 +23,9 @@ class ExpressionEvaluator {
     return _formatResult(result);
   }
 
-  /// Resolves all parenthesized sub-expressions by repeatedly evaluating
-  /// the innermost group and replacing it with the resulting numeric token.
-  /// Returns null if parentheses are unbalanced or empty.
+  /// Resolve as sub-expressões parentetizadas avaliando repetidamente o
+  /// grupo mais interno e substituindo-o pelo token numérico resultante.
+  /// Retorna `null` para parênteses desbalanceados ou vazios.
   List<String>? _resolveParens(List<String> input) {
     var tokens = input;
 
@@ -110,14 +110,14 @@ class ExpressionEvaluator {
       tokens.add(buffer.toString());
     }
 
-    // Remove trailing operator
+    // Descarta operador solto no fim.
     while (tokens.isNotEmpty && _isOperator(tokens.last)) {
       tokens.removeLast();
     }
 
     if (tokens.isEmpty) return null;
 
-    // Validate: must start with a number or an opening parenthesis
+    // Precisa começar com número ou parêntese de abertura.
     if (_isOperator(tokens.first) ||
         tokens.first == '%' ||
         tokens.first == ')') {
@@ -141,7 +141,7 @@ class ExpressionEvaluator {
         final percentValue = double.tryParse(result.removeLast());
         if (percentValue == null) return null;
 
-        // Find the base value (the number before the operator)
+        // Localiza o valor-base (o número antes do operador).
         String? operator;
         double? baseValue;
 
@@ -158,15 +158,15 @@ class ExpressionEvaluator {
 
         if (operator != null && baseValue != null) {
           if (operator == '+' || operator == '−') {
-            // percentage of base: 100 + 10% means 100 + (100 * 10/100)
+            // Porcentagem da base: 100 + 10% é 100 + (100 × 10/100).
             final percentAmount = baseValue * percentValue / 100.0;
             result.add(percentAmount.toString());
           } else {
-            // For × and ÷, just convert to fraction
+            // Em × e ÷, apenas converte para fração.
             result.add((percentValue / 100.0).toString());
           }
         } else {
-          // No context — just convert to fraction
+          // Sem contexto — apenas converte para fração.
           result.add((percentValue / 100.0).toString());
         }
       } else {
@@ -180,7 +180,7 @@ class ExpressionEvaluator {
   double? _evaluateTokens(List<String> tokens) {
     if (tokens.isEmpty) return null;
 
-    // Parse into numbers and operators lists
+    // Separa em listas de números e operadores.
     final numbers = <double>[];
     final operators = <String>[];
 
@@ -197,7 +197,7 @@ class ExpressionEvaluator {
 
     if (numbers.isEmpty) return null;
 
-    // First pass: handle × and ÷ (higher precedence)
+    // Primeira passada: × e ÷ (precedência maior).
     var i = 0;
     while (i < operators.length) {
       if (operators[i] == '×' || operators[i] == '÷') {
@@ -221,7 +221,7 @@ class ExpressionEvaluator {
       }
     }
 
-    // Second pass: handle + and − (lower precedence)
+    // Segunda passada: + e − (precedência menor).
     var result = numbers[0];
     for (i = 0; i < operators.length; i++) {
       if (i + 1 >= numbers.length) return null;

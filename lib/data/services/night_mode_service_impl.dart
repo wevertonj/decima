@@ -27,11 +27,11 @@ class NightModeServiceImpl implements NightModeService {
         'dark': dark,
       });
     } on PlatformException {
-      // Best-effort sync — a failure here only means the next launch's
-      // splash may briefly show the wrong color, not a functional bug.
+      // Sync best-effort — falhar só significa que a splash do próximo
+      // launch pode abrir na cor errada, não um bug funcional.
     } on MissingPluginException {
-      // No native handler registered (e.g. running on an older/unsupported
-      // embedding) — nothing to sync.
+      // Sem handler nativo registrado (embedding antigo/sem suporte) —
+      // nada a sincronizar.
     }
   }
 }

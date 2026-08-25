@@ -57,7 +57,7 @@ void main() {
       test(
         'should display literal % in expression for addition without changing current value',
         () {
-          // 100.00 + 10% → display shows 100.00 + 10.00%, value remains 10.00
+          // 100.00 + 10% → display mostra 100.00 + 10.00%, valor segue 10.00
           viewModel.inputDigit('1');
           viewModel.inputDigit('0');
           viewModel.inputDigit('0');
@@ -79,7 +79,7 @@ void main() {
       test(
         'should display literal % in expression for multiplication without changing current value',
         () {
-          // 200.00 × 50% → display shows 200.00 × 50.00%, value remains 50.00
+          // 200.00 × 50% → display mostra 200.00 × 50.00%, valor segue 50.00
           viewModel.inputDigit('2');
           viewModel.inputDigit('0');
           viewModel.inputDigit('0');
@@ -141,7 +141,7 @@ void main() {
         viewModel.inputDigit('0');
         viewModel.applyPercentage();
 
-        // Should remain unchanged
+        // Deve permanecer inalterado
         expect(viewModel.currentDisplayValue, '10.00');
         expect(viewModel.fullDisplayText, '10.00');
       });
@@ -199,7 +199,7 @@ void main() {
       });
 
       test('should preserve % literal when chaining with another operator', () {
-        // 100 + 10% + 5 → expression should keep "100.00 + 10.00% +"
+        // 100 + 10% + 5 → a expressão deve manter "100.00 + 10.00% +"
         viewModel.inputDigit('1');
         viewModel.inputDigit('0');
         viewModel.inputDigit('0');
@@ -316,7 +316,7 @@ void main() {
           () => mockHistoryRepository.add(any()),
         ).thenAnswer((_) async => HistoryFixtures.entry1);
 
-        // ( 5.00 + 3.00  → equals should auto-close → 8.00
+        // ( 5.00 + 3.00  → equals deve autofechar → 8.00
         viewModel.inputParenthesis();
         viewModel.inputDigit('5');
         viewModel.inputDigit('0');
@@ -347,7 +347,7 @@ void main() {
         viewModel.inputDigit('0');
         viewModel.inputParenthesis();
 
-        // Should be ignored — no implicit multiplication
+        // Deve ser ignorado — sem multiplicação implícita
         expect(viewModel.openParenCount, 0);
         expect(viewModel.expression, '');
       });
@@ -402,7 +402,7 @@ void main() {
     });
 
     group('parentheses in edit mode', () {
-      /// Types `1250` (→ `12.50`) and drops the cursor mid-number.
+      /// Digita `1250` (→ `12.50`) e deixa o cursor no meio do número.
       void typeAndEditMidNumber(int cursorPosition) {
         viewModel.inputDigit('1');
         viewModel.inputDigit('2');

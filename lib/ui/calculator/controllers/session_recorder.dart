@@ -15,47 +15,40 @@ class SessionRecorder {
 
   final HistoryRepository _historyRepository;
 
-  /// Raw expression/result pairs accumulated during the current session.
+  /// Pares crus expressão/resultado acumulados na sessão corrente.
   final List<HistoryLine> _lines = [];
 
-  /// Database ID of the current session. `null` when no session has been
-  /// persisted yet. Set after the first `=` press and reset on
-  /// [startNewSession].
+  /// ID da sessão no banco; `null` até a primeira persistência. Definido no
+  /// primeiro `=` e zerado em [startNewSession].
   int? _sessionId;
 
-  /// Number of session lines already persisted. Used to skip redundant
-  /// save calls (e.g., `clear()` right after `=` should not re-add).
+  /// Linhas já persistidas — evita gravações redundantes (ex.: `clear()`
+  /// logo após `=` não deve regravar).
   int _persistedLineCount = 0;
 
-  /// In-flight `add` for the current session, resolving with the id assigned
-  /// by the database. `null` when no creation is pending. Subsequent saves
-  /// chain onto it instead of issuing a second `add`.
+  /// `add` em voo da sessão corrente, resolvendo com o id do banco; `null`
+  /// sem criação pendente. Persistências seguintes encadeiam nele em vez de
+  /// emitir um segundo `add`.
   Future<int?>? _pendingAdd;
 
-  /// Chain of every write already issued. [pendingWrite] expõe a cadeia para
-  /// o flush aguardar — o app fechando nunca interrompe uma escrita em curso.
+  /// Cadeia de todas as escritas já emitidas. [pendingWrite] a expõe para o
+  /// flush aguardar — o app fechando nunca interrompe uma escrita em curso.
   Future<void> _pendingWrite = Future<void>.value();
 
-  /// Incremented whenever the session is reset (clear, load, paste). Lets an
-  /// in-flight `add` know its id belongs to a session that no longer exists.
+  /// Incrementado a cada reset de sessão (clear, load, paste). Permite a um
+  /// `add` em voo saber que seu id pertence a uma sessão que já não existe.
   int _generation = 0;
 
-  /// Future completing once every write issued so far has landed.
+  /// Completa quando toda escrita emitida até aqui tiver aterrissado.
   Future<void> get pendingWrite => _pendingWrite;
 
   /// Adiciona uma linha à sessão corrente (sem persistir — ver [persist]).
   void append(HistoryLine line) => _lines.add(line);
 
-  /// Persists or updates the current session lines as a single
-  /// [HistoryEntry].
-  ///
-  /// On the first call within a session, creates a new row in the database
-  /// and stores its ID in [_sessionId]. Subsequent calls update the existing
-  /// row with the latest lines and result. No-op when there are no new lines
-  /// since the last persist.
-  ///
-  /// Returns a future that completes once every write issued so far has
-  /// landed.
+  /// Persiste as linhas da sessão como uma única [HistoryEntry]: cria a
+  /// linha no banco na primeira chamada, atualiza nas seguintes; no-op sem
+  /// linha nova. Devolve um future que completa quando toda escrita emitida
+  /// até aqui tiver aterrissado.
   Future<void> persist() {
     if (_lines.isEmpty) return _pendingWrite;
     if (_lines.length == _persistedLineCount) return _pendingWrite;
@@ -73,8 +66,8 @@ class SessionRecorder {
 
     final pendingAdd = _pendingAdd;
     if (pendingAdd != null) {
-      // The `add` for the first line has not returned an id yet. Chain the
-      // update onto the id it produces instead of creating a second session.
+      // O `add` da primeira linha ainda não devolveu id: encadeia o update
+      // no id que ele produzir, em vez de criar uma segunda sessão.
       return _trackWrite(
         pendingAdd.then<void>((id) async {
           if (id == null) return;
@@ -88,8 +81,8 @@ class SessionRecorder {
     final add = _historyRepository
         .add(_sessionEntry(null, lines, lastResult))
         .then((saved) {
-          // The session may have been reset (clear/load/paste) while the add
-          // was in flight — the id then belongs to a session that is gone.
+          // A sessão pode ter sido resetada com o add em voo — o id então
+          // pertence a uma sessão que já não existe.
           if (_generation == generation) {
             _pendingAdd = null;
             _sessionId = saved.id;
@@ -102,10 +95,9 @@ class SessionRecorder {
     return _trackWrite(add);
   }
 
-  /// Drops every trace of the current session so the next lines start a new
-  /// one. An `add` still in flight is detached: its id no longer lands in
-  /// [_sessionId], but the update chained onto it still writes to the
-  /// session those lines belong to.
+  /// Descarta a sessão corrente para as próximas linhas começarem outra. Um
+  /// `add` em voo é desanexado: o id não aterrissa em [_sessionId], mas o
+  /// update encadeado nele ainda grava na sessão dona daquelas linhas.
   void startNewSession() {
     _lines.clear();
     _detachTracking();
@@ -142,9 +134,9 @@ class SessionRecorder {
     );
   }
 
-  /// Appends [write] to the chain of pending writes and returns a future
-  /// completing when it lands. A failed write never poisons the chain: later
-  /// waits still complete, so the app is always able to close.
+  /// Anexa [write] à cadeia de escritas pendentes e devolve um future que
+  /// completa quando ela aterrissar. Escrita que falha nunca envenena a
+  /// cadeia: esperas posteriores completam e o app sempre consegue fechar.
   Future<void> _trackWrite(Future<void> write) {
     // O encadeamento só escuta [write] um microtask depois; sem o ignore(),
     // uma escrita que falha antes disso vira erro não tratado na zone.

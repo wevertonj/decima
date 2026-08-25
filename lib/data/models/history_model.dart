@@ -49,8 +49,8 @@ class HistoryModel {
   HistoryEntry toEntity() {
     List<HistoryLine> lines;
 
-    // Try to parse as JSON array (new format).
-    // Fall back to legacy single-expression format.
+    // Tenta o formato novo (array JSON); fallback para o formato legado de
+    // expressão única.
     try {
       final decoded = jsonDecode(linesJson);
       if (decoded is List) {
@@ -59,11 +59,11 @@ class HistoryModel {
             .map((e) => HistoryLine.fromJson(e))
             .toList();
       } else {
-        // Shouldn't happen, but treat as legacy.
+        // Não deveria acontecer — tratado como legado.
         lines = [HistoryLine(expression: linesJson, result: result)];
       }
     } catch (_) {
-      // Legacy format: plain expression string.
+      // Formato legado: string de expressão pura.
       lines = [HistoryLine(expression: linesJson, result: result)];
     }
 

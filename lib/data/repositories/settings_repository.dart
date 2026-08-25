@@ -15,8 +15,8 @@ abstract class SettingsRepository {
   Future<String?> getLocale();
   Future<void> setLocale(String? locale);
 
-  /// Last known top-left corner of the desktop window, or null when never
-  /// saved or only half stored.
+  /// Último canto superior esquerdo conhecido da janela desktop, ou `null`
+  /// quando nunca salvo ou salvo pela metade.
   Future<WindowPosition?> getWindowPosition();
   Future<void> setWindowPosition(double x, double y);
 }

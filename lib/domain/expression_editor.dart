@@ -25,10 +25,8 @@ class ExpressionEditor {
   static final RegExp _digitRegExp = RegExp(r'[0-9]');
   static final RegExp _numberCharRegExp = RegExp(r'[0-9.,%]');
 
-  /// Inserts the digit string [digits] (only `0-9` chars) at the current
-  /// cursor position, applying Add2 formatting to the surrounding number
-  /// block. The block is detected from contiguous number-like chars
-  /// (digits, decimal/thousand separators, optional trailing `%`).
+  /// Insere [digits] (apenas `0-9`) na posição do cursor, reaplicando a
+  /// formatação Add2 ao bloco numérico ao redor.
   static EditorState insertDigits(
     EditorState state,
     String digits,
@@ -45,9 +43,8 @@ class ExpressionEditor {
         raw.substring(0, digitsBeforeCursor) +
         digits +
         raw.substring(digitsBeforeCursor);
-    // Preserve digitsAfterCursor: the cursor lands immediately after the
-    // newly inserted digits, keeping the same number of digits to its right
-    // as before the insertion. This is robust to Add2's leading-zero padding.
+    // Cursor cai logo após os dígitos inseridos: mesma contagem de dígitos
+    // à direita de antes — imune ao zero à esquerda do Add2.
     final newDigitsAfterCursor = digitsAfterCursor;
 
     return _replaceBlockWithFormatted(
@@ -61,11 +58,9 @@ class ExpressionEditor {
     );
   }
 
-  /// Removes one digit from the surrounding number block (re-formatting
-  /// the block via Add2). When the char immediately before the cursor is an
-  /// operator (` op `), removes the entire operator-with-spaces and merges
-  /// the two surrounding number blocks via Add2 (concatenated raw digits).
-  /// Outside number blocks, falls back to deleting the literal char.
+  /// Remove um dígito do bloco sob o cursor (reformatando via Add2). Sobre
+  /// um operador ` op `, remove-o inteiro e mescla os dois blocos vizinhos;
+  /// fora de bloco numérico, apaga o caractere literal.
   static EditorState backspace(EditorState state, DecimalSeparator separator) {
     if (state.cursor <= 0) return state;
     final text = state.text;
@@ -74,13 +69,11 @@ class ExpressionEditor {
     final digitsBeforeCursor = _countDigits(text, block.start, state.cursor);
 
     if (raw.isEmpty || digitsBeforeCursor == 0) {
-      // Cursor is at a non-digit boundary. Detect the operator-with-spaces
-      // pattern (` op ` where op ∈ +−×÷) immediately before the cursor and
-      // merge the surrounding blocks if present.
+      // Fronteira sem dígito antes do cursor: tenta o merge de blocos
+      // (padrão ` op ` imediatamente antes); senão, apaga o literal.
       final merged = _tryMergeBlocksAtCursor(state, separator);
       if (merged != null) return merged;
 
-      // Plain literal char delete.
       return EditorState(
         text:
             text.substring(0, state.cursor - 1) + text.substring(state.cursor),
@@ -93,9 +86,8 @@ class ExpressionEditor {
     final newRaw =
         raw.substring(0, digitsBeforeCursor - 1) +
         raw.substring(digitsBeforeCursor);
-    // Preserve digitsAfterCursor: removing a digit BEFORE the cursor does
-    // not change how many digits are AFTER it, so the cursor stays anchored
-    // to the same trailing digit (immune to Add2's leading-zero padding).
+    // Remover um dígito ANTES do cursor não muda quantos ficam DEPOIS —
+    // o cursor segue ancorado ao mesmo dígito à direita.
     final newDigitsAfterCursor = digitsAfterCursor;
 
     return _replaceBlockWithFormatted(
@@ -109,13 +101,9 @@ class ExpressionEditor {
     );
   }
 
-  /// Inserts an operator at the current cursor position. When the cursor
-  /// lies in the middle of a number block (digits on both sides), the block
-  /// is split into two Add2-formatted halves with ` op ` between them.
-  /// At block boundaries (start, end, or outside any block), the operator
-  /// is inserted as a literal ` op ` without splitting.
-  ///
-  /// Cursor lands immediately after the inserted operator.
+  /// Insere um operador no cursor. No meio de um bloco numérico, divide o
+  /// bloco em duas metades formatadas com ` op ` entre elas; em fronteira,
+  /// insere o literal sem dividir. O cursor cai logo após o operador.
   static EditorState insertOperator(
     EditorState state,
     String operator,
@@ -127,7 +115,7 @@ class ExpressionEditor {
     final digitsBeforeCursor = _countDigits(text, block.start, state.cursor);
     final digitsAfterCursor = raw.length - digitsBeforeCursor;
 
-    // No surrounding block, or cursor at a boundary — append literally.
+    // Sem bloco ao redor ou cursor em fronteira — insere o literal.
     if (raw.isEmpty || digitsBeforeCursor == 0 || digitsAfterCursor == 0) {
       return _insertLiteral(state, ' $operator ');
     }
@@ -147,14 +135,12 @@ class ExpressionEditor {
       useThousandsSeparator: true,
     );
 
-    // Percent suffix (if any) belongs to the right half — it was at the
-    // tail of the original block.
+    // O sufixo `%` estava na cauda do bloco original — fica com a metade
+    // direita.
     final rightBlock = rightCore + (hasPercent ? '%' : '');
     final replacement = '$leftCore $operator $rightBlock';
 
-    // Cursor lands immediately after the inserted operator (after the
-    // trailing space): position = block.start + leftCore.length + 3
-    // (' ' + op + ' ').
+    // Cursor logo após o operador: block.start + leftCore + ' op ' (3).
     return EditorState(
       text:
           text.substring(0, block.start) +
@@ -164,18 +150,10 @@ class ExpressionEditor {
     );
   }
 
-  /// Inserts `(` or `)` at the cursor while editing mid-expression.
-  ///
-  /// Closes only when there is an unmatched `(` in the text **and** the token
-  /// to the left of the closing point is a complete operand (digit, `%` or
-  /// `)`); the `)` lands at the end of the number block under the cursor so a
-  /// number is never split. Otherwise it opens a `(` immediately **before**
-  /// that block, grouping the number the cursor is touching — inserting at the
-  /// end of the block instead would produce an unmatched `)` and break the
-  /// expression.
-  ///
-  /// When opening, the cursor keeps its position relative to the surrounding
-  /// text (it does not jump), since the insertion happens to its left.
+  /// Insere `(` ou `)` no modo de edição. Fecha apenas com `(` pendente e
+  /// operando completo à esquerda — o `)` cai no fim do bloco sob o cursor,
+  /// nunca dividindo um número; senão abre `(` antes do bloco, agrupando o
+  /// número que o cursor toca.
   static EditorState insertParenthesis(EditorState state) {
     final text = state.text;
     final block = _findNumberBlock(text, state.cursor);
@@ -197,9 +175,8 @@ class ExpressionEditor {
     );
   }
 
-  /// Appends a literal `%` to the end of the number block surrounding the
-  /// cursor. No-op when there is no block, or when the block already ends
-  /// with `%`.
+  /// Anexa `%` literal ao fim do bloco numérico sob o cursor. No-op sem
+  /// bloco ou com `%` já presente.
   static EditorState applyPercent(EditorState state) {
     final text = state.text;
     final block = _findNumberBlock(text, state.cursor);
@@ -212,7 +189,7 @@ class ExpressionEditor {
     );
   }
 
-  /// Number of unmatched opening parentheses in [text].
+  /// Parênteses abertos sem fechamento em [text].
   static int countOpenParens(String text) {
     var n = 0;
     for (var i = 0; i < text.length; i++) {
@@ -226,9 +203,8 @@ class ExpressionEditor {
     return n;
   }
 
-  /// Normalizes the formatted edit text into a string the
-  /// `ExpressionEvaluator` can parse: removes thousand separators and
-  /// converts the configured decimal separator back to a dot.
+  /// Normaliza o texto formatado para o `ExpressionEvaluator`: remove o
+  /// separador de milhar e converte o separador decimal de volta ao ponto.
   static String normalizeForEvaluator(String text, DecimalSeparator separator) {
     final thousands = separator == DecimalSeparator.dot ? ',' : '.';
     final decimal = separator.character;
@@ -240,8 +216,8 @@ class ExpressionEditor {
     return t;
   }
 
-  /// Inserts the literal string [s] (operators, parentheses, spaces) at the
-  /// current cursor position without re-formatting. Used for non-digit input.
+  /// Insere o literal [s] (operadores, parênteses, espaços) no cursor, sem
+  /// reformatar.
   static EditorState _insertLiteral(EditorState state, String s) {
     final text = state.text;
 
@@ -251,19 +227,17 @@ class ExpressionEditor {
     );
   }
 
-  /// Detects whether the chars immediately before the cursor form an
-  /// operator-with-spaces sequence (` op `) sandwiched between two number
-  /// blocks. If so, removes the operator (and its surrounding spaces) and
-  /// merges the two blocks by concatenating their raw digits and re-applying
-  /// Add2. Returns the merged state, or `null` when there is no merge.
+  /// Se logo antes do cursor há ` op ` entre dois blocos numéricos, remove
+  /// o operador e mescla os blocos (dígitos concatenados + Add2). Devolve o
+  /// estado mesclado, ou `null` quando não há merge.
   static EditorState? _tryMergeBlocksAtCursor(
     EditorState state,
     DecimalSeparator separator,
   ) {
     final text = state.text;
     final cursor = state.cursor;
-    // Pattern is " op " ending exactly at the cursor: chars at
-    // cursor-3 = ' ', cursor-2 = op, cursor-1 = ' '.
+    // Padrão ` op ` terminando exatamente no cursor: cursor-3 = ' ',
+    // cursor-2 = op, cursor-1 = ' '.
     if (cursor < 3) return null;
     if (text[cursor - 1] != ' ') return null;
     final op = text[cursor - 2];
@@ -283,9 +257,9 @@ class ExpressionEditor {
     );
     if (leftRawPadded.isEmpty && rightRawPadded.isEmpty) return null;
 
-    // Normalize each side to its integer value (drops Add2's mandatory
-    // leading-zero padding). Concatenating the un-padded digit strings
-    // gives the user's intuitive merge: '0.12' + '0.50' -> '12.50'.
+    // Cada lado é normalizado ao valor inteiro (sem o zero à esquerda do
+    // Add2): concatenar sem padding dá o merge intuitivo —
+    // '0.12' + '0.50' → '12.50'.
     final leftDigits = leftRawPadded.isEmpty
         ? ''
         : int.parse(leftRawPadded).toString();
@@ -296,8 +270,8 @@ class ExpressionEditor {
     final rightHasPercent =
         rightBlock.end > rightBlock.start && text[rightBlock.end - 1] == '%';
     final mergedRaw = leftDigits + rightDigits;
-    // Cursor anchors to the boundary between left and right halves —
-    // i.e., the position with `rightDigits.length` digits to its right.
+    // Cursor ancorado na fronteira entre as metades: a posição com
+    // `rightDigits.length` dígitos à direita.
     final newDigitsAfterCursor = rightDigits.length;
 
     return _replaceBlockWithFormatted(
@@ -311,14 +285,10 @@ class ExpressionEditor {
     );
   }
 
-  /// Replaces the substring [text] [start..end) with the Add2-formatted
-  /// representation of [newRaw] (digit-only string), restoring the optional
-  /// `%` suffix and positioning the cursor so that exactly
-  /// [newDigitsAfterCursor] digit characters of the new block lie after it.
-  ///
-  /// Anchoring the cursor by digits-after (rather than digits-before) keeps
-  /// it visually stable when Add2 pads the block with a leading zero — the
-  /// trailing digits are the stable reference, not the volatile leading edge.
+  /// Substitui [start..end) de [text] pela forma Add2 de [newRaw],
+  /// restaurando o `%` opcional e posicionando o cursor com exatamente
+  /// [newDigitsAfterCursor] dígitos à sua direita — a âncora estável
+  /// quando o Add2 acrescenta zero à esquerda.
   static EditorState _replaceBlockWithFormatted(
     String text,
     int start,
@@ -347,9 +317,8 @@ class ExpressionEditor {
     );
   }
 
-  /// Finds the maximal range of contiguous number-like characters
-  /// containing position [pos] in [text]. Returns a zero-length range at
-  /// [pos] when the cursor is not adjacent to any number-like char.
+  /// Maior intervalo de caracteres numéricos contíguos contendo [pos];
+  /// intervalo vazio em [pos] quando não há vizinho numérico.
   static ({int start, int end}) _findNumberBlock(String text, int pos) {
     var s = pos;
     var e = pos;
@@ -381,8 +350,8 @@ class ExpressionEditor {
     return n;
   }
 
-  /// Returns the offset in [formatted] such that exactly [digitCount] digit
-  /// characters follow it. Clamps to `[0, formatted.length]`.
+  /// Offset em [formatted] com exatamente [digitCount] dígitos à direita.
+  /// Clampado a `[0, formatted.length]`.
   static int _positionWithDigitsAfter(String formatted, int digitCount) {
     if (digitCount <= 0) return formatted.length;
     var seen = 0;

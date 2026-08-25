@@ -34,8 +34,8 @@ class ClipboardController {
   /// Copia [text] para a área de transferência.
   Future<void> copyText(String text) => _clipboardService.copyText(text);
 
-  /// Copies all session timeline entries to the clipboard, one per line in
-  /// the format `<expression> = <result>`. No-op when [entries] is empty.
+  /// Copia as entradas da timeline, uma por linha no formato
+  /// `<expressão> = <resultado>`. No-op com [entries] vazia.
   Future<void> copyHistory(List<Calculation> entries) async {
     if (entries.isEmpty) return;
 
@@ -49,8 +49,8 @@ class ClipboardController {
     await _clipboardService.copyText(buffer.toString());
   }
 
-  /// True when the clipboard currently contains text. Used by the context
-  /// menu to enable/disable the paste entry without committing to a paste.
+  /// `true` quando a área de transferência contém texto, sem efetivar a
+  /// colagem.
   Future<bool> hasText() async {
     final raw = await _clipboardService.readText();
 

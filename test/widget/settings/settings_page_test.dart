@@ -94,7 +94,7 @@ void main() {
 
         expect(find.text('Light'), findsOneWidget);
         expect(find.text('Dark'), findsOneWidget);
-        // "System" appears in both theme and language sections
+        // "System" aparece nas seções de tema e de idioma
         expect(find.text('System'), findsAtLeast(1));
       });
 
@@ -104,7 +104,7 @@ void main() {
         final colorPicker = tester.widget<ColorPicker>(
           find.byType(ColorPicker),
         );
-        // The color picker should show all 9 colors from AppColors
+        // O color picker deve exibir as 9 cores de AppColors
         expect(AppColors.seedColors.length, equals(9));
         expect(colorPicker.selectedIndex, equals(0));
       });
@@ -114,7 +114,6 @@ void main() {
       testWidgets('should change theme mode when tapped', (tester) async {
         await pumpSettingsPage(tester);
 
-        // Tap "Light" theme
         await tester.tap(find.text('Light'));
         await tester.pumpAndSettle();
 
@@ -128,7 +127,6 @@ void main() {
       ) async {
         await pumpSettingsPage(tester);
 
-        // Tap comma format
         await tester.tap(find.text('1.000,00'));
         await tester.pumpAndSettle();
 
@@ -142,7 +140,6 @@ void main() {
       testWidgets('should change language when tapped', (tester) async {
         await pumpSettingsPage(tester);
 
-        // Tap "Português"
         await tester.tap(find.text('Português'));
         await tester.pumpAndSettle();
 
@@ -150,7 +147,7 @@ void main() {
       });
 
       testWidgets('should select system language', (tester) async {
-        // Start with a specific language
+        // Começa com um idioma específico
         when(
           () => mockSettingsRepository.getLocale(),
         ).thenAnswer((_) async => 'en');
@@ -161,8 +158,8 @@ void main() {
 
         await pumpSettingsPage(tester);
 
-        // Tap "System" language (scoped within LanguageSelector to avoid
-        // ambiguity with ThemeModeSelector's "System" option)
+        // Toca em "System" de idioma (escopado no LanguageSelector para
+        // evitar ambiguidade com o "System" do ThemeModeSelector)
         await tester.tap(
           find.descendant(
             of: find.byType(LanguageSelector),

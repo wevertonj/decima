@@ -6,31 +6,29 @@ import 'package:decima/domain/expression_editor.dart';
 /// texto exibido e as operações roteiam pelo `ExpressionEditor`. Os métodos
 /// devolvem `true` quando o estado visível mudou e a UI deve ser notificada.
 class CursorController {
-  /// Editable text buffer used when the cursor is positioned somewhere
-  /// other than the end of the expression.
+  /// Buffer editável usado quando o cursor sai do fim da expressão.
   String? _editText;
 
-  /// Cursor character offset inside [_editText]. Only valid while
-  /// [_editText] is non-null. When [isAtEnd] is true, the visible cursor
-  /// follows the end of the display text regardless of this value.
+  /// Offset do cursor dentro de [_editText]; válido só com [_editText]
+  /// não-nulo. Com [isAtEnd], o cursor visível segue o fim do texto,
+  /// ignorando este valor.
   int _cursorPos = 0;
 
-  /// True when the cursor virtually follows the end of the display text.
+  /// `true` quando o cursor segue virtualmente o fim do texto do display.
   bool _atEnd = true;
 
   String? get editText => _editText;
 
-  /// True when the cursor is in "edit mode" (positioned somewhere other
-  /// than the end of the expression).
+  /// `true` quando o cursor está em modo de edição (fora do fim da
+  /// expressão).
   bool get isEditing => _editText != null;
 
-  /// True when the cursor is at the end of the display text (either the
-  /// virtual at-end position or explicitly at its length). The cursor is
-  /// hidden in this state even while edit mode is active.
+  /// `true` quando o cursor está no fim do texto; nesse estado ele fica
+  /// oculto mesmo com o modo de edição ativo.
   bool get isAtEnd => _atEnd;
 
-  /// Current cursor position as a character offset in [fullText].
-  /// Defaults to the end of the text and follows it as the text grows.
+  /// Posição do cursor como offset de caractere em [fullText]; por padrão
+  /// acompanha o fim do texto conforme ele cresce.
   int positionIn(String fullText) {
     if (_atEnd) return fullText.length;
 
@@ -49,16 +47,16 @@ class CursorController {
     _atEnd = _cursorPos >= state.text.length;
   }
 
-  /// Enters edit mode taking [fullText] as the editable snapshot. No-op
-  /// when edit mode is already active.
+  /// Entra em modo de edição com [fullText] como snapshot editável. No-op
+  /// quando o modo já está ativo.
   void enterEditMode(String fullText) {
     if (_editText != null) return;
     _editText = fullText;
     _cursorPos = _editText!.length;
   }
 
-  /// Leaves edit mode and snaps the cursor back to the (hidden) at-end
-  /// position. Called when the session state is rebuilt (equals, clear,
+  /// Sai do modo de edição e devolve o cursor à posição (oculta) de fim.
+  /// Chamado quando o estado da sessão é reconstruído (equals, clear,
   /// loadSession, paste).
   void exitEditMode() {
     _editText = null;
@@ -66,8 +64,8 @@ class CursorController {
     _atEnd = true;
   }
 
-  /// Moves the cursor one character to the left, entering edit mode if
-  /// the cursor was previously at the end of the expression.
+  /// Move o cursor um caractere à esquerda, entrando em modo de edição se
+  /// ele estava no fim da expressão.
   bool moveLeft(String fullText) {
     enterEditMode(fullText);
     if (_cursorPos > 0) {
@@ -78,10 +76,9 @@ class CursorController {
     return true;
   }
 
-  /// Moves the cursor one character to the right. When the cursor reaches
-  /// the end of the text in edit mode, it snaps to the at-end position
-  /// (cursor becomes hidden) without exiting edit mode — so the user's
-  /// edits are preserved.
+  /// Move o cursor um caractere à direita. Ao alcançar o fim em modo de
+  /// edição, encosta na posição de fim (oculto) sem sair do modo — as
+  /// edições do usuário são preservadas.
   bool moveRight(String fullText) {
     if (_atEnd) return false;
     if (_cursorPos < fullText.length) {
@@ -92,9 +89,8 @@ class CursorController {
     return true;
   }
 
-  /// Moves the cursor to the end of the display text, hiding it without
-  /// exiting edit mode. Called when the user taps the empty area around
-  /// the display.
+  /// Move o cursor para o fim do texto, ocultando-o sem sair do modo de
+  /// edição. Chamado no toque na área vazia ao redor do display.
   bool moveToEnd() {
     if (_editText == null) return false;
     _atEnd = true;
@@ -103,18 +99,17 @@ class CursorController {
     return true;
   }
 
-  /// Sets the cursor to an explicit character offset in [fullText].
-  /// Out-of-range values are clamped. Edit mode is entered the first time
-  /// the cursor is moved away from the end and persists until the session
-  /// is reset.
+  /// Posiciona o cursor num offset explícito de [fullText]; valores fora do
+  /// intervalo são clampados. O modo de edição começa quando o cursor sai
+  /// do fim e persiste até o reset da sessão.
   bool setPosition(String fullText, int position) {
     var clamped = position;
     if (clamped < 0) clamped = 0;
     if (clamped > fullText.length) clamped = fullText.length;
 
     if (clamped == fullText.length) {
-      // Tapping at/past the end always moves cursor to the at-end
-      // (hidden) position, whether or not edit mode is active.
+      // Toque no fim (ou além) sempre leva à posição de fim oculta, com ou
+      // sem modo de edição ativo.
       _atEnd = true;
       _cursorPos = clamped;
 

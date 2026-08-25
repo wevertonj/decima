@@ -59,7 +59,6 @@ void main() {
         ),
       );
 
-      // Tap the first character (index 0).
       final firstChar = find.byType(GestureDetector).first;
       await tester.tap(firstChar);
       await tester.pump();

@@ -71,7 +71,7 @@ void main() {
         viewModel.inputDigit('2');
         viewModel.inputDigit('5');
         viewModel.inputDigit('0');
-        // "12.50", cursor at 5
+        // "12.50", cursor em 5
         viewModel.moveCursorLeft();
         expect(viewModel.cursorPosition, 4);
       });
@@ -147,12 +147,12 @@ void main() {
         viewModel.inputDigit('5');
         viewModel.inputDigit('0');
         viewModel.inputDigit('0');
-        // "10.00 + 5.00"; enter edit mode at the start, then setOperator
-        // there to produce a trailing/dangling operator scenario.
+        // "10.00 + 5.00"; entra em modo de edição no início e chama
+        // setOperator ali para produzir um cenário de operador solto.
         viewModel.setCursorPosition(0);
-        // cursor at 0 in '10.00 + 5.00' -> setOperator literal-inserts ' + '
-        // -> ' + 10.00 + 5.00' which starts with a space + operator and
-        // must NOT crash previewResult.
+        // cursor em 0 em '10.00 + 5.00' -> setOperator insere ' + ' literal
+        // -> ' + 10.00 + 5.00', que começa com espaço + operador e NÃO
+        // pode quebrar previewResult.
         viewModel.setOperator('+');
         expect(viewModel.previewResult, isNull);
       });
@@ -162,17 +162,17 @@ void main() {
         viewModel.inputDigit('3');
         viewModel.inputDigit('7');
         // "2.37"
-        viewModel.setCursorPosition(4); // at-end
-        viewModel.moveCursorLeft(); // enter edit mode at pos 3
+        viewModel.setCursorPosition(4); // no fim
+        viewModel.moveCursorLeft(); // entra em modo de edição na pos 3
         viewModel.inputDigit('1');
-        // raw '237' digitsAfter=1, insert '1' -> '23.17'.
+        // bruto '237' com digitsAfter=1, inserir '1' -> '23.17'.
         expect(viewModel.fullDisplayText, '23.17');
-        // Move cursor to the very end of the block before adding ' + '
-        // so digitsAfter=0 and the operator is appended literally.
+        // Move o cursor para o fim do bloco antes de adicionar ' + ',
+        // para digitsAfter=0 e o operador ser anexado literalmente.
         viewModel.setCursorPosition(5);
         viewModel.setOperator('+');
-        // ' + ' literal-append since cursor is at the block's right edge.
-        // Then a fresh '1' starts a new right-hand block: raw '1' -> '0.01'.
+        // ' + ' anexado literal, pois o cursor está na borda direita do bloco.
+        // Um '1' novo então inicia o bloco da direita: bruto '1' -> '0.01'.
         viewModel.inputDigit('1');
         expect(viewModel.fullDisplayText, '23.17 + 0.01');
         viewModel.equals();
@@ -182,16 +182,16 @@ void main() {
       test(
         'cursor stays anchored to trailing digits across delete + insert',
         () {
-          // Reproduces the user-reported scenario:
-          // Start with '2.00', cursor between the two zeros (pos 3).
-          // Backspace -> '0.20', cursor must stay at pos 3 ('0.2|0').
-          // Type '3' -> '2.30', cursor must stay at pos 3 ('2.3|0').
-          // Type '4' -> '23.40', cursor must stay at pos 4 ('23.4|0').
+          // Reproduz o cenário reportado pelo usuário:
+          // Começa com '2.00', cursor entre os dois zeros (pos 3).
+          // Backspace -> '0.20', cursor deve ficar na pos 3 ('0.2|0').
+          // Digita '3' -> '2.30', cursor deve ficar na pos 3 ('2.3|0').
+          // Digita '4' -> '23.40', cursor deve ficar na pos 4 ('23.4|0').
           viewModel.inputDigit('2');
           viewModel.inputDigit('0');
           viewModel.inputDigit('0');
           // "2.00"
-          viewModel.setCursorPosition(3); // between the two zeros
+          viewModel.setCursorPosition(3); // entre os dois zeros
 
           viewModel.backspace();
           expect(viewModel.fullDisplayText, '0.20');
@@ -218,10 +218,10 @@ void main() {
         viewModel.inputDigit('0');
         // "10.00 + 5.00" = 15.00
         expect(viewModel.previewResult, '15.00');
-        // Move cursor to position 2 (between '0' and '.') in first number
+        // Move o cursor para a posição 2 (entre '0' e '.') no primeiro número
         viewModel.setCursorPosition(2);
         viewModel.inputDigit('0');
-        // Inserted '0' inside "10.00" → "100.00 + 5.00"
+        // '0' inserido dentro de "10.00" → "100.00 + 5.00"
         expect(viewModel.fullDisplayText, '100.00 + 5.00');
         expect(viewModel.previewResult, '105.00');
       });

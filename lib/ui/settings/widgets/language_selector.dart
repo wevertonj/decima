@@ -2,10 +2,10 @@ import 'package:decima/config/theme/app_layout.dart';
 import 'package:decima/utils/extensions/l10n_extension.dart';
 import 'package:flutter/material.dart';
 
-/// A selector for the app language. Offers English, Portuguese, Spanish,
-/// and a "System" option that follows the device locale.
+/// Seletor de idioma do app: inglês, português, espanhol e a opção
+/// "Sistema", que segue o locale do dispositivo.
 class LanguageSelector extends StatelessWidget {
-  /// The currently selected locale code, or null for system default.
+  /// Código do locale selecionado, ou `null` para o padrão do sistema.
   final String? selected;
   final ValueChanged<String?> onChanged;
 

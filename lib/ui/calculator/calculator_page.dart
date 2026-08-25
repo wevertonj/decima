@@ -61,7 +61,7 @@ class _CalculatorPageState extends State<CalculatorPage> {
     final oldOffset = _displayController.selection.baseOffset;
 
     if (oldText != text) {
-      // Calculate new cursor position based on the diff
+      // Nova posição do cursor derivada do diff de tamanho.
       final lengthDiff = text.length - oldText.length;
       final newOffset = (oldOffset + lengthDiff).clamp(0, text.length);
 

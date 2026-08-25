@@ -2,7 +2,7 @@ import 'package:decima/domain/enums/decimal_separator.dart';
 import 'package:decima/ui/widgets/flat_segmented_control.dart';
 import 'package:flutter/material.dart';
 
-/// A flat selector for the decimal separator (dot or comma).
+/// Seletor plano do separador decimal (ponto ou vírgula).
 class DecimalSeparatorSelector extends StatelessWidget {
   final DecimalSeparator selected;
   final ValueChanged<DecimalSeparator> onChanged;

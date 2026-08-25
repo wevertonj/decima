@@ -3,7 +3,7 @@ import 'dart:ui';
 import 'package:decima/data/repositories/settings_repository.dart';
 import 'package:decima/domain/entities/window_position.dart';
 import 'package:decima/ui/core/desktop/desktop_window_config.dart';
-import 'package:decima/ui/core/desktop/window_position.dart';
+import 'package:decima/ui/core/desktop/window_position_validator.dart';
 import 'package:decima/utils/platform_info.dart';
 import 'package:screen_retriever/screen_retriever.dart';
 import 'package:window_manager/window_manager.dart';

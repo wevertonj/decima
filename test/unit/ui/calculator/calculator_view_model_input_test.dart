@@ -166,7 +166,7 @@ void main() {
         viewModel.inputDigit('5');
         viewModel.setOperator('+');
 
-        // "2.45 +" has no valid second operand
+        // "2.45 +" não tem segundo operando válido
         expect(viewModel.previewResult, isNull);
       });
 
@@ -180,7 +180,7 @@ void main() {
         viewModel.inputDigit('0');
         viewModel.setOperator('−');
 
-        // "2.45 + 3.00 −" has no valid last operand
+        // "2.45 + 3.00 −" não tem último operando válido
         expect(viewModel.previewResult, isNull);
       });
 
@@ -202,7 +202,7 @@ void main() {
       });
 
       test('should allow chaining operations', () {
-        // 12.50 + 3.00 = 15.50, then × ...
+        // 12.50 + 3.00 = 15.50, depois × ...
         viewModel.inputDigit('1');
         viewModel.inputDigit('2');
         viewModel.inputDigit('5');
@@ -213,12 +213,12 @@ void main() {
         viewModel.inputDigit('0');
         viewModel.setOperator('×');
 
-        // Expression should contain the accumulated computation
+        // A expressão deve conter o cálculo acumulado
         expect(viewModel.expression, contains('×'));
       });
 
       test('should preserve full expression when chaining operations', () {
-        // Type: 2.42 + 0.03 + 0.08 + 0.11
+        // Digita: 2.42 + 0.03 + 0.08 + 0.11
         viewModel.inputDigit('2');
         viewModel.inputDigit('4');
         viewModel.inputDigit('2');
@@ -230,7 +230,7 @@ void main() {
         viewModel.inputDigit('1');
         viewModel.inputDigit('1');
 
-        // Should show full expression, NOT compacted
+        // Deve mostrar a expressão completa, NÃO compactada
         expect(viewModel.fullDisplayText, '2.42 + 0.03 + 0.08 + 0.11');
       });
 
@@ -314,7 +314,7 @@ void main() {
       test('should format display with dot separator and thousands', () {
         viewModel.decimalSeparator = DecimalSeparator.dot;
 
-        // Input 1250000 cents = 12,500.00
+        // Entrada de 1250000 centavos = 12,500.00
         viewModel.inputDigit('1');
         viewModel.inputDigit('2');
         viewModel.inputDigit('5');
@@ -329,7 +329,7 @@ void main() {
       test('should format display with comma separator and thousands', () {
         viewModel.decimalSeparator = DecimalSeparator.comma;
 
-        // Input 1250000 cents = 12.500,00
+        // Entrada de 1250000 centavos = 12.500,00
         viewModel.inputDigit('1');
         viewModel.inputDigit('2');
         viewModel.inputDigit('5');
@@ -406,8 +406,7 @@ void main() {
       test('should format preview result with thousands separator', () {
         viewModel.decimalSeparator = DecimalSeparator.dot;
 
-        // 99999.00 + 1.00 => preview 100,000.00... wait, preview uses evaluator
-        // Let's use something simpler: 50000.00 + 50000.00
+        // 50000.00 + 50000.00 => preview 100,000.00 com separador de milhar
         for (final d in ['5', '0', '0', '0', '0', '0', '0']) {
           viewModel.inputDigit(d);
         }

@@ -2,14 +2,12 @@ import 'package:decima/ui/calculator/char_slot_differ.dart';
 import 'package:decima/ui/calculator/widgets/blinking_cursor.dart';
 import 'package:flutter/material.dart';
 
-/// A display that renders each character individually with animations:
-/// - New characters pop-in (width 0 → target, pushing others left)
-/// - Changed characters roll (old slides up, new slides up from below)
-/// - Includes a blinking cursor at the end
+/// Display que renderiza cada caractere individualmente com animação:
+/// pop-in para chars novos, roll para chars trocados e cursor piscante.
 ///
-/// O diff que decide qual caractere anima vive em [CharSlotDiffer];
-/// o cursor piscante é o widget [BlinkingCursor]. Aqui ficam layout,
-/// animação e scroll.
+/// O diff que decide qual caractere anima vive em [CharSlotDiffer]; o
+/// cursor é o widget [BlinkingCursor]. Aqui ficam layout, animação e
+/// scroll.
 class AnimatedInputDisplay extends StatefulWidget {
   final String text;
   final double fontSize;
@@ -167,11 +165,10 @@ class _AnimatedInputDisplayState extends State<AnimatedInputDisplay> {
 
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
-      // onTapDown fires immediately for fast cursor placement.
+      // onTapDown dispara imediato — posicionamento de cursor sem latência.
       onTapDown: (_) => widget.onCharTap!(index),
-      // Empty onTap claims the gesture arena so the surrounding
-      // GestureDetector's onTap (e.g., "move cursor to end") does not
-      // fire when a character is tapped.
+      // onTap vazio reivindica a arena de gestos: o onTap do detector
+      // externo ("cursor para o fim") não dispara no toque em caractere.
       onTap: () {},
       child: child,
     );
@@ -222,12 +219,10 @@ class _AnimatedInputDisplayState extends State<AnimatedInputDisplay> {
     return char == '+' || char == '−' || char == '×' || char == '÷';
   }
 
-  /// Groups individual character widgets into token rows so that Wrap
-  /// only breaks between tokens (operators/spaces), never mid-number.
-  ///
-  /// When [cursor] is non-null, it is inserted at [cursorPos] — kept inside
-  /// the current number group when possible (so the line never breaks
-  /// between a digit and the cursor), or as its own token at boundaries.
+  /// Agrupa os caracteres em tokens para o Wrap só quebrar linha entre
+  /// tokens (operadores/espaços), nunca no meio de um número. O [cursor]
+  /// entra em [cursorPos], preso ao grupo numérico corrente quando
+  /// possível — a linha nunca quebra entre dígito e cursor.
   List<Widget> _groupIntoTokens(
     List<Widget> charWidgets, {
     int? cursorPos,
@@ -245,9 +240,8 @@ class _AnimatedInputDisplayState extends State<AnimatedInputDisplay> {
 
     for (int i = 0; i < _slots.length; i++) {
       if (cursor != null && cursorPos == i) {
-        // Cursor at this index: keep it attached to the next char if we're
-        // inside (or about to start) a number group; otherwise emit as its
-        // own token. Look-ahead: next char is part of a number → group it.
+        // Cursor preso ao próximo char quando dentro (ou no início) de um
+        // grupo numérico; senão vira token próprio.
         final nextChar = _slots[i].char;
         final nextIsNumberLike = nextChar != ' ' && !_isOperator(nextChar);
         if (nextIsNumberLike || currentGroup.isNotEmpty) {
@@ -266,7 +260,7 @@ class _AnimatedInputDisplayState extends State<AnimatedInputDisplay> {
       }
     }
 
-    // Cursor at end of text.
+    // Cursor no fim do texto.
     if (cursor != null && cursorPos == _slots.length) {
       if (currentGroup.isNotEmpty) {
         currentGroup.add(cursor);
@@ -281,8 +275,8 @@ class _AnimatedInputDisplayState extends State<AnimatedInputDisplay> {
   }
 }
 
-/// Renders a single character using RichText to avoid being found by
-/// `find.text()` in widget tests (prevents ambiguity with keypad buttons).
+/// Renderiza um caractere via RichText para não ser encontrado por
+/// `find.text()` nos widget tests (evita ambiguidade com os botões).
 Widget _charText(String char, TextStyle style) {
   return RichText(
     text: TextSpan(text: char, style: style),
@@ -380,7 +374,7 @@ class _RollingChar extends StatelessWidget {
               // um char estático (qualquer fonte/métrica), eliminando
               // deslocamento vertical em relação aos vizinhos.
               Opacity(opacity: 0.0, child: _charText(newChar, style)),
-              // Old char slides up and fades out
+              // Char antigo sobe e some.
               Positioned.fill(
                 child: Transform.translate(
                   offset: Offset(0, -value * rollDistance),
@@ -390,7 +384,7 @@ class _RollingChar extends StatelessWidget {
                   ),
                 ),
               ),
-              // New char slides up from below
+              // Char novo sobe vindo de baixo.
               Positioned.fill(
                 child: Transform.translate(
                   offset: Offset(0, (1.0 - value) * rollDistance),

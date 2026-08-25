@@ -11,53 +11,53 @@ void main() {
   group('ExpressionEditor', () {
     group('insertDigits', () {
       test('in middle inserts at cursor preserving digits-after anchor', () {
-        // "12.50", cursor at position 2 (between '2' and '.').
+        // "12.50", cursor na posição 2 (entre '2' e '.').
         const state = EditorState(text: '12.50', cursor: 2);
         final next = ExpressionEditor.insertDigits(state, '7', separator);
 
         // raw '1250' (digitsAfter=2) + '7' -> '12750' -> '127.50'
-        // Cursor preserves 2 digits-after -> position 4 (after '127.').
+        // Cursor preserva 2 digits-after -> posição 4 (após '127.').
         expect(next.text, '127.50');
         expect(next.cursor, 4);
       });
 
       test('in middle re-applies Add2 to the number block', () {
-        // "2.37", cursor between '3' and '7' (pos 3).
+        // "2.37", cursor entre '3' e '7' (pos 3).
         const state = EditorState(text: '2.37', cursor: 3);
         final next = ExpressionEditor.insertDigits(state, '1', separator);
 
-        // raw '237' -> insert '1' at digit-idx 2 -> '2317' -> Add2 -> '23.17'
+        // raw '237' -> insere '1' no digit-idx 2 -> '2317' -> Add2 -> '23.17'
         expect(next.text, '23.17');
       });
 
       test('appended at end of block reformats with Add2', () {
-        // "2.37 +", cursor between '7' and ' ' (pos 4).
+        // "2.37 +", cursor entre '7' e ' ' (pos 4).
         const state = EditorState(text: '2.37 +', cursor: 4);
         final next = ExpressionEditor.insertDigits(state, '1', separator);
 
-        // raw '237' -> append '1' at end -> '2371' -> '23.71'
+        // raw '237' -> anexa '1' ao final -> '2371' -> '23.71'
         expect(next.text, '23.71 +');
       });
     });
 
     group('backspace', () {
       test('in middle deletes a digit and re-applies Add2', () {
-        // "12.34", cursor between '3' and '4' (pos 4).
+        // "12.34", cursor entre '3' e '4' (pos 4).
         const state = EditorState(text: '12.34', cursor: 4);
         final next = ExpressionEditor.backspace(state, separator);
 
-        // Removed digit '3' from raw '1234' -> '124' -> Add2 -> '1.24'
+        // Remove o dígito '3' do raw '1234' -> '124' -> Add2 -> '1.24'
         expect(next.text, '1.24');
         expect(next.cursor, 3);
       });
 
       test('on operator merges surrounding blocks via Add2', () {
-        // '0.12 + 0.50', cursor right after the operator (pos 7).
+        // '0.12 + 0.50', cursor logo após o operador (pos 7).
         const state = EditorState(text: '0.12 + 0.50', cursor: 7);
-        // Backspace right after the operator merges the two blocks. Raws
-        // are normalized via int.parse to drop Add2's leading zeros:
-        // '0.12' -> '12', '0.50' -> '50' -> merged '1250' -> '12.50'.
-        // Cursor preserves rightDigits.length=2 digits-after -> position 3.
+        // Backspace logo após o operador funde os dois blocos. Os raws são
+        // normalizados via int.parse para descartar os zeros à esquerda do
+        // Add2: '0.12' -> '12', '0.50' -> '50' -> fundidos '1250' -> '12.50'.
+        // Cursor preserva rightDigits.length=2 digits-after -> posição 3.
         final next = ExpressionEditor.backspace(state, separator);
 
         expect(next.text, '12.50');
@@ -65,7 +65,7 @@ void main() {
       });
 
       test('at start of right block merges adjacent blocks', () {
-        // "0.12 + 0.34", cursor before the '0' of the second block (pos 7).
+        // "0.12 + 0.34", cursor antes do '0' do segundo bloco (pos 7).
         const state = EditorState(text: '0.12 + 0.34', cursor: 7);
         final next = ExpressionEditor.backspace(state, separator);
 
@@ -82,8 +82,8 @@ void main() {
       });
 
       test('outside number blocks deletes the literal char', () {
-        // '( 12.50', cursor right after '( ' (pos 2): no digits before the
-        // cursor inside the block and no ` op ` pattern -> literal delete.
+        // '( 12.50', cursor logo após '( ' (pos 2): sem dígitos antes do
+        // cursor dentro do bloco e sem padrão ` op ` -> deleção literal.
         const state = EditorState(text: '( 12.50', cursor: 2);
         final next = ExpressionEditor.backspace(state, separator);
 
@@ -94,23 +94,23 @@ void main() {
 
     group('insertOperator', () {
       test('in middle splits the block into two halves', () {
-        // "12.50", cursor at position 2.
+        // "12.50", cursor na posição 2.
         const state = EditorState(text: '12.50', cursor: 2);
         final next = ExpressionEditor.insertOperator(state, '+', separator);
 
-        // Block raw '1250' splits at digit-idx 2 (chars before cursor are
-        // '1' and '2'): left raw '12' -> '0.12', right raw '50' -> '0.50'.
-        // Cursor lands after ' + ' (block.start=0 + leftCore.length=4 + 3 = 7).
+        // O raw '1250' do bloco divide no digit-idx 2 (chars antes do cursor
+        // são '1' e '2'): raw esquerdo '12' -> '0.12', direito '50' -> '0.50'.
+        // Cursor cai após ' + ' (block.start=0 + leftCore.length=4 + 3 = 7).
         expect(next.text, '0.12 + 0.50');
         expect(next.cursor, 7);
       });
 
       test('at start of block appends literally (no split)', () {
-        // "12.50", cursor at the start (digitsBefore=0).
+        // "12.50", cursor no início (digitsBefore=0).
         const state = EditorState(text: '12.50', cursor: 0);
         final next = ExpressionEditor.insertOperator(state, '+', separator);
 
-        // digitsBefore=0 -> literal insert ' + ' at cursor.
+        // digitsBefore=0 -> insere ' + ' literal no cursor.
         expect(next.text, ' + 12.50');
         expect(next.cursor, 3);
       });
@@ -118,7 +118,7 @@ void main() {
 
     group('insertParenthesis', () {
       test('should open a parenthesis before the number under the cursor', () {
-        // `12.50`, cursor mid-number (pos 2).
+        // `12.50`, cursor no meio do número (pos 2).
         const state = EditorState(text: '12.50', cursor: 2);
         final next = ExpressionEditor.insertParenthesis(state);
 
@@ -138,14 +138,14 @@ void main() {
           const state = EditorState(text: '12.50', cursor: 2);
           final next = ExpressionEditor.insertParenthesis(state);
 
-          // Cursor was between `2` and `.` in `12.50`; after `( ` is prepended
-          // it stays between `2` and `.` in `( 12.50`.
+          // Cursor estava entre `2` e `.` em `12.50`; após prefixar `( `,
+          // continua entre `2` e `.` em `( 12.50`.
           expect(next.cursor, 4);
         },
       );
 
       test('should open the parenthesis before the block, not at the end', () {
-        // `10.00 + 5.00`, cursor between `5` and `.` (pos 10).
+        // `10.00 + 5.00`, cursor entre `5` e `.` (pos 10).
         const state = EditorState(text: '10.00 + 5.00', cursor: 10);
         final next = ExpressionEditor.insertParenthesis(state);
 
@@ -153,7 +153,7 @@ void main() {
       });
 
       test('should close at the end of the block when one paren is open', () {
-        // `( 12.50`, cursor between `2` and `.` (pos 4).
+        // `( 12.50`, cursor entre `2` e `.` (pos 4).
         const state = EditorState(text: '( 12.50', cursor: 4);
         final next = ExpressionEditor.insertParenthesis(state);
 
@@ -162,7 +162,7 @@ void main() {
       });
 
       test('should close before the trailing part of the expression', () {
-        // `( 12.50 + 3.00`, cursor between `2` and `.` of the first number.
+        // `( 12.50 + 3.00`, cursor entre `2` e `.` do primeiro número.
         const state = EditorState(text: '( 12.50 + 3.00', cursor: 4);
         final next = ExpressionEditor.insertParenthesis(state);
 

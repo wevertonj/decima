@@ -58,7 +58,6 @@ void main() {
   });
 
   group('CalculatorPage', () {
-    /// Helper to get the current display text from AnimatedInputDisplay
     String getDisplayText(WidgetTester tester) {
       final display = tester.widget<AnimatedInputDisplay>(
         find.byType(AnimatedInputDisplay),
@@ -170,7 +169,7 @@ void main() {
       ) async {
         await tester.pumpApp(CalculatorPage(viewModel: viewModel));
 
-        // Input 1250 → 12.50
+        // Digita 1250 → 12.50
         await tester.tap(find.text('1'));
         await tester.pumpAndSettle();
         await tester.tap(find.text('2'));
@@ -180,7 +179,6 @@ void main() {
         await tester.tap(find.text('0'));
         await tester.pumpAndSettle();
 
-        // Tap operator +
         await tester.tap(find.text('+'));
         await tester.pumpAndSettle();
 
@@ -192,7 +190,7 @@ void main() {
       ) async {
         await tester.pumpApp(CalculatorPage(viewModel: viewModel));
 
-        // Input 10.00 + 5.00 =
+        // Digita 10.00 + 5.00 =
         await tester.tap(find.text('1'));
         await tester.pumpAndSettle();
         await tester.tap(find.text('0'));

@@ -16,27 +16,18 @@ class PastedContent {
   const PastedContent({required this.resolvedLines, this.input});
 }
 
-/// Parses raw text from the clipboard into a list of normalized calculator
-/// tokens. Returns null when the input is empty or syntactically invalid.
-///
-/// Output tokens use the same shape as the calculator's internal expression
-/// tokens: numbers as fixed `x.yy` strings (optionally suffixed with `%`),
-/// operators as `+ − × ÷`, and parentheses as `(` / `)`.
-///
-/// Numbers are taken at face value: integers are padded to two decimal
-/// places (`1250` → `1250.00`); decimals preserve their fractional digits
-/// (`12.5` → `12.50`); the Add2 cents conversion does not apply here.
+/// Converte texto cru da área de transferência em tokens internos da
+/// calculadora (números `x.yy` com `%` opcional, operadores `+ − × ÷`,
+/// parênteses). Números valem o que dizem: inteiro ganha `.00`, decimal
+/// preserva as casas — a conversão Add2 de centavos não se aplica aqui.
 class PasteInputParser {
   /// Decompõe o texto colado em linhas resolvidas (`<expressão> = <resultado>`)
-  /// e, opcionalmente, uma entrada em aberto na última linha.
-  ///
-  /// Retorna `null` quando qualquer linha é inválida, quando uma linha em
-  /// aberto aparece antes de uma resolvida, quando falta o resultado depois
-  /// do `=` ou quando o resultado não é um número isolado.
+  /// e, opcionalmente, uma entrada em aberto na última linha. Retorna `null`
+  /// quando alguma linha é inválida ou fora de ordem.
   ///
   /// O lado direito do `=` é apenas **validado**: quem consome recalcula a
   /// expressão, para nunca gravar no histórico um resultado que não
-  /// corresponde à expressão.
+  /// corresponde a ela.
   static PastedContent? parseContent(String input) {
     final lines = input
         .split(RegExp(r'\r?\n'))
@@ -68,9 +59,8 @@ class PasteInputParser {
 
       final leftTokens = parse(left);
       if (leftTokens == null) return null;
-      // Uma linha resolvida é um cálculo: exige operador, igual à regra do
-      // `=` na calculadora. Sem isso, `10 = 5` viraria a linha sem sentido
-      // `10.00 = 10.00` (o resultado colado é sempre recalculado).
+      // Linha resolvida é um cálculo: exige operador, igual à regra do `=`.
+      // Sem isso, `10 = 5` viraria `10.00 = 10.00` (resultado recalculado).
       if (!leftTokens.any(_isOperator)) return null;
 
       // O lado direito precisa ser um número isolado (o resultado).
@@ -150,7 +140,7 @@ class PasteInputParser {
         continue;
       }
 
-      // Read a number literal (digits, dots, commas).
+      // Lê um literal numérico (dígitos, pontos, vírgulas).
       final start = i;
       while (i < normalized.length && _isNumberChar(normalized[i])) {
         i++;
@@ -171,8 +161,7 @@ class PasteInputParser {
     final lastRaw = rawTokens.last;
     if (_isOperator(lastRaw) || lastRaw == '(') return null;
 
-    // Second pass: format numbers. All numbers use face value: integers
-    // are padded with `.00`, decimals keep their fractional digits.
+    // Segunda passada: formata os números pelo valor de face.
     final tokens = <String>[];
     for (final t in rawTokens) {
       if (_isOperator(t) || t == '(' || t == ')') {
@@ -226,9 +215,8 @@ class PasteInputParser {
     return code >= 0x30 && code <= 0x39;
   }
 
-  /// Converts a number literal (e.g., `1.000,00`, `12,5`, `1250`) into the
-  /// internal fixed-decimal form (`xx.yy`). Returns null if the literal
-  /// cannot be interpreted unambiguously.
+  /// Converte um literal numérico (`1.000,00`, `12,5`, `1250`) para a forma
+  /// interna `xx.yy`. Retorna `null` quando a interpretação é ambígua.
   static String? _formatNumber(String literal) {
     final hasDot = literal.contains('.');
     final hasComma = literal.contains(',');
@@ -237,7 +225,7 @@ class PasteInputParser {
     String integerPart;
 
     if (hasDot && hasComma) {
-      // Whichever appears last is the decimal separator.
+      // O separador que aparece por último é o decimal.
       final lastDot = literal.lastIndexOf('.');
       final lastComma = literal.lastIndexOf(',');
       final decimalSep = lastDot > lastComma ? '.' : ',';
@@ -249,21 +237,20 @@ class PasteInputParser {
     } else if (hasDot || hasComma) {
       final sep = hasDot ? '.' : ',';
       final parts = literal.split(sep);
-      // Reject if any non-digit slipped through.
       for (final p in parts) {
         if (p.isEmpty) return null;
         if (!RegExp(r'^[0-9]+$').hasMatch(p)) return null;
       }
 
       final last = parts.last;
-      // Heuristic: a single occurrence with 1 or 2 trailing digits is the
-      // decimal separator. Otherwise (e.g., `1.000`, `1,234,567`) it is a
-      // thousands separator and the literal is an integer.
+      // Heurística: ocorrência única com 1–2 dígitos finais é separador
+      // decimal; senão (`1.000`, `1,234,567`) é milhar e o literal é
+      // inteiro.
       if (parts.length == 2 && last.length <= 2) {
         integerPart = parts.first;
         decimalPart = last;
       } else {
-        // Validate: every chunk except the first must have exactly 3 digits.
+        // Todo grupo além do primeiro precisa ter exatamente 3 dígitos.
         for (var i = 1; i < parts.length; i++) {
           if (parts[i].length != 3) return null;
         }
@@ -279,14 +266,14 @@ class PasteInputParser {
     if (!RegExp(r'^[0-9]+$').hasMatch(integerPart)) return null;
 
     if (decimalPart == null) {
-      // Pure integer — face value, padded with `.00`.
+      // Inteiro puro — valor de face com `.00`.
       final intVal = int.tryParse(integerPart);
       if (intVal == null) return null;
 
       return _formatCents(intVal * 100);
     }
 
-    // Decimal present: pad/round to exactly 2 fractional digits.
+    // Com decimal: completa/arredonda para exatamente 2 casas.
     if (!RegExp(r'^[0-9]+$').hasMatch(decimalPart)) return null;
 
     String paddedDecimal;
@@ -295,13 +282,13 @@ class PasteInputParser {
     } else if (decimalPart.length == 2) {
       paddedDecimal = decimalPart;
     } else {
-      // Round half-up to 2 digits.
+      // Arredondamento half-up para 2 casas.
       final keep = decimalPart.substring(0, 2);
       final next = int.parse(decimalPart[2]);
       var rounded = int.parse(keep);
       if (next >= 5) rounded++;
       if (rounded == 100) {
-        // Carry into integer part.
+        // Vai-um para a parte inteira.
         final intVal = (int.tryParse(integerPart) ?? 0) + 1;
         integerPart = intVal.toString();
         paddedDecimal = '00';

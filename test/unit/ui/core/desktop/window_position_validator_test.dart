@@ -1,7 +1,7 @@
 import 'dart:ui';
 
 import 'package:decima/domain/entities/window_position.dart';
-import 'package:decima/ui/core/desktop/window_position.dart';
+import 'package:decima/ui/core/desktop/window_position_validator.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:screen_retriever/screen_retriever.dart';
 

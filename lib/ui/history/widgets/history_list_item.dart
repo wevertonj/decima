@@ -4,13 +4,11 @@ import 'package:decima/domain/entities/history_line.dart';
 import 'package:decima/ui/history/widgets/rename_entry_dialog.dart';
 import 'package:flutter/material.dart';
 
-/// A single item in the history list showing a session preview.
+/// Item da lista do histórico com a prévia de uma sessão.
 ///
-/// Collapsed state: shows a preview of the full expression, final result,
-/// line count badge, date, and favorite star.
-///
-/// Expanded state: shows all individual calculation lines. Tapping a
-/// specific line triggers [onLineTap] with the line index.
+/// Recolhido: prévia da expressão, resultado final, badge de linhas, data
+/// e estrela de favorito. Expandido: todas as linhas de cálculo — o toque
+/// em uma linha dispara [onLineTap] com o índice dela.
 class HistoryListItem extends StatefulWidget {
   final HistoryEntry entry;
   final ValueChanged<int> onLineTap;
@@ -57,7 +55,7 @@ class _HistoryListItemState extends State<HistoryListItem> {
           borderRadius: BorderRadius.circular(AppLayout.radius.medium),
           onTap: () {
             if (entry.lineCount == 1) {
-              // Single-line session: tap goes straight to calculator.
+              // Sessão de linha única: o toque vai direto à calculadora.
               widget.onLineTap(0);
             } else {
               setState(() => _expanded = !_expanded);
@@ -73,16 +71,13 @@ class _HistoryListItemState extends State<HistoryListItem> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // Header: name, preview, favorite star
                   _buildHeader(colors, textTheme, entry),
-                  // Collapsed: final result
                   if (!_expanded) ...[
                     SizedBox(height: AppLayout.spacing.small),
                     _buildFinalResult(colors, textTheme, entry),
                     SizedBox(height: AppLayout.spacing.xs),
                     _buildFooter(colors, textTheme, entry),
                   ],
-                  // Expanded: all lines
                   if (_expanded) ...[
                     SizedBox(height: AppLayout.spacing.small),
                     _buildExpandedLines(colors, textTheme, entry),
@@ -140,7 +135,6 @@ class _HistoryListItemState extends State<HistoryListItem> {
           ),
         ),
         SizedBox(width: AppLayout.spacing.small),
-        // Line count badge (only for multi-line sessions)
         if (entry.lineCount > 1)
           Padding(
             padding: EdgeInsets.only(right: AppLayout.spacing.xs),
@@ -168,7 +162,6 @@ class _HistoryListItemState extends State<HistoryListItem> {
               ),
             ),
           ),
-        // Favorite toggle
         IconButton(
           icon: AnimatedSwitcher(
             duration: const Duration(milliseconds: 400),
@@ -270,8 +263,8 @@ class _HistoryListItemState extends State<HistoryListItem> {
   }
 }
 
-/// An individual expanded calculation line within a session.
-/// Tapping it navigates back to the calculator with that specific state.
+/// Linha de cálculo individual na sessão expandida; o toque volta à
+/// calculadora com aquele estado.
 class _ExpandedLineItem extends StatelessWidget {
   final HistoryLine line;
   final int index;
@@ -302,7 +295,6 @@ class _ExpandedLineItem extends StatelessWidget {
           ),
           child: Row(
             children: [
-              // Line number indicator
               Container(
                 width: 22,
                 height: 22,
@@ -321,7 +313,6 @@ class _ExpandedLineItem extends StatelessWidget {
                 ),
               ),
               SizedBox(width: AppLayout.spacing.small),
-              // Expression and result
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -344,7 +335,6 @@ class _ExpandedLineItem extends StatelessWidget {
                   ],
                 ),
               ),
-              // Arrow icon to indicate it's tappable
               Icon(
                 Icons.chevron_right_rounded,
                 size: 18,

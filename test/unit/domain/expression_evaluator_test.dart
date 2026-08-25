@@ -139,7 +139,7 @@ void main() {
       });
 
       test('should parse multiple literal % tokens in chained expression', () {
-        // 100 + 10% → 110; then + 5% of last operand (10) = 0.5 → 110.5
+        // 100 + 10% → 110; depois + 5% do último operando (10) = 0.5 → 110.5
         final result = evaluator.evaluate('100.00 + 10.00% + 5.00%');
 
         expect(result, '110.50');
@@ -172,7 +172,7 @@ void main() {
       });
 
       test('should handle decimal precision correctly', () {
-        // 0.10 + 0.20 should not produce 0.30000000000000004
+        // 0.10 + 0.20 não deve produzir 0.30000000000000004
         final result = evaluator.evaluate('0.10 + 0.20');
 
         expect(result, '0.30');
@@ -206,7 +206,7 @@ void main() {
       });
 
       test('should handle trailing operator gracefully', () {
-        // "12.50 +" should evaluate as just "12.50"
+        // "12.50 +" deve avaliar como apenas "12.50"
         final result = evaluator.evaluate('12.50 +');
 
         expect(result, '12.50');
@@ -217,7 +217,7 @@ void main() {
       test('should format result with 2 decimal places', () {
         final result = evaluator.evaluate('10.00 ÷ 3.00');
 
-        // 10/3 = 3.333... should be formatted to 2 decimal places
+        // 10/3 = 3.333... deve ser formatado com 2 casas decimais
         expect(result, '3.33');
       });
 
@@ -240,7 +240,7 @@ void main() {
       });
 
       test('should override precedence with parentheses', () {
-        // 2 × (3 + 4) = 14, not (2 × 3) + 4 = 10
+        // 2 × (3 + 4) = 14, e não (2 × 3) + 4 = 10
         final result = evaluator.evaluate('2.00 × ( 3.00 + 4.00 )');
 
         expect(result, '14.00');
@@ -267,7 +267,7 @@ void main() {
         );
 
         expect(result, isNotNull);
-        // 18 × 1.5% in × context = 18 × 0.015 = 0.27
+        // 18 × 1.5% no contexto × = 18 × 0.015 = 0.27
         // 48 ÷ 0.27 = 177.7777...
         // 500 + 30 + 177.78 = 707.78
         expect(result, '707.78');
@@ -280,7 +280,7 @@ void main() {
       });
 
       test('should evaluate percentage inside parentheses', () {
-        // (100 + 10%) × 2 → inside: 100 + 10 = 110; × 2 = 220
+        // (100 + 10%) × 2 → dentro: 100 + 10 = 110; × 2 = 220
         final result = evaluator.evaluate('( 100.00 + 10.00% ) × 2.00');
 
         expect(result, '220.00');

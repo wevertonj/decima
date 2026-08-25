@@ -38,7 +38,7 @@ void main() {
   setUp(() {
     mockHistoryRepository = MockHistoryRepository();
 
-    // Default: empty history
+    // Padrão: histórico vazio
     when(
       () => mockHistoryRepository.getPaginated(
         limit: any(named: 'limit'),
@@ -151,7 +151,7 @@ void main() {
       testWidgets('should show load more when there are more entries', (
         tester,
       ) async {
-        // Return exactly pageSize entries to trigger hasMore
+        // Retorna exatamente pageSize entradas para acionar hasMore
         final entries = createEntries(20);
         when(
           () => mockHistoryRepository.getPaginated(
@@ -163,7 +163,6 @@ void main() {
         await tester.pumpApp(HistoryPage(viewModel: viewModel));
         await tester.pumpAndSettle();
 
-        // Scroll to the bottom to find the load more button
         await tester.scrollUntilVisible(
           find.text('Load more'),
           200,
@@ -196,21 +195,18 @@ void main() {
         await tester.pumpApp(HistoryPage(viewModel: viewModel));
         await tester.pumpAndSettle();
 
-        // Find the star within the HistoryListItem (not in the SegmentedButton)
+        // Localiza a estrela dentro do HistoryListItem (não no SegmentedButton)
         final starInItem = find.descendant(
           of: find.byType(HistoryListItem),
           matching: find.byIcon(Icons.star_outline_rounded),
         );
         expect(starInItem, findsOneWidget);
 
-        // Tap the star
         await tester.tap(starInItem);
         await tester.pumpAndSettle();
 
-        // Verify toggleFavorite was called
         verify(() => mockHistoryRepository.toggleFavorite(1)).called(1);
 
-        // Now shows filled star within the item
         final filledStarInItem = find.descendant(
           of: find.byType(HistoryListItem),
           matching: find.byIcon(Icons.star_rounded),
@@ -221,7 +217,7 @@ void main() {
       testWidgets('should show empty favorites state when filter is active', (
         tester,
       ) async {
-        // All entries returns some, favorites returns none
+        // A lista completa retorna entradas; favoritos, nenhuma
         when(
           () => mockHistoryRepository.getPaginated(
             limit: any(named: 'limit'),
@@ -239,7 +235,6 @@ void main() {
         await tester.pumpApp(HistoryPage(viewModel: viewModel));
         await tester.pumpAndSettle();
 
-        // Tap "Favorites" tab
         await tester.tap(find.text('Favorites'));
         await tester.pumpAndSettle();
 
@@ -263,11 +258,9 @@ void main() {
         await tester.pumpApp(HistoryPage(viewModel: viewModel));
         await tester.pumpAndSettle();
 
-        // Tap delete icon in app bar
         await tester.tap(find.byIcon(Icons.delete_outline_rounded));
         await tester.pumpAndSettle();
 
-        // Dialog should appear
         expect(
           find.text(
             'Delete all history entries? This action cannot be undone.',
@@ -290,7 +283,6 @@ void main() {
         await tester.pumpApp(HistoryPage(viewModel: viewModel));
         await tester.pumpAndSettle();
 
-        // Tap delete, then confirm
         await tester.tap(find.byIcon(Icons.delete_outline_rounded));
         await tester.pumpAndSettle();
         await tester.tap(find.text('Delete'));
@@ -311,7 +303,6 @@ void main() {
         await tester.pumpApp(HistoryPage(viewModel: viewModel));
         await tester.pumpAndSettle();
 
-        // Tap delete, then cancel
         await tester.tap(find.byIcon(Icons.delete_outline_rounded));
         await tester.pumpAndSettle();
         await tester.tap(find.text('Cancel'));
@@ -341,7 +332,6 @@ void main() {
         await tester.pumpApp(HistoryPage(viewModel: viewModel));
         await tester.pumpAndSettle();
 
-        // Long press the entry
         await tester.longPress(find.byType(HistoryListItem));
         await tester.pumpAndSettle();
 
@@ -368,7 +358,6 @@ void main() {
         await tester.pumpApp(HistoryPage(viewModel: viewModel));
         await tester.pumpAndSettle();
 
-        // Long press, type name, save
         await tester.longPress(find.byType(HistoryListItem));
         await tester.pumpAndSettle();
 
@@ -440,14 +429,12 @@ void main() {
         await tester.pumpApp(HistoryPage(viewModel: viewModel));
         await tester.pumpAndSettle();
 
-        // Full expression should NOT be visible
         expect(
           find.text(
             '1000.00 + 2000.00 + 3000.00 + 4000.00 + 5000.00 + 6000.00',
           ),
           findsNothing,
         );
-        // Truncated version with "..." should be visible
         expect(find.textContaining('...'), findsOneWidget);
       });
     });

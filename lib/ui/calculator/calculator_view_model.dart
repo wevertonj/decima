@@ -18,13 +18,10 @@ import 'package:decima/ui/calculator/controllers/timeline_controller.dart';
 import 'package:decima/utils/formatters/number_formatter.dart';
 import 'package:flutter/foundation.dart';
 
-/// Fachada da calculadora para a UI: única API que os widgets consomem.
+/// Fachada da calculadora: única API que os widgets consomem.
 ///
-/// Orquestra os colaboradores — [ExpressionComposer] (composição por
-/// digitação), [ExpressionEditor] via [CursorController] (edição por
-/// cursor), [SessionRecorder] (persistência da sessão), [TimelineController]
-/// (linhas visíveis) e [ClipboardController] (copiar/colar) — e concentra a
-/// formatação de exibição e a notificação dos listeners.
+/// Orquestra composer, editor/cursor, sessão, timeline e clipboard;
+/// concentra a formatação de exibição e a notificação dos listeners.
 class CalculatorViewModel extends ChangeNotifier {
   CalculatorViewModel({
     required HistoryRepository historyRepository,
@@ -50,19 +47,15 @@ class CalculatorViewModel extends ChangeNotifier {
   final TimelineController _timeline = TimelineController();
   final CursorController _cursor = CursorController();
 
-  /// Fila de ações do usuário.
-  ///
-  /// Garante que toques disparados durante o processamento de outra ação
-  /// (por exemplo, via `notifyListeners` que reentra na ViewModel) sejam
-  /// processados em ordem, sem perda. Dart é single-threaded, então a fila
-  /// serve apenas como proteção contra reentrância síncrona.
+  /// Fila de ações do usuário — proteção contra reentrância síncrona
+  /// (listener que despacha nova ação durante `notifyListeners`).
   final Queue<VoidCallback> _actionQueue = Queue<VoidCallback>();
   bool _isProcessingActions = false;
 
   DecimalSeparator _decimalSeparator = DecimalSeparator.dot;
 
-  /// Binary operators as they appear in an expression. Note the minus is the
-  /// U+2212 sign, never the hyphen a negative result is formatted with.
+  /// Operadores binários como aparecem na expressão. O menos é o sinal
+  /// U+2212, nunca o hífen usado na formatação de resultado negativo.
   static final RegExp _operatorRegExp = RegExp(r'[+−×÷]');
 
   int get maxVisibleEntries => _timeline.maxVisibleEntries;
@@ -84,11 +77,9 @@ class CalculatorViewModel extends ChangeNotifier {
 
   String? get currentOperator => _composer.pendingOperator;
 
-  /// Number of unmatched opening parentheses in the current expression.
-  ///
-  /// While editing mid-expression, the edit buffer is the source of truth —
-  /// the committed token list is stale in that mode, so counting it would
-  /// report a balance that does not match what the user sees.
+  /// Parênteses abertos sem fechamento na expressão atual. Em modo de
+  /// edição o buffer de edição é a fonte da verdade — os tokens confirmados
+  /// ficam defasados nesse modo.
   int get openParenCount {
     final text = _cursor.editText;
     if (text != null) {
@@ -98,9 +89,8 @@ class CalculatorViewModel extends ChangeNotifier {
     return _composer.openParenCount;
   }
 
-  /// True when there is anything in the calculator that the user could clear:
-  /// committed tokens, an active operand, a pending operator, an in-flight
-  /// post-equals result, or session timeline entries.
+  /// `true` quando há algo que o usuário possa apagar: tokens confirmados,
+  /// operando ativo, operador pendente, resultado pós-`=` ou timeline.
   bool get hasContent {
     final editText = _cursor.editText;
     if (editText != null && editText.isNotEmpty && editText != '0.00') {
@@ -113,8 +103,8 @@ class CalculatorViewModel extends ChangeNotifier {
     return false;
   }
 
-  /// Full display text — the entire expression on a single line.
-  /// e.g., "7856.00", "7856.00 ×", "7856.00 × 52.00", "100.00 + 10.00%".
+  /// Texto completo do display — a expressão inteira em uma linha
+  /// (ex.: `7856.00 × 52.00`, `100.00 + 10.00%`).
   String get fullDisplayText {
     final editText = _cursor.editText;
     if (editText != null) return editText;
@@ -125,8 +115,8 @@ class CalculatorViewModel extends ChangeNotifier {
     return parts.join(' ');
   }
 
-  /// In-progress expression without the active engine value.
-  /// Used by widgets that show the typed expression separately.
+  /// Expressão em andamento sem o operando ativo do motor — para widgets
+  /// que exibem a expressão digitada separadamente.
   String get expression {
     final parts = <String>[
       for (final t in _composer.committedTokens) _formatPart(t),
@@ -173,9 +163,8 @@ class CalculatorViewModel extends ChangeNotifier {
 
   bool get hasMoreTimelineEntries => _timeline.hasMore;
 
-  /// Despacha uma ação do usuário. Se já houver outra ação em execução
-  /// (cenário de reentrância síncrona via listener), enfileira para ser
-  /// processada logo após a atual terminar, preservando a ordem dos toques.
+  /// Despacha uma ação do usuário; reentradas síncronas entram na fila e
+  /// rodam após a atual, preservando a ordem dos toques.
   void _runAction(VoidCallback action) {
     if (_isProcessingActions) {
       _actionQueue.add(action);
@@ -239,8 +228,8 @@ class CalculatorViewModel extends ChangeNotifier {
   void applyPercentage() =>
       _dispatchInput(ExpressionEditor.applyPercent, _composer.applyPercentage);
 
-  /// Toggle insertion of an opening or closing parenthesis depending on
-  /// the current state — see [ExpressionComposer.inputParenthesis].
+  /// Insere `(` ou `)` conforme o estado atual — ver
+  /// [ExpressionComposer.inputParenthesis].
   void inputParenthesis() => _dispatchInput(
     ExpressionEditor.insertParenthesis,
     _composer.inputParenthesis,
@@ -250,28 +239,19 @@ class CalculatorViewModel extends ChangeNotifier {
     _runAction(_commitPendingCalculation);
   }
 
-  /// Persists the in-progress session and waits for the write to land.
-  ///
-  /// Called when the desktop window is closing and when the app goes to the
-  /// background on mobile. The pending expression is closed exactly as a `=`
-  /// press would close it — unbalanced parentheses auto-closed, the result
-  /// appended to the timeline. A number typed without any operator is **not**
-  /// a calculation and never becomes a history entry.
-  ///
-  /// Idempotent: with nothing new to write it only awaits the writes already
-  /// issued, including an `add` still in flight.
+  /// Persiste a sessão em andamento e aguarda a escrita concluir, fechando
+  /// a expressão pendente como um `=` faria. Idempotente: sem nada novo,
+  /// apenas aguarda escritas já emitidas.
   Future<void> flushSession() {
-    // `equals()` já é a operação "fecha o cálculo pendente": ignora entradas
-    // sem operador, auto-fecha parênteses e é no-op quando nada mudou.
+    // `equals()` já ignora entrada sem operador, auto-fecha parênteses e é
+    // no-op quando nada mudou.
     equals();
 
     return _recorder.pendingWrite;
   }
 
-  /// Closes the in-progress calculation: evaluates the pending expression,
-  /// records the line in the timeline and in the session, and leaves the
-  /// state exactly as a `=` press does. No-op when there is nothing
-  /// evaluable — empty display, or no operator typed.
+  /// Fecha o cálculo pendente: avalia, registra a linha na timeline e na
+  /// sessão e deixa o estado como um `=`. No-op sem nada avaliável.
   void _commitPendingCalculation() {
     final raw = _pendingRawExpression();
     if (raw == null) return;
@@ -287,8 +267,6 @@ class CalculatorViewModel extends ChangeNotifier {
       ),
     );
 
-    // Store the raw expression/result pair for session-based saving, then
-    // persist: create on the first =, update on subsequent ones.
     _recorder.append(HistoryLine(expression: raw, result: result));
     _recorder.persist();
 
@@ -297,12 +275,9 @@ class CalculatorViewModel extends ChangeNotifier {
     notifyListeners();
   }
 
-  /// The pending expression ready for the evaluator — separators normalized
-  /// and unbalanced parentheses auto-closed — or `null` when there is
-  /// nothing to evaluate: empty display, or no operator typed anywhere.
-  ///
-  /// A trailing operator with no right-hand side ("12.50 +") is kept as is;
-  /// the evaluator handles it gracefully.
+  /// Expressão pendente pronta para o avaliador — separadores normalizados,
+  /// parênteses auto-fechados — ou `null` sem nada avaliável. Operador
+  /// solto no fim ("12.50 +") é mantido; o avaliador o tolera.
   String? _pendingRawExpression() {
     final editText = _cursor.editText;
     final raw = editText != null
@@ -320,7 +295,7 @@ class CalculatorViewModel extends ChangeNotifier {
     _runAction(() {
       if (!hasContent && !_cursor.isEditing) return;
 
-      // Save/update the current session to history before clearing.
+      // Persiste a sessão atual antes de limpar.
       _recorder.persist();
 
       _cursor.exitEditMode();
@@ -341,17 +316,17 @@ class CalculatorViewModel extends ChangeNotifier {
     notifyListeners();
   }
 
-  // ----- Cursor / edit mode --------------------------------------------
+  // ----- Cursor / modo de edição ---------------------------------------
 
-  /// Current cursor position as a character offset in [fullDisplayText].
+  /// Posição do cursor como offset de caractere em [fullDisplayText].
   int get cursorPosition => _cursor.positionIn(fullDisplayText);
 
-  /// True when the cursor is in "edit mode" (positioned somewhere other
-  /// than the end of the expression).
+  /// `true` quando o cursor está em modo de edição (fora do fim da
+  /// expressão).
   bool get isEditingMidExpression => _cursor.isEditing;
 
-  /// True when the cursor is at the end of [fullDisplayText]. The cursor is
-  /// hidden in this state even while edit mode is active.
+  /// `true` quando o cursor está no fim de [fullDisplayText]; nesse estado
+  /// ele fica oculto mesmo com o modo de edição ativo.
   bool get isCursorAtEnd => _cursor.isAtEnd;
 
   void moveCursorLeft() {
@@ -366,29 +341,27 @@ class CalculatorViewModel extends ChangeNotifier {
     });
   }
 
-  /// Moves the cursor to the end of [fullDisplayText], hiding it without
-  /// exiting edit mode.
+  /// Move o cursor para o fim de [fullDisplayText], ocultando-o sem sair
+  /// do modo de edição.
   void moveCursorToEnd() {
     _runAction(() {
       if (_cursor.moveToEnd()) notifyListeners();
     });
   }
 
-  /// Sets the cursor to an explicit character offset in [fullDisplayText].
-  /// Out-of-range values are clamped.
+  /// Posiciona o cursor num offset explícito de [fullDisplayText];
+  /// valores fora do intervalo são clampados.
   void setCursorPosition(int position) {
     _runAction(() {
       if (_cursor.setPosition(fullDisplayText, position)) notifyListeners();
     });
   }
 
-  /// Loads a history session into the calculator, restoring the timeline
-  /// up to (and including) the specified [selection.lineIndex].
-  ///
-  /// The last loaded line's expression is placed into the display field
-  /// as if the user had just typed it, ready for editing or continuation.
+  /// Carrega uma sessão do histórico, restaurando a timeline até a linha
+  /// de [HistorySelection.lineIndex] (inclusive); o resultado dela vira o
+  /// valor do display, pronto para continuar o cálculo.
   void loadSession(HistorySelection selection) {
-    // Save any existing session before overwriting.
+    // Persiste a sessão existente antes de sobrescrevê-la.
     _recorder.persist();
 
     _cursor.exitEditMode();
@@ -397,8 +370,6 @@ class CalculatorViewModel extends ChangeNotifier {
     final entry = selection.entry;
     final upToIndex = selection.lineIndex.clamp(0, entry.lines.length - 1);
 
-    // Load the lines up to (and including) the selected one into the
-    // timeline; the selected line's result becomes the display value.
     final lines = <HistoryLine>[];
     for (var i = 0; i <= upToIndex; i++) {
       final line = entry.lines[i];
@@ -412,19 +383,18 @@ class CalculatorViewModel extends ChangeNotifier {
       lines.add(line);
     }
 
-    // Track the loaded session so subsequent = presses update it. Loaded
-    // lines are already persisted, so the next saves hit the update branch.
+    // Linhas carregadas já estão persistidas: os próximos `=` caem no
+    // caminho de update da mesma sessão, não de criação.
     _recorder.adoptSession(sessionId: entry.id, lines: lines);
 
     _composer.setResult(lines.last.result);
     notifyListeners();
   }
 
-  // ----- Display formatting --------------------------------------------
+  // ----- Formatação de exibição ----------------------------------------
 
-  /// Formats a single committed (or active) token for display: numbers go
-  /// through the configured number formatter, operators and parentheses pass
-  /// through, and `%`-suffixed values keep the literal percent sign.
+  /// Formata um token para exibição: números passam pelo formatador,
+  /// operadores/parênteses passam direto, sufixo `%` é preservado.
   String _formatPart(String value) {
     if (ExpressionComposer.isOperator(value)) return value;
     if (value == '(' || value == ')') return value;
@@ -458,13 +428,11 @@ class CalculatorViewModel extends ChangeNotifier {
 
   // ----- Clipboard ------------------------------------------------------
 
-  /// True when there is anything currently typed (committed tokens, an
-  /// active operand, or a pending operator) that could be copied as an
-  /// expression.
+  /// `true` quando há algo digitado que possa ser copiado como expressão.
   bool get hasExpression => _composer.hasExpression;
 
-  /// True when there is a numeric result available — either a live preview
-  /// or the result of the most recent `=`.
+  /// `true` quando há resultado numérico disponível — prévia ao vivo ou
+  /// resultado do último `=`.
   bool get hasResult {
     if (previewResult != null) return true;
     if (_composer.shouldResetOnInput && !_composer.isEngineEmpty) return true;
@@ -472,19 +440,19 @@ class CalculatorViewModel extends ChangeNotifier {
     return false;
   }
 
-  /// True when there is at least one calculation in the session timeline.
+  /// `true` quando há ao menos um cálculo na timeline da sessão.
   bool get hasHistory => _timeline.hasEntries;
 
-  /// Copies the current expression text (e.g., `1000.00 + 10.00%`) to the
-  /// clipboard. No-op when [hasExpression] is false.
+  /// Copia a expressão atual (ex.: `1000.00 + 10.00%`) para a área de
+  /// transferência. No-op quando [hasExpression] é `false`.
   Future<void> copyExpression() async {
     if (!hasExpression) return;
 
     await _clipboard.copyText(fullDisplayText);
   }
 
-  /// Copies the current result (preview or post-`=` value) to the clipboard.
-  /// No-op when [hasResult] is false.
+  /// Copia o resultado atual (prévia ou valor pós-`=`) para a área de
+  /// transferência. No-op quando [hasResult] é `false`.
   Future<void> copyResult() async {
     final preview = previewResult;
     if (preview != null) {
@@ -498,18 +466,13 @@ class CalculatorViewModel extends ChangeNotifier {
     }
   }
 
-  /// Copies all session timeline entries to the clipboard, one per line in
-  /// the format `<expression> = <result>`.
+  /// Copia a timeline da sessão, uma linha por cálculo no formato
+  /// `<expressão> = <resultado>`.
   Future<void> copyHistory() => _clipboard.copyHistory(_timeline.entries);
 
-  /// Reads text from the clipboard, parses and applies it to the calculator
-  /// state. Returns `true` on success, `false` when the clipboard is empty
-  /// or its contents cannot be interpreted as a number/expression.
-  ///
-  /// Lines already resolved (`<expressão> = <resultado>`) become timeline
-  /// entries; a trailing line without `=` becomes the current input. The
-  /// pasted results are **recalculated** from their expressions, so a stale
-  /// or wrong value in the clipboard never reaches the history.
+  /// Lê, interpreta e aplica o conteúdo da área de transferência. Retorna
+  /// `false` quando vazia ou inválida. Linhas resolvidas viram timeline;
+  /// linha final sem `=` vira a entrada atual.
   Future<bool> pasteFromClipboard() async {
     final pasted = await _clipboard.readPastedSession();
     if (pasted == null) return false;
@@ -519,20 +482,16 @@ class CalculatorViewModel extends ChangeNotifier {
     return true;
   }
 
-  /// True when the clipboard currently contains text. Used by the context
-  /// menu to enable/disable the paste entry without committing to a paste.
+  /// `true` quando a área de transferência contém texto — habilita a opção
+  /// "Colar" do menu de contexto sem efetivar a colagem.
   Future<bool> clipboardHasText() => _clipboard.hasText();
 
-  /// Replaces the whole calculator state with the pasted content: [lines]
-  /// become timeline entries (and pending session lines, persisted on the
-  /// next `=`/`clear()`), and [inputTokens] becomes the in-progress input.
-  ///
-  /// When [inputTokens] is null the display shows the last line's result in
-  /// the same state a `=` press leaves behind — the next digit starts a new
-  /// number instead of appending to it.
+  /// Substitui o estado da calculadora pelo conteúdo colado: [lines] viram
+  /// timeline e sessão pendente; [inputTokens] vira a entrada em andamento
+  /// (quando `null`, o display fica no estado pós-`=` da última linha).
   void _applyPastedContent(List<HistoryLine> lines, List<String>? inputTokens) {
-    // Replace existing in-progress state. Persist any pending session first
-    // so the user does not silently lose committed work.
+    // Persiste a sessão pendente antes de substituí-la — trabalho já
+    // confirmado nunca se perde silenciosamente.
     _recorder.persist();
     _cursor.exitEditMode();
     _composer.resetAll();
