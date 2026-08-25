@@ -44,7 +44,7 @@ jobs:
       # Com a ssh-key, o push do commit de release autentica como a deploy key
       # e aciona o bypass do ruleset. Sem a secret, o checkout cai no token
       # padrão e o passo de bump falha com instrução clara.
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0
           ssh-key: ${{ secrets.RELEASE_DEPLOY_KEY }}
@@ -89,11 +89,11 @@ jobs:
     needs: bump
     if: needs.bump.outputs.released == 'true'
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           ref: ${{ needs.bump.outputs.sha }}
 
-      - uses: actions/setup-java@v4
+      - uses: actions/setup-java@v6
         with:
           distribution: temurin
           java-version: '17'
@@ -126,7 +126,7 @@ jobs:
         run: cp build/app/outputs/flutter-apk/app-release.apk "decima-${{ needs.bump.outputs.semver }}-android.apk"
 
       - name: Publicar APK
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: release-android
           path: decima-*-android.apk
@@ -160,7 +160,7 @@ jobs:
     needs: bump
     if: needs.bump.outputs.released == 'true'
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           ref: ${{ needs.bump.outputs.sha }}
 
@@ -197,7 +197,7 @@ jobs:
           Get-Content "dist/$($exe.Name).sha256"
 
       - name: Publicar instalador
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: release-windows
           path: dist/*
@@ -210,7 +210,7 @@ jobs:
     needs: bump
     if: needs.bump.outputs.released == 'true'
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           ref: ${{ needs.bump.outputs.sha }}
 
@@ -228,7 +228,7 @@ jobs:
         run: tool/deb/build_deb.sh --skip-build --version '${{ needs.bump.outputs.semver }}'
 
       - name: Publicar .deb
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: release-linux
           path: dist/*
@@ -241,7 +241,7 @@ jobs:
     needs: bump
     if: needs.bump.outputs.released == 'true'
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           ref: ${{ needs.bump.outputs.sha }}
 
@@ -257,7 +257,7 @@ jobs:
         run: tool/macos/build_zip.sh --skip-build --version '${{ needs.bump.outputs.semver }}'
 
       - name: Publicar .zip
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: release-macos
           path: dist/*
@@ -270,11 +270,11 @@ jobs:
     needs: [bump, android, windows, linux, macos]
     if: needs.bump.outputs.released == 'true'
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           ref: ${{ needs.bump.outputs.sha }}
 
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v8
         with:
           path: artifacts
           merge-multiple: true
